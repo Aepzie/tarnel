@@ -245,7 +245,7 @@ fun PermissionSheet(browser: Browser, prompt: PermissionPrompt) {
             Spacer(Modifier.height(22.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SheetButton("Block", c.surface, c.text, Modifier.weight(1f)) { prompt.decide(false) }
-                SheetButton("Allow", c.accent, Color(0xFF09090B), Modifier.weight(1f)) { prompt.decide(true) }
+                SheetButton("Allow", c.accent, c.onAccent, Modifier.weight(1f)) { prompt.decide(true) }
             }
             Spacer(Modifier.height(12.dp))
         }
@@ -265,7 +265,7 @@ fun ExternalAppSheet(browser: Browser, prompt: ExternalPrompt) {
             Spacer(Modifier.height(22.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SheetButton("Stay", c.surface, c.text, Modifier.weight(1f)) { browser.externalPrompt = null }
-                SheetButton("Open", c.accent, Color(0xFF09090B), Modifier.weight(1f)) { browser.launchExternal(prompt) }
+                SheetButton("Open", c.accent, c.onAccent, Modifier.weight(1f)) { browser.launchExternal(prompt) }
             }
             Spacer(Modifier.height(12.dp))
         }

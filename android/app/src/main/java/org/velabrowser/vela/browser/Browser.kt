@@ -624,8 +624,9 @@ class Browser(
 
     // ---------------------------------------------------------------- callbacks from clients
 
-    fun onRequestBlocked(tab: Tab) {
-        main.post { tab.blocked++ }
+    /** Counts each blocked URL once per page (scripts often retry a blocked request in a loop). */
+    fun onRequestBlocked(tab: Tab, url: String) {
+        main.post { if (tab.blockedUrls.size < 10_000 && tab.blockedUrls.add(url)) tab.blocked++ }
     }
 
     fun onNavigationStarted(tab: Tab) {
@@ -694,8 +695,12 @@ class Browser(
     }
 
     fun download(tab: Tab, url: String, ua: String?, contentDisposition: String?, mimeType: String?) {
+        val bridge = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
         if (url.startsWith("data:", ignoreCase = true)) {
-            blobDownloads.saveDataUrl(url, blobDownloads.fileName(url, contentDisposition, mimeType), mimeType)
+            // Through the page when possible, to pick up the link's download="name".
+            val webView = tab.webView
+            if (webView != null && bridge) blobDownloads.fetchBlob(webView, url, contentDisposition, mimeType)
+            else blobDownloads.saveDataUrl(url, blobDownloads.fileName(url, contentDisposition, mimeType), mimeType)
             return
         }
         if (url.startsWith("blob:", ignoreCase = true)) {

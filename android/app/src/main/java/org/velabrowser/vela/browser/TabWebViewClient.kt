@@ -59,7 +59,8 @@ class TabWebViewClient(private val browser: Browser, private val tab: Tab) : Web
         val headers = request.requestHeaders
         val kind = RequestKind.infer(url, false, headers["Accept"] ?: headers["accept"], headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"])
         if (!browser.blocker.shouldBlock(url, tab.documentUrl, kind)) return null
-        browser.onRequestBlocked(tab)
+        if (org.velabrowser.vela.BuildConfig.DEBUG) android.util.Log.d("VelaBlock", "$kind $url")
+        browser.onRequestBlocked(tab, url)
         return WebResourceResponse("text/plain", "utf-8", 204, "No Content", emptyMap(), ByteArrayInputStream(ByteArray(0)))
     }
 
@@ -69,6 +70,7 @@ class TabWebViewClient(private val browser: Browser, private val tab: Tab) : Web
         tab.secure = url.startsWith("https://")
         tab.loading = true
         tab.blocked = 0
+        tab.blockedUrls.clear()
         if (tab.error?.kind != PageErrorKind.HTTPS_UNAVAILABLE) tab.error = null
         browser.onNavigationStarted(tab)
         injectCosmetics(view, url)

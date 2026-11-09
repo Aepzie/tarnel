@@ -77,7 +77,7 @@ fun SpacesSheet(browser: Browser) {
         AnimatedContent(mode, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "spaces") { current ->
             when (current) {
                 SpaceMode.List -> SpaceList(browser, onEdit = { mode = SpaceMode.Edit(it) }, onDelete = { mode = SpaceMode.ConfirmDelete(it) }, dismiss = dismiss)
-                is SpaceMode.Edit -> SpaceEditor(current.space, onCancel = { mode = SpaceMode.List }) { name, color ->
+                is SpaceMode.Edit -> SpaceEditor(current.space, used = browser.spaces.map { it.color }.toSet(), onCancel = { mode = SpaceMode.List }) { name, color ->
                     if (current.space == null) {
                         browser.createSpace(name, color)
                         dismiss()
@@ -207,10 +207,10 @@ private fun ActionTile(label: String, icon: androidx.compose.ui.graphics.vector.
 }
 
 @Composable
-private fun SpaceEditor(space: Space?, onCancel: () -> Unit, onSave: (String, Long) -> Unit) {
+private fun SpaceEditor(space: Space?, used: Set<Long> = emptySet(), onCancel: () -> Unit, onSave: (String, Long) -> Unit) {
     val c = LocalVela.current
     var name by remember { mutableStateOf(space?.name.orEmpty()) }
-    var color by remember { mutableLongStateOf(space?.color ?: SpaceColors.all[1]) }
+    var color by remember { mutableLongStateOf(space?.color ?: SpaceColors.all.drop(1).firstOrNull { it !in used } ?: SpaceColors.all[1]) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     Column(Modifier.imePadding().padding(horizontal = 20.dp)) {

@@ -90,13 +90,13 @@ fun PageErrorView(browser: Browser, tab: Tab, error: PageError) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 when (error.kind) {
                     PageErrorKind.HTTPS_UNAVAILABLE -> {
-                        SheetButton("Go back", c.accent, Color(0xFF09090B), Modifier.weight(1f)) { if (!browser.goBack()) browser.closeTab(tab, undoable = false) }
+                        SheetButton("Go back", c.accent, c.onAccent, Modifier.weight(1f)) { if (!browser.goBack()) browser.closeTab(tab, undoable = false) }
                         SheetButton("Continue", c.surface, c.text, Modifier.weight(1f)) { browser.continueInsecure(tab) }
                     }
-                    PageErrorKind.CERTIFICATE -> SheetButton("Go back", c.accent, Color(0xFF09090B), Modifier.weight(1f)) {
+                    PageErrorKind.CERTIFICATE -> SheetButton("Go back", c.accent, c.onAccent, Modifier.weight(1f)) {
                         if (!browser.goBack()) browser.closeTab(tab, undoable = false)
                     }
-                    else -> SheetButton(if (error.kind == PageErrorKind.CRASHED) "Reload" else "Try again", c.accent, Color(0xFF09090B), Modifier.weight(1f)) { browser.reload() }
+                    else -> SheetButton(if (error.kind == PageErrorKind.CRASHED) "Reload" else "Try again", c.accent, c.onAccent, Modifier.weight(1f)) { browser.reload() }
                 }
             }
         }

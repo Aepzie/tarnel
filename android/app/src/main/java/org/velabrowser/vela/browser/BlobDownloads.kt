@@ -38,9 +38,11 @@ class BlobDownloads(
         pending[token] = Pending(fileName(url, contentDisposition, mimeType), mimeType)
         val t = JSONObject.quote(token)
         val u = JSONObject.quote(url)
-        val post = "function(o){o.t=$t;$BRIDGE.postMessage(JSON.stringify(o))}"
+        val post = "function(o){o.t=$t;o.n=name;$BRIDGE.postMessage(JSON.stringify(o))}"
         webView.evaluateJavascript(
-            "(function(){var post=$post;fetch($u).then(function(r){return r.blob()}).then(function(b){" +
+            "(function(){var name='';try{var as=document.querySelectorAll('a[download]');" +
+                "for(var i=0;i<as.length;i++){if(as[i].href===$u){name=as[i].getAttribute('download')||'';break}}}catch(e){}" +
+                "var post=$post;fetch($u).then(function(r){return r.blob()}).then(function(b){" +
                 "if(b.size>$MAX_BYTES){post({e:'too large'});return}" +
                 "var f=new FileReader();f.onload=function(){post({d:f.result,m:b.type})};" +
                 "f.onerror=function(){post({e:'read failed'})};f.readAsDataURL(b)})" +
@@ -59,7 +61,8 @@ class BlobDownloads(
             return
         }
         val mime = reply.optString("m").takeIf { it.isNotBlank() } ?: request.mimeType
-        saveDataUrl(dataUrl, request.fileName.withExtensionFor(mime), mime)
+        val suggested = sanitizeName(reply.optString("n"))
+        saveDataUrl(dataUrl, (suggested ?: request.fileName).withExtensionFor(mime), mime)
     }
 
     fun saveDataUrl(url: String, fileName: String, mimeType: String?) {
@@ -72,9 +75,19 @@ class BlobDownloads(
     }
 
     fun fileName(url: String, contentDisposition: String?, mimeType: String?): String {
-        val guessed = URLUtil.guessFileName(if (url.startsWith("data:")) "data:" else url, contentDisposition, mimeType)
+        // blob: and data: URLs carry no file name (a blob's "path" is a UUID); only Content-Disposition counts.
+        val opaque = url.startsWith("data:", ignoreCase = true) || url.startsWith("blob:", ignoreCase = true)
+        val guessed = URLUtil.guessFileName(if (opaque) "data:" else url, contentDisposition, mimeType)
         return if (guessed.startsWith("downloadfile")) "download".withExtensionFor(mimeType) else guessed
     }
+
+    /** A page-suggested name (`<a download="…">`) reduced to a safe file name, or null. */
+    private fun sanitizeName(name: String?): String? = name
+        ?.substringAfterLast('/')?.substringAfterLast('\\')
+        ?.replace(Regex("[\\u0000-\\u001f:*?\"<>|]"), "_")
+        ?.trim()?.trim('.')
+        ?.take(120)
+        ?.takeIf { it.isNotEmpty() }
 
     private fun String.withExtensionFor(mime: String?): String {
         val ext = mime?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it.substringBefore(';').trim().lowercase(Locale.ROOT)) }

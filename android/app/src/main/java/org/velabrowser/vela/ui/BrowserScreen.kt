@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -53,6 +56,7 @@ import org.velabrowser.vela.ui.tabs.TabSwitcher
 import org.velabrowser.vela.ui.theme.LocalVela
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun BrowserScreen(browser: Browser, fullscreenView: View?, onExitFullscreen: () -> Unit) {
     val c = LocalVela.current
     val tab = browser.activeTab
@@ -68,6 +72,7 @@ fun BrowserScreen(browser: Browser, fullscreenView: View?, onExitFullscreen: () 
                 Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
+                    .imePadding()
                     .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
             ) {
                 WebHost(tab)
@@ -79,13 +84,14 @@ fun BrowserScreen(browser: Browser, fullscreenView: View?, onExitFullscreen: () 
             Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
+                .imePadding()
                 .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                 .padding(bottom = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             MessageBar(browser)
             DownloadChip(browser)
-            BottomIsland(browser)
+            if (!WindowInsets.isImeVisible || browser.findOpen) BottomIsland(browser)
         }
 
         if (browser.editing) OmniboxOverlay(browser)

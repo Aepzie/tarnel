@@ -27,6 +27,9 @@ class Tab(val id: String, spaceId: String, url: String = "", title: String = "")
     var thumbnail by mutableStateOf<ImageBitmap?>(null)
     var webView by mutableStateOf<VelaWebView?>(null)
     var blocked by mutableIntStateOf(0)
+
+    /** Distinct URLs blocked on the current page (main thread). */
+    val blockedUrls = HashSet<String>()
     var error by mutableStateOf<PageError?>(null)
     var secure by mutableStateOf(url.startsWith("https://"))
 

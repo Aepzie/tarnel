@@ -38,6 +38,7 @@ data class VelaColors(
     val textFaint: Color,
     val scrim: Color,
     val accent: Color,
+    val onAccent: Color,
     val danger: Color,
 )
 
@@ -53,7 +54,7 @@ fun velaColors(dark: Boolean, accent: Color): VelaColors = if (dark) {
     VelaColors(
         dark = true,
         background = Zinc950,
-        island = Zinc900.copy(alpha = 0.86f),
+        island = Zinc900.copy(alpha = 0.96f),
         islandSolid = Color(0xFF141417),
         ring = Color.White.copy(alpha = 0.08f),
         highlight = Color.White.copy(alpha = 0.06f),
@@ -64,13 +65,14 @@ fun velaColors(dark: Boolean, accent: Color): VelaColors = if (dark) {
         textFaint = Zinc500,
         scrim = Color.Black.copy(alpha = 0.55f),
         accent = accent,
+        onAccent = Zinc950,
         danger = Color(0xFFF87171),
     )
 } else {
     VelaColors(
         dark = false,
         background = Zinc50,
-        island = Color.White.copy(alpha = 0.88f),
+        island = Color.White.copy(alpha = 0.97f),
         islandSolid = Color.White,
         ring = Color.Black.copy(alpha = 0.08f),
         highlight = Color.White.copy(alpha = 0.7f),
@@ -81,6 +83,7 @@ fun velaColors(dark: Boolean, accent: Color): VelaColors = if (dark) {
         textFaint = Color(0xFF8B8B93),
         scrim = Color.Black.copy(alpha = 0.32f),
         accent = accent.darkenForLight(),
+        onAccent = Color.White,
         danger = Color(0xFFDC2626),
     )
 }

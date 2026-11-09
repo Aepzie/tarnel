@@ -190,22 +190,22 @@ private fun FilterListRow(browser: Browser) {
     val c = LocalVela.current
     val status = browser.filterLists.status
     val enabled = browser.settings.settings.adblock
+    val count = java.text.NumberFormat.getIntegerInstance().format(status.filters)
     val subtitle = when {
         status.updating -> "Downloading the latest filter lists…"
         status.error != null -> status.error
         status.engineReady -> {
-            val count = java.text.NumberFormat.getIntegerInstance().format(status.filters)
             val updated = if (status.updatedAt > 0) {
                 android.text.format.DateUtils.getRelativeTimeSpanString(status.updatedAt, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString().lowercase()
             } else {
                 "not yet"
             }
-            "$count filters · updated $updated"
+            "EasyList, EasyPrivacy, Peter Lowe’s · updated $updated"
         }
         else -> "Built-in list until the filter lists are downloaded"
     }
     ListRow(
-        "EasyList, EasyPrivacy, Peter Lowe’s",
+        if (status.engineReady) "$count filters" else "Filter lists",
         icon = Icons.Rounded.FilterList,
         subtitle = if (enabled) subtitle else "Off — turn on “Block ads and trackers” above",
         trailing = {
