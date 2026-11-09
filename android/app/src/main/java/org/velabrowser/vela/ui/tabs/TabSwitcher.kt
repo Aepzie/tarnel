@@ -50,6 +50,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -112,6 +120,8 @@ fun TabSwitcher(browser: Browser) {
         val columns = if (maxWidth > 600.dp) 4 else if (maxWidth > maxHeight) 3 else 2
         val portrait = maxHeight > maxWidth
         val grid = rememberLazyGridState()
+        val reorder = remember { ReorderState() }
+        val haptics = LocalHapticFeedback.current
         LaunchedEffect(Unit) {
             val index = spaceTabs.indexOf(active)
             if (index > 3) grid.scrollToItem(index)
@@ -130,6 +140,7 @@ fun TabSwitcher(browser: Browser) {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(spaceTabs, key = { it.id }) { tab ->
+                        val dragging = reorder.draggingId == tab.id
                         TabCard(
                             browser = browser,
                             tab = tab,
@@ -140,13 +151,75 @@ fun TabSwitcher(browser: Browser) {
                                 browser.panel = Panel.NONE
                             },
                             onClose = { browser.closeTab(tab) },
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier
+                                .animateItem(placementSpec = if (dragging) null else spring(dampingRatio = 0.86f, stiffness = 520f))
+                                .zIndex(if (dragging) 1f else 0f)
+                                .graphicsLayer {
+                                    if (dragging) {
+                                        translationX = reorder.offset.x
+                                        translationY = reorder.offset.y
+                                        scaleX = 1.04f
+                                        scaleY = 1.04f
+                                    }
+                                },
+                            reorderModifier = Modifier.pointerInput(tab.id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        reorder.start(tab.id)
+                                    },
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        reorder.drag(amount, grid) { from, to ->
+                                            val moving = browser.tabs.firstOrNull { it.id == from }
+                                            val target = browser.tabs.firstOrNull { it.id == to }
+                                            if (moving != null && target != null) browser.moveTab(moving, target)
+                                        }
+                                    },
+                                    onDragEnd = { reorder.stop() },
+                                    onDragCancel = { reorder.stop() },
+                                )
+                            },
+                            reordering = dragging,
                         )
                     }
                 }
             }
         }
         BottomBar(browser, Modifier.align(Alignment.BottomCenter), onDone = close)
+    }
+}
+
+/** Long-press drag to reorder: the dragged card follows the finger and swaps with the card under its centre. */
+private class ReorderState {
+    var draggingId by mutableStateOf<String?>(null)
+        private set
+    var offset by mutableStateOf(Offset.Zero)
+        private set
+
+    fun start(id: String) {
+        draggingId = id
+        offset = Offset.Zero
+    }
+
+    fun drag(amount: Offset, grid: LazyGridState, move: (from: String, to: String) -> Unit) {
+        val id = draggingId ?: return
+        offset += amount
+        val items = grid.layoutInfo.visibleItemsInfo
+        val current = items.firstOrNull { it.key == id } ?: return
+        val center = Offset(current.offset.x + current.size.width / 2f, current.offset.y + current.size.height / 2f) + offset
+        val target = items.firstOrNull { item ->
+            item.key != id &&
+                center.x in item.offset.x.toFloat()..(item.offset.x + item.size.width).toFloat() &&
+                center.y in item.offset.y.toFloat()..(item.offset.y + item.size.height).toFloat()
+        } ?: return
+        move(id, target.key as String)
+        offset += Offset((current.offset.x - target.offset.x).toFloat(), (current.offset.y - target.offset.y).toFloat())
+    }
+
+    fun stop() {
+        draggingId = null
+        offset = Offset.Zero
     }
 }
 
@@ -196,6 +269,8 @@ private fun TabCard(
     onOpen: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    reorderModifier: Modifier = Modifier,
+    reordering: Boolean = false,
 ) {
     val c = LocalVela.current
     val scope = rememberCoroutineScope()
@@ -219,6 +294,7 @@ private fun TabCard(
             }
             .draggable(
                 state = drag,
+                enabled = !reordering,
                 orientation = Orientation.Horizontal,
                 onDragStopped = { velocity ->
                     val dismiss = abs(offset.value) > width * 0.38f || abs(velocity) > 2200f
@@ -231,6 +307,7 @@ private fun TabCard(
                     }
                 },
             )
+            .then(reorderModifier)
             .then(
                 if (selected) Modifier.border(2.dp, c.accent, shape).padding(3.dp) else Modifier.padding(0.dp),
             )

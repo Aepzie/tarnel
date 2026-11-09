@@ -20,6 +20,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -91,6 +92,16 @@ class Browser(
     var externalPrompt by mutableStateOf<ExternalPrompt?>(null)
     var message by mutableStateOf<UiMessage?>(null)
 
+    /** Find in page (active tab only). */
+    var findOpen by mutableStateOf(false)
+        private set
+    var findQuery by mutableStateOf("")
+        private set
+    var findMatches by mutableIntStateOf(0)
+        private set
+    var findIndex by mutableIntStateOf(0)
+        private set
+
     val activeSpace: Space get() = spaces.firstOrNull { it.id == activeSpaceId } ?: spaces.firstOrNull() ?: Space.Default
     val activeTab: Tab? get() = activeTabIds[activeSpaceId]?.let { id -> tabs.firstOrNull { it.id == id } }
     fun tabsIn(spaceId: String): List<Tab> = tabs.filter { it.spaceId == spaceId }
@@ -116,7 +127,7 @@ class Browser(
         spaces.clear()
         spaces += saved?.spaces?.takeIf { it.isNotEmpty() } ?: listOf(Space.Default)
         if (saved != null) {
-            saved.tabs.filter { t -> spaces.any { it.id == t.spaceId } }.forEach { tabs += Tab(it.id, it.spaceId, it.url, it.title) }
+            saved.tabs.filter { t -> spaces.any { it.id == t.spaceId } }.forEach { st -> tabs += Tab(st.id, st.spaceId, st.url, st.title).also { it.desktopMode = st.desktop } }
             saved.activeTabBySpace.forEach { (space, tab) -> if (tabs.any { it.id == tab && it.spaceId == space }) activeTabIds[space] = tab }
             activeSpaceId = saved.activeSpaceId.takeIf { id -> spaces.any { it.id == id } } ?: spaces.first().id
         } else {
@@ -161,7 +172,7 @@ class Browser(
         val snapshot = SavedSession(
             spaces = regular,
             activeSpaceId = if (activeSpaceId in ids) activeSpaceId else regular.firstOrNull()?.id ?: Space.DEFAULT_ID,
-            tabs = tabs.filter { it.spaceId in ids && !it.url.startsWith("about:") }.map { SavedTab(it.id, it.spaceId, it.url, it.title) },
+            tabs = tabs.filter { it.spaceId in ids && !it.url.startsWith("about:") }.map { SavedTab(it.id, it.spaceId, it.url, it.title, it.desktopMode) },
             activeTabBySpace = activeTabIds.filterKeys { it in ids },
         )
         scope.launch(Dispatchers.IO) { runCatching { session.save(snapshot) } }
@@ -239,6 +250,7 @@ class Browser(
         if (previous != null && previous !== tab) {
             previous.webView?.onPause()
             previous.lastActive = SystemClock.elapsedRealtime()
+            closeFind()
         }
         activeSpaceId = tab.spaceId
         activeTabIds[tab.spaceId] = tab.id
@@ -321,6 +333,12 @@ class Browser(
         }
         if (wasActive) {
             val remaining = tabsIn(tab.spaceId)
+            val opener = tab.openerId?.let { id -> remaining.firstOrNull { it.id == id } }
+            if (opener != null) {
+                if (activeSpaceId == tab.spaceId) select(opener) else activeTabIds[tab.spaceId] = opener.id
+                persistSoon()
+                return
+            }
             if (remaining.isEmpty()) {
                 activeTabIds.remove(tab.spaceId)
                 if (space.burner) {
@@ -360,6 +378,8 @@ class Browser(
 
     fun openPopupTab(opener: Tab): WebView? {
         val tab = Tab(UUID.randomUUID().toString(), opener.spaceId, "about:blank")
+        tab.openerId = opener.id
+        tab.desktopMode = opener.desktopMode
         val index = tabs.indexOf(opener)
         tabs.add(if (index >= 0) index + 1 else tabs.size, tab)
         val webView = createWebView(tab)
@@ -369,7 +389,9 @@ class Browser(
     }
 
     fun openInNewTab(url: String, spaceId: String = activeSpaceId, background: Boolean = false) {
+        val opener = activeTab?.takeIf { it.spaceId == spaceId }
         val tab = newTab(spaceId, url = null, select = !background)
+        tab.openerId = opener?.id
         load(tab, url)
         if (background) {
             tab.webView?.onPause()
@@ -439,7 +461,68 @@ class Browser(
 
     fun openTabSwitcher() {
         editing = false
+        closeFind()
         captureActive { panel = Panel.TABS }
+    }
+
+    /** Moves [tab] to the position of [target] (both in the same Space), e.g. while dragging in the switcher. */
+    fun moveTab(tab: Tab, target: Tab) {
+        if (tab === target || tab.spaceId != target.spaceId) return
+        val from = tabs.indexOf(tab)
+        val to = tabs.indexOf(target)
+        if (from < 0 || to < 0) return
+        tabs.removeAt(from)
+        tabs.add(to, tab)
+        persistSoon()
+    }
+
+    // ---------------------------------------------------------------- find in page
+
+    fun openFind() {
+        val tab = activeTab ?: return
+        if (tab.isNewTab || tab.webView == null) return
+        panel = Panel.NONE
+        editing = false
+        findOpen = true
+        islandExpanded = true
+        if (findQuery.isNotEmpty()) tab.webView?.findAllAsync(findQuery)
+    }
+
+    fun find(query: String) {
+        findQuery = query
+        val webView = activeTab?.webView ?: return
+        if (query.isEmpty()) {
+            webView.clearMatches()
+            findMatches = 0
+            findIndex = 0
+        } else {
+            webView.findAllAsync(query)
+        }
+    }
+
+    fun findNext(forward: Boolean) {
+        if (findQuery.isEmpty()) return
+        activeTab?.webView?.findNext(forward)
+    }
+
+    fun closeFind() {
+        if (!findOpen) return
+        findOpen = false
+        activeTab?.webView?.clearMatches()
+        findMatches = 0
+        findIndex = 0
+    }
+
+    // ---------------------------------------------------------------- desktop site
+
+    fun toggleDesktopSite(tab: Tab) {
+        tab.desktopMode = !tab.desktopMode
+        val webView = tab.webView
+        if (webView != null) {
+            webView.settings.userAgentString = if (tab.desktopMode) UserAgent.desktop(userAgent) else userAgent
+            webView.reload()
+        }
+        persistSoon()
     }
 
     // ---------------------------------------------------------------- WebView
@@ -467,7 +550,18 @@ class Browser(
             allowContentAccess = false
             safeBrowsingEnabled = true
             mixedContentMode = if (s.httpsOnly) WebSettings.MIXED_CONTENT_NEVER_ALLOW else WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            userAgentString = userAgent
+            userAgentString = if (tab.desktopMode) UserAgent.desktop(userAgent) else userAgent
+        }
+        webView.setFindListener { ordinal, count, _ ->
+            if (tab === activeTab && findOpen) {
+                findIndex = ordinal
+                findMatches = count
+            }
+        }
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+            WebViewCompat.addWebMessageListener(webView, BlobDownloads.BRIDGE, setOf("*")) { _, message, _, _, _ ->
+                message.data?.let { blobDownloads.onMessage(it) }
+            }
         }
         // X-Requested-With (the app package name) is not sent: current WebViews omit it unless an app opts in
         // through the (now restricted) origin allow-list, which Vela never populates.
@@ -535,7 +629,9 @@ class Browser(
     }
 
     fun onNavigationStarted(tab: Tab) {
-        if (tab === activeTab) islandExpanded = true
+        if (tab !== activeTab) return
+        islandExpanded = true
+        closeFind()
     }
 
     fun updateNavState(tab: Tab) {
@@ -586,9 +682,33 @@ class Browser(
 
     // ---------------------------------------------------------------- downloads & context menu
 
+    private val blobDownloads = BlobDownloads(activity.applicationContext, scope) { fileName, uri ->
+        message = if (uri == null) {
+            UiMessage("Couldn't save “$fileName”")
+        } else {
+            UiMessage("Saved “$fileName” to Downloads", "Open", action = {
+                val view = Intent(Intent.ACTION_VIEW).setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (!host.startExternal(view)) message = UiMessage("No app can open this file")
+            })
+        }
+    }
+
     fun download(tab: Tab, url: String, ua: String?, contentDisposition: String?, mimeType: String?) {
+        if (url.startsWith("data:", ignoreCase = true)) {
+            blobDownloads.saveDataUrl(url, blobDownloads.fileName(url, contentDisposition, mimeType), mimeType)
+            return
+        }
+        if (url.startsWith("blob:", ignoreCase = true)) {
+            val webView = tab.webView
+            if (webView == null || !WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+                message = UiMessage("This download isn't supported on this WebView")
+                return
+            }
+            blobDownloads.fetchBlob(webView, url, contentDisposition, mimeType)
+            return
+        }
         if (!url.startsWith("http")) {
-            message = UiMessage("This kind of download isn't supported yet")
+            message = UiMessage("This kind of download isn't supported")
             return
         }
         val cookies = runCatching { Profiles.cookieManager(spaceOf(tab)).getCookie(url) }.getOrNull()

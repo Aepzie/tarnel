@@ -17,7 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Image
@@ -54,6 +56,7 @@ import org.velabrowser.vela.ui.components.SectionLabel
 import org.velabrowser.vela.ui.components.SiteIcon
 import org.velabrowser.vela.ui.components.SpaceDot
 import org.velabrowser.vela.ui.components.VelaSheet
+import org.velabrowser.vela.ui.components.VelaSwitch
 import org.velabrowser.vela.ui.components.pressable
 import org.velabrowser.vela.ui.spaces.SheetButton
 import org.velabrowser.vela.ui.theme.LocalVela
@@ -104,6 +107,16 @@ fun MenuSheet(browser: Browser) {
             }
         }
         Spacer(Modifier.height(4.dp))
+        if (tab != null && !tab.isNewTab) {
+            ListRow("Find in page", icon = Icons.Rounded.Search, onClick = { browser.openFind() })
+            ListRow(
+                "Desktop site",
+                icon = Icons.Rounded.Computer,
+                onClick = { dismiss(); browser.toggleDesktopSite(tab) },
+                trailing = { VelaSwitch(tab.desktopMode) { dismiss(); browser.toggleDesktopSite(tab) } },
+            )
+            Hairline(Modifier.padding(vertical = 4.dp))
+        }
         ListRow("Spaces", icon = Icons.Rounded.ViewAgenda, subtitle = browser.activeSpace.name, onClick = { browser.panel = Panel.SPACES }, trailing = {
             SpaceDot(Color(browser.activeSpace.color))
         })

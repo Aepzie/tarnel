@@ -40,7 +40,23 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,10 +89,18 @@ private val IslandShape = RoundedCornerShape(24.dp)
 @Composable
 fun BottomIsland(browser: Browser, modifier: Modifier = Modifier) {
     val tab = browser.activeTab
+    val finding = browser.findOpen
     val expanded = browser.islandExpanded || tab == null || tab.isNewTab || tab.error != null
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(
-            visible = expanded,
+            visible = finding,
+            enter = fadeIn(tween(160)) + scaleIn(spring(dampingRatio = 0.82f, stiffness = 520f), initialScale = 0.96f),
+            exit = fadeOut(tween(120)) + scaleOut(tween(140), targetScale = 0.96f),
+        ) {
+            FindIsland(browser)
+        }
+        AnimatedVisibility(
+            visible = expanded && !finding,
             enter = slideInVertically(spring(dampingRatio = 0.82f, stiffness = 420f)) { it / 2 } + fadeIn(tween(160)) +
                 scaleIn(spring(dampingRatio = 0.8f, stiffness = 420f), initialScale = 0.94f),
             exit = slideOutVertically(spring(stiffness = Spring.StiffnessMedium)) { it / 2 } + fadeOut(tween(140)) +
@@ -85,7 +109,7 @@ fun BottomIsland(browser: Browser, modifier: Modifier = Modifier) {
             FullIsland(browser, tab)
         }
         AnimatedVisibility(
-            visible = !expanded,
+            visible = !expanded && !finding,
             enter = fadeIn(tween(200, delayMillis = 80)) + scaleIn(spring(dampingRatio = 0.75f, stiffness = 500f), initialScale = 0.8f),
             exit = fadeOut(tween(120)) + scaleOut(tween(140), targetScale = 0.85f),
         ) {
@@ -127,6 +151,55 @@ private fun FullIsland(browser: Browser, tab: Tab?) {
     }
 }
 
+/** Find in page: a compact island with the query, "3/12", previous/next and close. */
+@Composable
+private fun FindIsland(browser: Browser) {
+    val c = LocalVela.current
+    val focus = remember { FocusRequester() }
+    var text by remember { mutableStateOf(TextFieldValue(browser.findQuery, TextRange(browser.findQuery.length))) }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    BackHandler { browser.closeFind() }
+    Row(
+        Modifier
+            .padding(horizontal = 12.dp)
+            .fillMaxWidth()
+            .height(58.dp)
+            .glass(IslandShape)
+            .padding(start = 16.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Search, null, Modifier.size(18.dp), tint = c.textFaint)
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (text.text.isEmpty()) Text("Find in page", style = VelaType.omnibox, color = c.textFaint, fontWeight = FontWeight.Normal)
+            BasicTextField(
+                value = text,
+                onValueChange = {
+                    text = it
+                    if (it.text != browser.findQuery) browser.find(it.text)
+                },
+                singleLine = true,
+                textStyle = VelaType.omnibox.copy(color = c.text),
+                cursorBrush = SolidColor(c.accent),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { browser.findNext(true) }),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus).semantics { contentDescription = "Find in page" },
+            )
+        }
+        if (browser.findQuery.isNotEmpty()) {
+            Text(
+                if (browser.findMatches == 0) "0/0" else "${browser.findIndex + 1}/${browser.findMatches}",
+                style = VelaType.label,
+                color = if (browser.findMatches == 0) c.danger else c.textMuted,
+                modifier = Modifier.padding(horizontal = 6.dp),
+            )
+        }
+        IconAction(Icons.Rounded.KeyboardArrowUp, "Previous match", { browser.findNext(false) }, enabled = browser.findMatches > 0, size = 38.dp)
+        IconAction(Icons.Rounded.KeyboardArrowDown, "Next match", { browser.findNext(true) }, enabled = browser.findMatches > 0, size = 38.dp)
+        IconAction(Icons.Rounded.Close, "Close find", { browser.closeFind() }, size = 38.dp, tint = c.textMuted)
+    }
+}
+
 @Composable
 private fun Omnibox(browser: Browser, tab: Tab?, modifier: Modifier) {
     val c = LocalVela.current
@@ -140,7 +213,7 @@ private fun Omnibox(browser: Browser, tab: Tab?, modifier: Modifier) {
             .height(40.dp)
             .clip(shape)
             .background(c.surface, shape)
-            .border(1.dp, c.ring.copy(alpha = 0.5f), shape)
+            .border(1.dp, c.ring.copy(alpha = c.ring.alpha * 0.6f), shape)
             .pressable({ browser.editing = true })
             .semantics { contentDescription = "Address bar" }
             .padding(start = 12.dp, end = 2.dp),

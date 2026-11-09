@@ -30,6 +30,12 @@ class Tab(val id: String, spaceId: String, url: String = "", title: String = "")
     var error by mutableStateOf<PageError?>(null)
     var secure by mutableStateOf(url.startsWith("https://"))
 
+    /** "Desktop site": desktop user agent for this tab. */
+    var desktopMode by mutableStateOf(false)
+
+    /** The tab that opened this one (popup / window.open / "Open in new tab"); closing returns there. */
+    var openerId: String? = null
+
     /** Back/forward list of a sleeping tab (in memory only). */
     var savedState: Bundle? = null
     var lastActive: Long = SystemClock.elapsedRealtime()

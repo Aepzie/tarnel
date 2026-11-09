@@ -7,7 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-data class SavedTab(val id: String, val spaceId: String, val url: String, val title: String)
+data class SavedTab(val id: String, val spaceId: String, val url: String, val title: String, val desktop: Boolean = false)
 
 data class SavedSession(
     val spaces: List<Space>,
@@ -36,7 +36,7 @@ class SessionStore(context: Context) {
         val tabs = root.getJSONArray("tabs").let { arr ->
             (0 until arr.length()).map { i ->
                 val o = arr.getJSONObject(i)
-                SavedTab(o.getString("id"), o.getString("space"), o.optString("url"), o.optString("title"))
+                SavedTab(o.getString("id"), o.getString("space"), o.optString("url"), o.optString("title"), o.optBoolean("desktop"))
             }
         }
         val active = root.optJSONObject("active") ?: JSONObject()
@@ -56,7 +56,7 @@ class SessionStore(context: Context) {
             session.spaces.filterNot { it.burner }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("color", it.color)) }
         })
         root.put("tabs", JSONArray().apply {
-            session.tabs.forEach { put(JSONObject().put("id", it.id).put("space", it.spaceId).put("url", it.url).put("title", it.title)) }
+            session.tabs.forEach { t -> put(JSONObject().put("id", t.id).put("space", t.spaceId).put("url", t.url).put("title", t.title).apply { if (t.desktop) put("desktop", true) }) }
         })
         root.put("active", JSONObject().apply { session.activeTabBySpace.forEach { (k, v) -> put(k, v) } })
         val tmp = File(file.parentFile, "session.json.tmp")
