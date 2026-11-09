@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   frequency, mono, "Even out volume" and the tab's speaker and microphone. The toolbar button shows when something
   is playing.
 - Per-tab audio mixer engine: volume up to 200 %, balance, mono, a 10-band equalizer with presets, bass boost and a gentle compressor for every tab, applied live to media elements, Web Audio and WebRTC playback (iframes included) and restored with the session. Boosts go through a limiter, so they don't clip harshly. Cross-origin media that Web Audio cannot read is never silenced: it only gets the tab volume. Works together with per-tab audio devices. Tabs without mixer settings pay nothing.
+- **Fingerprint protection inside workers**: dedicated, module, blob/data, nested, shared and service workers now
+  report the same hardware buckets, GPU model, canvas/WebGL noise (`OffscreenCanvas`, `readPixels`) and (Strict)
+  reduced client hints as the page that runs them, so fingerprinting scripts no longer see a window/worker mismatch
+  ("hardwareConcurrency does not match worker scope"). Workers are patched before their first line runs, without
+  rewriting their scripts, so module imports, `importScripts`, relative URLs and CSP behave as before. Starting a
+  worker takes about 2–3 ms longer in protected Spaces; Spaces with protection off are untouched.
+
+### Fixed
+- `window.chrome` (`app`, `csi`, `loadTimes`) was missing in same-origin child frames that are not loaded from the
+  network (a new iframe's `about:blank`, `srcdoc`, `document.write`), a classic embedded-browser check.
 
 ## [0.3.0] - 2026-11-09
 

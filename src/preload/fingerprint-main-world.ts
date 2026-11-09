@@ -3,6 +3,9 @@ import type { FingerprintConfig } from '../shared/fingerprint';
 /**
  * Runs in the page's MAIN world via contextBridge.executeInMainWorld, so it is serialized with
  * Function.prototype.toString: it must be fully self-contained (no imports, no outer references).
+ * The same source also runs in every worker global scope (dedicated, shared, service: see
+ * main/fingerprint/workers.ts and preload/fingerprint-worker.ts), so it must not assume a DOM:
+ * workers get the same canvas/WebGL noise, GPU string, hardware buckets and UA-hint reduction.
  *
  * Every patch is deterministic in (space seed, top-level site): two reads of the same content give
  * the same result, reloads give the same result, other Spaces and other sites differ.
@@ -162,8 +165,8 @@ export function protectMainWorld(config: FingerprintConfig): void {
 
   const isProtected = (realm: Realm): boolean => {
     try {
-      const toDataURL = realm.HTMLCanvasElement?.prototype.toDataURL;
-      return !!toDataURL && !(apply(nativeToString, toDataURL, []) as string).includes('[native code]');
+      const probe = realm.HTMLCanvasElement?.prototype.toDataURL ?? realm.OffscreenCanvas?.prototype.convertToBlob;
+      return !!probe && !(apply(nativeToString, probe, []) as string).includes('[native code]');
     } catch {
       return true;
     }
@@ -172,7 +175,7 @@ export function protectMainWorld(config: FingerprintConfig): void {
   const protectRealm = (realm: Realm): void => {
     if (isProtected(realm)) return;
     const doc = realm.document;
-    const createElement = realm.Document.prototype.createElement;
+    const createElement = realm.Document?.prototype.createElement;
     const contextApi = (canvas: { prototype: { getContext: unknown } } | undefined, context: { prototype: CanvasImageData & CanvasDrawImage } | undefined) =>
       canvas && context
         ? {
@@ -227,8 +230,8 @@ export function protectMainWorld(config: FingerprintConfig): void {
         return apply(original, copy ?? this, args);
       };
 
-    wrapMethod(realm.HTMLCanvasElement.prototype, 'toDataURL', exportFrom(false));
-    wrapMethod(realm.HTMLCanvasElement.prototype, 'toBlob', exportFrom(false));
+    wrapMethod(realm.HTMLCanvasElement?.prototype, 'toDataURL', exportFrom(false));
+    wrapMethod(realm.HTMLCanvasElement?.prototype, 'toBlob', exportFrom(false));
     wrapMethod(realm.OffscreenCanvas?.prototype, 'convertToBlob', exportFrom(true));
 
     const readback = (original: Method): Method =>
@@ -243,7 +246,7 @@ export function protectMainWorld(config: FingerprintConfig): void {
         noisePixels(image.data, left, top, image.width);
         return image;
       };
-    wrapMethod(realm.CanvasRenderingContext2D.prototype, 'getImageData', readback);
+    wrapMethod(realm.CanvasRenderingContext2D?.prototype, 'getImageData', readback);
     wrapMethod(realm.OffscreenCanvasRenderingContext2D?.prototype, 'getImageData', readback);
 
     const textNoise = new WeakMap<object, number>();
@@ -255,7 +258,7 @@ export function protectMainWorld(config: FingerprintConfig): void {
         textNoise.set(metrics, 1 + ((h & 0xff) - 127.5) * 1e-7);
         return metrics;
       };
-    wrapMethod(realm.CanvasRenderingContext2D.prototype, 'measureText', measure);
+    wrapMethod(realm.CanvasRenderingContext2D?.prototype, 'measureText', measure);
     wrapMethod(realm.OffscreenCanvasRenderingContext2D?.prototype, 'measureText', measure);
     wrapGetter(realm.TextMetrics?.prototype, 'width', (original) =>
       function (this: unknown) {
@@ -323,7 +326,9 @@ export function protectMainWorld(config: FingerprintConfig): void {
       },
     );
 
-    const navigatorProto = realm.Navigator.prototype;
+    /** Workers have WorkerNavigator (and no DOM): the same getters live there. */
+    const workerNavigator = (realm as unknown as { WorkerNavigator?: { prototype: object } }).WorkerNavigator;
+    const navigatorProto: object | undefined = (realm.Navigator ?? workerNavigator)?.prototype;
     wrapGetter(navigatorProto, 'hardwareConcurrency', constant(config.cores));
     wrapGetter(navigatorProto, 'deviceMemory', constant(config.memory));
 
@@ -333,12 +338,17 @@ export function protectMainWorld(config: FingerprintConfig): void {
     wrapGetter(battery, 'dischargingTime', constant(Infinity));
     wrapGetter(battery, 'level', constant(1));
 
-    /**
-     * Preloads do not run in a new iframe's initial about:blank document, which a page can reach
-     * synchronously (window[0], contentWindow) right after inserting it. Every DOM insertion that
-     * adds a frame therefore patches the new same-origin realms on the spot, with this closure.
-     */
-    const frameProto = realm.HTMLIFrameElement.prototype;
+    const frameProto = realm.HTMLIFrameElement?.prototype;
+    if (frameProto) guardFrames(realm, frameProto);
+    if (config.strict) protectStrict(realm, navigatorProto);
+  };
+
+  /**
+   * Preloads do not run in a new iframe's initial about:blank document, which a page can reach
+   * synchronously (window[0], contentWindow) right after inserting it. Every DOM insertion that
+   * adds a frame therefore patches the new same-origin realms on the spot.
+   */
+  const guardFrames = (realm: Realm, frameProto: HTMLIFrameElement): void => {
     const guardChild = (child: unknown): void => {
       if (!child) return;
       try {
@@ -378,11 +388,13 @@ export function protectMainWorld(config: FingerprintConfig): void {
         return child;
       },
     );
+  };
 
-    if (!config.strict) return;
-
-    const screenProto = realm.Screen.prototype;
-    const screenGetter = (name: string): Getter | undefined => getDescriptor(screenProto, name)?.get as Getter | undefined;
+  /** Strict-only reductions. Workers have no screen, media devices or gamepads; their userAgentData matches the window's. */
+  const protectStrict = (realm: Realm, navigatorProto: object | undefined): void => {
+    const screenProto: object | undefined = realm.Screen?.prototype;
+    const screenGetter = (name: string): Getter | undefined =>
+      screenProto ? (getDescriptor(screenProto, name)?.get as Getter | undefined) : undefined;
     const realWidth = screenGetter('width');
     const realHeight = screenGetter('height');
     const realAvailHeight = screenGetter('availHeight');
