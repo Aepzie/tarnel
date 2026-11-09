@@ -439,6 +439,23 @@ The module is `require`d lazily on the first check (esbuild keeps it external), 
 * Testing: `VELA_UPDATE_FEED=<http url | local dir>` switches to a generic provider (a local dir is served on
   127.0.0.1); unpacked dev runs then check in notify mode.
 
+## Android
+
+`android/` is a separate, native app (Kotlin + Jetpack Compose, Gradle) — no code is shared with the Electron app,
+the concepts are. Engine: Android System WebView via `androidx.webkit`. Details: [android/README.md](../android/README.md).
+
+* **Spaces** map to WebView **Profiles** (`ProfileStore`, `WebViewCompat.setProfile`, feature `MULTI_PROFILE`):
+  `space-<id>` for regular Spaces, `burner-<id>` for Burners (deleted on close, swept at startup). Without
+  `MULTI_PROFILE` all Spaces share the default profile and Burners are disabled.
+* **Tabs**: one WebView per awake tab, only the active one attached; idle/excess/memory-pressure tabs sleep
+  (WebView destroyed, back stack kept in memory). New tab pages are native Compose. Session (Spaces, tabs) is JSON
+  in app storage; Burner tabs are never persisted.
+* **UI**: a floating bottom island (back/forward, omnibox, tabs, menu) that collapses while reading, plus sheets
+  for Spaces, menu, context menu and permission prompts — the desktop "Floating Islands" tokens mapped to Compose.
+* **Blocking**: `ContentBlocker` seam called from `shouldInterceptRequest`; the engine is the pure-Kotlin `android/adblock`
+  module. Filter lists are downloaded (not bundled) and kept as a compiled snapshot (`FilterLists`); the
+  built-in host list covers the first run. The logo is generated from `src/shared/brand-mark.ts` (`android/scripts/brand-mark.mjs`).
+
 ## Build
 
 `scripts/build.mjs` (esbuild): main → `dist/main/index.js` (cjs, node), preloads → `dist/preload/*.js`

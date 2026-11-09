@@ -67,6 +67,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Per-tab audio devices** — send each tab to its own speakers or headphones and pick its microphone (and camera) from the tab menu or the tab's speaker indicator; restored with the session.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 - **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
+- **Android app** — a native Vela for phones with the same Spaces, Burner spaces, sleeping tabs and privacy defaults ([details](#android)).
 - **Privacy defaults** — cleaned user agent, permissions denied by default, HTTPS-only upgrades,
   optional Do Not Track / Global Privacy Control and third-party cookie blocking.
 
@@ -172,6 +173,23 @@ npm run dist     # build installers for your OS into release/
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for all scripts.
+
+## Android
+
+Vela also runs on Android 10+ as a native app (Kotlin + Jetpack Compose on Android System WebView), in
+[`android/`](android/):
+
+- **Floating bottom island** — back/forward, address bar with search suggestions from history, tab count and menu;
+  it shrinks to a small address pill while you read and springs back when you scroll up.
+- **Spaces and Burner spaces** — each Space has its own WebView profile (cookies, storage, cache, permissions);
+  a Burner forgets everything when you close it.
+- **Tabs that sleep** — idle tabs release their WebView and wake up when you return; tabs are restored on launch.
+- **Desktop-style new tab page** — tap the clock to cycle clock, seconds, logo, date, greeting and minimal.
+- **Privacy defaults** — HTTPS-only, third-party cookies blocked, Do Not Track / GPC, Safe Browsing, in-app
+  permission prompts, no cloud backup.
+
+Build it with `cd android && ./gradlew :app:assembleDebug` (JDK 17+, Android SDK 37). See
+[android/README.md](android/README.md) for release signing and architecture.
 
 ## Architecture
 
