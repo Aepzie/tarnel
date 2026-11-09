@@ -1,6 +1,15 @@
 import { app, ipcMain, nativeTheme, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { IPC } from '../shared/ipc';
-import { SPACE_COLORS, type ContentBounds, type Settings, type SpaceColor, type SpaceInput, type Suggestion, type TabGroupInput } from '../shared/types';
+import {
+  SPACE_COLORS,
+  type ContentBounds,
+  type FingerprintLevel,
+  type Settings,
+  type SpaceColor,
+  type SpaceInput,
+  type Suggestion,
+  type TabGroupInput,
+} from '../shared/types';
 import { clearHistory, deleteHistoryEntry, listHistory, suggest, topSites } from './history';
 import { getBlockedTotal } from './perf/adblock';
 import { collectPerfStats } from './perf/metrics';
@@ -11,6 +20,7 @@ import * as tabGroups from './tab-groups';
 import { getCompletedDownloadPath, getDownloadPath } from './downloads';
 import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
+import { regenerateFingerprint } from './fingerprint';
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openReleasePage, watchUpdates } from './updater';
 import { resolveInput, resolveInputDetailed } from './url';
 import { registerSyncIpc, remoteTabSuggestions } from './sync/loader';
@@ -60,6 +70,7 @@ function spaceInput(value: unknown): SpaceInput {
   };
   if (!SPACE_COLORS.includes(input.color)) throw new TypeError('Invalid color');
   if (raw.proxy !== undefined) input.proxy = str(raw.proxy, 256, 'proxy');
+  if (raw.fingerprint !== undefined) input.fingerprint = str(raw.fingerprint, 16, 'fingerprint') as FingerprintLevel;
   return input;
 }
 
@@ -73,6 +84,7 @@ function spacePatch(value: unknown): Partial<SpaceInput> {
     patch.color = color;
   }
   if (raw.proxy !== undefined) patch.proxy = str(raw.proxy, 256, 'proxy');
+  if (raw.fingerprint !== undefined) patch.fingerprint = str(raw.fingerprint, 16, 'fingerprint') as FingerprintLevel;
   return patch;
 }
 
@@ -280,6 +292,7 @@ export function registerIpc(): void {
   handleChrome(c.spaceUpdate, (id, patch) => updateSpace(spaceId(id), spacePatch(patch)));
   handleChrome(c.spaceRemove, removeSpace);
   handleChrome(c.spaceActivate, (id) => tabs.activateSpace(spaceId(id)));
+  handleChrome(c.spaceRegenerateFingerprint, (id) => regenerateFingerprint(spaceId(id)));
   handleChrome(c.settingsGet, () => getSettings());
   handleChrome(c.settingsSet, (patch) => updateSettings(settingsPatch(patch)));
   handleChrome(c.perfGet, perfStats);
@@ -329,6 +342,7 @@ export function registerIpc(): void {
     await clearSpaceData(target);
     forgetSpacePermissions(target);
   });
+  handlePages(p.regenerateFingerprint, (_e, id) => regenerateFingerprint(spaceId(id)));
   handlePages(p.clearHistory, () => clearHistory());
   handlePages(p.history, (_e, query, limit, before) => {
     const max = int(limit, 'limit');

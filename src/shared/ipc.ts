@@ -51,6 +51,7 @@ export const IPC = {
     spaceUpdate: 'chrome:space-update',
     spaceRemove: 'chrome:space-remove',
     spaceActivate: 'chrome:space-activate',
+    spaceRegenerateFingerprint: 'chrome:space-regenerate-fingerprint',
     settingsGet: 'chrome:settings-get',
     settingsSet: 'chrome:settings-set',
     perfGet: 'chrome:perf-get',
@@ -101,6 +102,7 @@ export const IPC = {
     updateSpace: 'pages:update-space',
     removeSpace: 'pages:remove-space',
     clearSpaceData: 'pages:clear-space-data',
+    regenerateFingerprint: 'pages:regenerate-fingerprint',
     clearHistory: 'pages:clear-history',
     navigate: 'pages:navigate',
     version: 'pages:version',
@@ -210,6 +212,8 @@ export interface VelaChromeAPI {
     update(id: SpaceId, patch: Partial<SpaceInput>): Promise<Space>;
     remove(id: SpaceId): Promise<void>;
     activate(id: SpaceId): Promise<void>;
+    /** New random fingerprint seed; applies to pages loaded afterwards. */
+    regenerateFingerprint(id: SpaceId): Promise<void>;
   };
 
   settings: {
@@ -261,6 +265,7 @@ export interface VelaPagesAPI {
   updateSpace(id: SpaceId, patch: Partial<SpaceInput>): Promise<Space>;
   removeSpace(id: SpaceId): Promise<void>;
   clearSpaceData(id: SpaceId): Promise<void>;
+  regenerateFingerprint(id: SpaceId): Promise<void>;
   clearHistory(): Promise<void>;
   /** Navigate the tab hosting this page (address-bar semantics). */
   navigate(input: string): Promise<void>;

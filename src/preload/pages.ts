@@ -21,6 +21,7 @@ if (isVelaPage()) {
     updateSpace: (id, patch) => call(ch.updateSpace, id, patch),
     removeSpace: (id) => call(ch.removeSpace, id),
     clearSpaceData: (id) => call(ch.clearSpaceData, id),
+    regenerateFingerprint: (id) => call(ch.regenerateFingerprint, id),
     clearHistory: () => call(ch.clearHistory),
     navigate: (input) => call(ch.navigate, input),
     version: () => call(ch.version),

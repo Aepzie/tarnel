@@ -18,14 +18,20 @@ export interface Space {
   ephemeral: boolean;
   /** Optional proxy rules for this space only, e.g. "socks5://127.0.0.1:9050". Empty = direct. */
   proxy: string;
+  /** Per-space fingerprint protection. Burner spaces default to 'strict'. */
+  fingerprint: FingerprintLevel;
   createdAt: number;
 }
+
+export const FINGERPRINT_LEVELS = ['off', 'standard', 'strict'] as const;
+export type FingerprintLevel = (typeof FINGERPRINT_LEVELS)[number];
 
 export interface SpaceInput {
   name: string;
   color: SpaceColor;
   ephemeral: boolean;
   proxy?: string;
+  fingerprint?: FingerprintLevel;
 }
 
 export interface TabState {

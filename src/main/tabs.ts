@@ -282,7 +282,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
         overrideBrowserWindowOptions: {
           autoHideMenuBar: true,
           backgroundColor: '#ffffff',
-          webPreferences: { session: wc.session, sandbox: true, contextIsolation: true, nodeIntegration: false },
+          webPreferences: { session: wc.session, sandbox: true, contextIsolation: true, nodeIntegration: false, nodeIntegrationInSubFrames: true },
         },
       };
     }
@@ -317,6 +317,9 @@ function createView(tab: Tab): WebContentsView {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: false,
+      // Sandboxed, so no Node anywhere: this only lets the fingerprint session preload run in
+      // iframes too. The pages and cosmetic-filter preloads ignore subframes.
+      nodeIntegrationInSubFrames: true,
       preload: PAGES_PRELOAD,
       backgroundThrottling: true,
       spellcheck: false,
