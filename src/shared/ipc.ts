@@ -22,6 +22,7 @@ import type {
   UICommand,
   UpdateStatus,
 } from './types';
+import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } from './types';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -51,6 +52,7 @@ export const IPC = {
     spaceUpdate: 'chrome:space-update',
     spaceRemove: 'chrome:space-remove',
     spaceActivate: 'chrome:space-activate',
+    spaceRegenerateFingerprint: 'chrome:space-regenerate-fingerprint',
     settingsGet: 'chrome:settings-get',
     settingsSet: 'chrome:settings-set',
     perfGet: 'chrome:perf-get',
@@ -110,6 +112,7 @@ export const IPC = {
     updateSpace: 'pages:update-space',
     removeSpace: 'pages:remove-space',
     clearSpaceData: 'pages:clear-space-data',
+    regenerateFingerprint: 'pages:regenerate-fingerprint',
     clearHistory: 'pages:clear-history',
     navigate: 'pages:navigate',
     version: 'pages:version',
@@ -219,6 +222,8 @@ export interface VelaChromeAPI {
     update(id: SpaceId, patch: Partial<SpaceInput>): Promise<Space>;
     remove(id: SpaceId): Promise<void>;
     activate(id: SpaceId): Promise<void>;
+    /** New random fingerprint seed; applies to pages loaded afterwards. */
+    regenerateFingerprint(id: SpaceId): Promise<void>;
   };
 
   settings: {
@@ -290,6 +295,7 @@ export interface VelaPagesAPI {
   updateSpace(id: SpaceId, patch: Partial<SpaceInput>): Promise<Space>;
   removeSpace(id: SpaceId): Promise<void>;
   clearSpaceData(id: SpaceId): Promise<void>;
+  regenerateFingerprint(id: SpaceId): Promise<void>;
   clearHistory(): Promise<void>;
   /** Navigate the tab hosting this page (address-bar semantics). */
   navigate(input: string): Promise<void>;
@@ -325,4 +331,45 @@ declare global {
     vela: VelaChromeAPI;
     velaPages: VelaPagesAPI;
   }
+}
+
+/** Extension channels (chrome:* only from the chrome UI, pages:* only from vela:// pages). */
+export const EXTENSION_IPC = {
+  get: 'chrome:extensions-get',
+  activate: 'chrome:extension-activate',
+  setPinned: 'chrome:extension-set-pinned',
+  options: 'chrome:extension-options',
+  changed: 'chrome-event:extensions',
+  list: 'pages:extensions-list',
+  install: 'pages:extension-install',
+  loadUnpacked: 'pages:extension-load-unpacked',
+  update: 'pages:extension-update',
+  reload: 'pages:extension-reload',
+  remove: 'pages:extension-remove',
+  pageOptions: 'pages:extension-options',
+} as const;
+
+export interface VelaChromeAPI {
+  extensions: {
+    get(): Promise<ExtensionsState>;
+    onChange(cb: (state: ExtensionsState) => void): Unsubscribe;
+    /** Click (popup / onClicked) or context menu on an extension action, anchored at `anchor`. */
+    activate(id: string, anchor: ExtensionAnchor, kind?: 'click' | 'contextmenu'): Promise<void>;
+    setPinned(id: string, pinned: boolean): Promise<void>;
+    openOptions(id: string): Promise<void>;
+  };
+}
+
+export interface VelaPagesAPI {
+  extensions: {
+    list(): Promise<ExtensionInfo[]>;
+    /** Chrome Web Store URL or 32-letter extension ID. */
+    install(input: string): Promise<ExtensionInfo>;
+    /** Opens a folder picker; null when cancelled. */
+    loadUnpacked(): Promise<ExtensionInfo | null>;
+    update(id: string, patch: ExtensionPatch): Promise<ExtensionInfo>;
+    reload(id: string): Promise<ExtensionInfo>;
+    remove(id: string): Promise<void>;
+    openOptions(id: string): Promise<void>;
+  };
 }

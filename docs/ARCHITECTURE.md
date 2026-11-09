@@ -35,6 +35,46 @@ Cookies, localStorage, IndexedDB, cache, service workers, permissions and proxy 
 per space. Every tab belongs to exactly one space. Tabs are sandboxed (`sandbox: true`,
 `contextIsolation: true`, `nodeIntegration: false`), site isolation is on.
 
+## Fingerprint protection (per Space)
+
+`space.fingerprint` is `'off' | 'standard' | 'strict'` (new Spaces: standard, Burners: strict). Each Space has a
+random 256-bit seed (`userData/fingerprint.json`; Burner seeds live in memory, so every Burner is a new identity).
+The seed never leaves main.
+
+* **Injection** — `src/main/fingerprint/index.ts` registers `dist/preload/fingerprint.js` with
+  `session.registerPreloadScript({ type: 'frame' })` on protected sessions only (`'off'` = no preload at all).
+  Tab views set `nodeIntegrationInSubFrames: true` (still sandboxed, no Node) so it runs in every frame, cross-origin
+  iframes included. The preload asks main synchronously (`sendSync`, sub-millisecond) for its config, then
+  `contextBridge.executeInMainWorld` runs `src/preload/fingerprint-main-world.ts` in the page's main world before any
+  page script. A new iframe's initial `about:blank` document gets no preload, so DOM insertions that add a frame
+  patch the child realm on the spot (plus `contentWindow` / `contentDocument`).
+* **Determinism** — main derives `key = HMAC(seed, top-level eTLD+1)`: stable per site across reloads and restarts,
+  different per site and per Space; third-party iframes use the top-level site's key. Hardware values derive from
+  the seed only (same machine across all sites of a Space).
+* **Native look** — patched functions keep `name`, `length`, prototype and no `prototype` property;
+  `Function.prototype.toString` returns the native source for them, also across same-origin realms.
+
+| Surface | Standard | Strict |
+|---|---|---|
+| Canvas `toDataURL` / `toBlob` / `getImageData`, `OffscreenCanvas` | low-bit noise on ~1/16 of non-transparent pixels, keyed by absolute position (idempotent; blank canvases unchanged) | same |
+| WebGL `readPixels` | same noise | same |
+| `UNMASKED_RENDERER_WEBGL` | common model of the real GPU vendor, PCI ids stripped | same |
+| `AudioBuffer.getChannelData` / `copyFromChannel`, `AnalyserNode.getFloatFrequencyData` | ±1e-6 relative noise on sparse samples (inaudible) | same |
+| `measureText().width` | ±1.3e-5 relative jitter | same |
+| `hardwareConcurrency`, `deviceMemory` (+ `Device-Memory` hints) | plausible bucket ≤ real | same |
+| Battery API | always charging, level 1 | same |
+| WebRTC IP policy | `default_public_interface_only`; `disable_non_proxied_udp` when the Space has a proxy | `disable_non_proxied_udp` |
+| `screen.*` size, `colorDepth` | real | smallest common resolution ≥ real, depth 24 |
+| UA client hints (JS + `Sec-CH-UA-*` headers) | real | full versions reduced to `N.0.0.0`, model empty |
+| Media device labels | real | generic ("Microphone", "Camera", "Speakers") |
+| `getGamepads()` | real | always empty |
+
+**Not protected:** dedicated/shared/service workers (they see the real `hardwareConcurrency`, WebGL renderer and
+unnoised `OffscreenCanvas`; wrapping workers would break module workers, relative imports and CSP), CSS media
+queries (`device-width`, resolution), DOM-based font enumeration, timezone/`Intl` (left alone: spoofing breaks
+calendars, banking and booking sites), the IP address itself (use a per-Space proxy). Fingerprinting test suites
+(CreepJS) can still detect *that* noise is applied (pixel/audio noise, worker vs. window mismatch); what they
+cannot do is link two Spaces through it. Changes apply to pages loaded afterwards.
 ## Tab groups & tab layouts
 
 * **Model** (`src/main/tab-groups.ts`): a group is `{ id, spaceId, name, color, collapsed }`; membership
@@ -100,7 +140,10 @@ src/main/settings.ts   settings                       — data
 src/main/spaces.ts     spaces + sessions              — data
 src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
+src/main/fingerprint/* per-space fingerprint seeds, preload registration, header hints — data
+src/preload/fingerprint*.ts  main-world fingerprint patch (session preload) — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
+src/main/extensions/*  Chrome extensions (lazy)       — extensions
 src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loaded)
 src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
@@ -278,6 +321,35 @@ file); records carry clocks so a rolled-back file never overwrites newer data th
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
 Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`).
 
+## Extensions (`src/main/extensions/*`)
+
+```
+registry.ts  installed list (userData/extensions.json): id, source store|unpacked, path, enabled, spaces 'all'|ids, pinned
+runtime.ts   per-Space host: electron-chrome-extensions instance + session.extensions load/unload, tab wiring, action state
+webstore.ts  CWS download (electron-chrome-web-store) to userData/Extensions/<id>/<ver>_0, Omaha update checks (5 h)
+manifest.ts  name/description (incl. __MSG_*__), icon data URL, options page
+index.ts     initExtensions() wiring + registerExtensionIpc() (registered from ipc.ts with handleChrome/handlePages)
+```
+
+* **Lazy.** Both libraries are `external` in the main bundle and `require`d only when a Space session has an
+  enabled extension to run; with none installed nothing is imported and no session is touched.
+* **Per Space.** An `onSessionCreated` hook loads the extensions that run in that Space into its session
+  (`spaces: 'all'` = every non-Burner Space incl. future ones). `gateSessionReady()` (spaces.ts) delays the
+  Space's first page load until they are loaded (≤ 3 s) so content scripts see the first page. Chromium refuses
+  extensions in in-memory sessions, so **Burner Spaces never run extensions**.
+* **Tabs.** Every tab `webContents` is registered with its session's `ElectronChromeExtensions` (`addTab`,
+  `selectTab` on activation); `chrome.tabs.create/remove/update` map to `tabs.ts`. Sleeping a tab never closes it
+  (the library's `removeTab` callback ignores destroyed webContents).
+* **Toolbar.** Main pushes `ExtensionsState` (`chrome-event:extensions`) — installed list + actions (title, badge,
+  current icon) for the active tab's Space. Clicking an action calls the library's popup (`PopupView`, a child
+  `BrowserWindow`, so it floats above the page without the overlay). `setOverlay` never pulls focus back from
+  another window, otherwise a tooltip would close the popup.
+* **Security.** Extensions may only open/navigate tabs to `http(s)`, `about:blank` or `chrome-extension://`
+  (`chrome.tabs.create/update`, `windows.create`, popup/background `window.open`); `vela://`, `file:` and
+  `data:` are refused, so privileged pages stay unreachable. Extension pages never get `velaPages` (the pages
+  preload only exposes it on `vela:`) and the library's `crx-*` IPC channels are separate from Vela's
+  sender-validated channels. The adblocker keeps `webRequest`, so extensions' `chrome.webRequest` listeners
+  don't fire (Electron limitation).
 ## Auto-update (`src/main/updater.ts`)
 
 `electron-updater` against the GitHub releases feed (`publish` in electron-builder.yml → `app-update.yml`).

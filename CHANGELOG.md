@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Per-space fingerprint protection** (Off / Standard / Strict, per Space; new Spaces default to Standard, Burners to Strict).
+  Each Space gets a random seed; canvas, WebGL and audio readbacks get subtle noise derived from (seed, site), so a
+  site sees a stable fingerprint across reloads but a different one in every Space. Hardware (cores, memory, GPU model)
+  is generalized, the battery reads as plugged in and WebRTC never leaks local addresses (no UDP outside a proxy in
+  Strict or proxied Spaces). Strict also buckets the screen size and reduces client hints and media-device labels.
+  "New fingerprint" in the Space dialog and Settings → Spaces rotates the seed.
+- Chrome extensions: install from the Chrome Web Store by link or ID (with background updates) or load an unpacked folder, enable/disable/remove them in Settings → Extensions, choose the Spaces each one runs in, and pin action buttons (with badges and popups) to the top island. Nothing extension-related loads until an extension is installed.
 - Tab groups: named, colored, collapsible groups per Space. Create them from the tab context menu or the command palette, drag tabs in and out, drag groups to reorder; rename, recolor, ungroup or close a group from its menu. Groups are restored with the session.
 - Vertical tab layout (Settings → Appearance, `Ctrl+Shift+,`): a floating tab island on the left with pinned tabs as an icon grid and groups as collapsible sections. Resize it by dragging its edge, fold it to an icon rail (hover to peek).
 - Command palette: "New tab group", "Tab layout", "Collapse / Expand all groups".

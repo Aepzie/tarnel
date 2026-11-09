@@ -2,6 +2,8 @@ import { app, type BaseWindow, protocol, session as electronSession } from 'elec
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
+import { initFingerprint } from './fingerprint';
+import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
@@ -107,6 +109,7 @@ if (!app.requestSingleInstanceLock()) {
     setPermissionPrompter(chromePermissionPrompter);
     electronSession.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     initSpaces();
+    initFingerprint();
 
     void initAdblock().catch(() => undefined);
     onSessionCreated((ses) => {
@@ -114,6 +117,7 @@ if (!app.requestSingleInstanceLock()) {
       attachDownloads(ses);
       enableAdblockForSession(ses);
     });
+    initExtensions();
     onBlocked((wcId) => noteBlocked(wcId));
 
     onTabWebContents((wc, tabId) => {

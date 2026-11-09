@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type VelaPagesAPI } from '../shared/ipc';
+import { EXTENSION_IPC, IPC, type VelaPagesAPI } from '../shared/ipc';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -21,12 +21,22 @@ if (isVelaPage()) {
     updateSpace: (id, patch) => call(ch.updateSpace, id, patch),
     removeSpace: (id) => call(ch.removeSpace, id),
     clearSpaceData: (id) => call(ch.clearSpaceData, id),
+    regenerateFingerprint: (id) => call(ch.regenerateFingerprint, id),
     clearHistory: () => call(ch.clearHistory),
     navigate: (input) => call(ch.navigate, input),
     version: () => call(ch.version),
     currentSpace: () => call(ch.currentSpace),
     history: (query, limit, before) => call(ch.history, query, limit, before),
     deleteHistory: (url) => call(ch.historyDelete, url),
+    extensions: {
+      list: () => call(EXTENSION_IPC.list),
+      install: (input) => call(EXTENSION_IPC.install, input),
+      loadUnpacked: () => call(EXTENSION_IPC.loadUnpacked),
+      update: (id, patch) => call(EXTENSION_IPC.update, id, patch),
+      reload: (id) => call(EXTENSION_IPC.reload, id),
+      remove: (id) => call(EXTENSION_IPC.remove, id),
+      openOptions: (id) => call(EXTENSION_IPC.pageOptions, id),
+    },
     sync: {
       status: () => call(ch.syncStatus),
       pickFolder: () => call(ch.syncPickFolder),

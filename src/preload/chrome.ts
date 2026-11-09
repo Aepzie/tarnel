@@ -1,8 +1,9 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
+import { EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
+const X = EXTENSION_IPC;
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): Unsubscribe {
   const listener = (_event: IpcRendererEvent, payload: T): void => cb(payload);
@@ -66,6 +67,7 @@ const api: VelaChromeAPI = {
     update: (id, patch) => invoke(C.spaceUpdate, id, patch),
     remove: (id) => invoke(C.spaceRemove, id),
     activate: (id) => invoke(C.spaceActivate, id),
+    regenerateFingerprint: (id) => invoke(C.spaceRegenerateFingerprint, id),
   },
 
   settings: {
@@ -120,6 +122,14 @@ const api: VelaChromeAPI = {
   },
 
   platform: process.platform,
+
+  extensions: {
+    get: () => invoke(X.get),
+    onChange: (cb) => subscribe(X.changed, cb),
+    activate: (id, anchor, kind) => invoke(X.activate, id, anchor, kind ?? 'click'),
+    setPinned: (id, pinned) => invoke(X.setPinned, id, pinned),
+    openOptions: (id) => invoke(X.options, id),
+  },
 };
 
 contextBridge.exposeInMainWorld('vela', api);

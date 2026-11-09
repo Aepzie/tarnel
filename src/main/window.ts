@@ -363,8 +363,9 @@ export function setOverlay(open: boolean): void {
   restack(win);
   const top = open ? chromeView : activeView;
   // Keyboard input must follow the visible layer: palette/menus need focus while open,
-  // the page gets it back once the overlay closes.
-  if (top && !top.webContents.isDestroyed()) top.webContents.focus();
+  // the page gets it back once the overlay closes. Never pull focus back from another window
+  // (an extension popup would close when a tooltip appears).
+  if (top && !top.webContents.isDestroyed() && win?.isFocused()) top.webContents.focus();
 }
 
 /** Raise the chrome above the pages without moving keyboard focus (hover surfaces over a pane). */

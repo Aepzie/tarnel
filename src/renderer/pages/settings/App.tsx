@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type KeyboardEvent } from 'react';
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react';
-import { Cloud, Gauge, Info, Layers, Palette, Settings2, Shield, type LucideIcon } from 'lucide-react';
+import { Cloud, Gauge, Info, Layers, Palette, Puzzle, Settings2, Shield, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ease, spring, stagger } from '@/lib/motion';
 import { VelaMark } from './components/brand';
 import { SettingsProvider } from './store';
 import { About } from './sections/About';
 import { Appearance } from './sections/Appearance';
+import { Extensions } from './sections/Extensions';
 import { General } from './sections/General';
 import { Performance } from './sections/Performance';
 import { Privacy } from './sections/Privacy';
 import { Spaces } from './sections/Spaces';
 import { Sync } from './sections/Sync';
 
-type SectionId = 'general' | 'appearance' | 'spaces' | 'privacy' | 'performance' | 'about' | 'sync';
+type SectionId = 'general' | 'appearance' | 'spaces' | 'extensions' | 'privacy' | 'sync' | 'performance' | 'about';
 
 interface SectionDef {
   id: SectionId;
@@ -26,6 +27,7 @@ const SECTIONS: readonly SectionDef[] = [
   { id: 'general', label: 'General', icon: Settings2, Component: General },
   { id: 'appearance', label: 'Appearance', icon: Palette, Component: Appearance },
   { id: 'spaces', label: 'Spaces', icon: Layers, Component: Spaces },
+  { id: 'extensions', label: 'Extensions', icon: Puzzle, Component: Extensions },
   { id: 'privacy', label: 'Privacy', icon: Shield, Component: Privacy },
   { id: 'sync', label: 'Sync', icon: Cloud, Component: Sync },
   { id: 'performance', label: 'Performance', icon: Gauge, Component: Performance },
