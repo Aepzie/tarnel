@@ -34,6 +34,9 @@ jobs:
           java-version: 21
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The default list still includes the long-removed "tools" package, which now fails.
+          packages: platform-tools
 
       - name: Install SDK platform
         run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
@@ -71,6 +74,9 @@ jobs:
           java-version: 21
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The default list still includes the long-removed "tools" package, which now fails.
+          packages: platform-tools
 
       - name: Install SDK platform
         run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
