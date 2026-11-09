@@ -1,4 +1,4 @@
-import { BaseWindow, WebContentsView, screen, type Rectangle } from 'electron';
+import { app, BaseWindow, WebContentsView, screen, type Rectangle } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
 import { splitGeometry } from '../shared/split-layout';
@@ -140,6 +140,15 @@ function own<T extends (...args: never[]) => void>(fn: T): T {
 }
 
 /**
+ * Window / taskbar icon for unpackaged runs (`npm run dev`), where the process is electron.exe and
+ * would otherwise show Electron's icon. Packaged builds take it from the executable / .desktop entry.
+ */
+function devWindowIcon(): string | undefined {
+  if (app.isPackaged || process.platform === 'darwin') return undefined;
+  return join(app.getAppPath(), 'build', process.platform === 'win32' ? 'icon.ico' : 'icons/512.png');
+}
+
+/**
  * A BaseWindow, not a BrowserWindow: every pixel is drawn by our WebContentsViews, and a
  * BrowserWindow's own (never loaded) webContents still costs a whole renderer process.
  */
@@ -155,6 +164,7 @@ function buildWindow(material: WindowMaterial, bounds: Rectangle | null): BaseWi
     resizable: true,
     ...look,
     title: 'Vela',
+    icon: devWindowIcon(),
   });
 }
 
