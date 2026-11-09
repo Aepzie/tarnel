@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Submenus in the tab context menu ("Add to group", "Move to Space") never appeared, so a tab could not be added to an existing group or moved to another Space from the menu. All context-menu and dropdown submenus now float beside their menu, stay inside the window (scrolling when the list is long) and work with the keyboard.
+
 ## [0.2.0] - 2026-11-09
 
 ### Added
