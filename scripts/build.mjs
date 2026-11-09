@@ -35,7 +35,7 @@ const nodeConfigs = [
   },
   {
     ...shared,
-    entryPoints: [join(src, 'preload', 'chrome.ts'), join(src, 'preload', 'pages.ts')],
+    entryPoints: [join(src, 'preload', 'chrome.ts'), join(src, 'preload', 'pages.ts'), join(src, 'preload', 'fingerprint.ts')],
     outdir: join(out, 'preload'),
     platform: 'node',
     format: 'cjs',

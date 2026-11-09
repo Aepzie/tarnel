@@ -1,6 +1,6 @@
 import { session as electronSession, type Session } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { SPACE_COLORS, type Space, type SpaceColor, type SpaceId, type SpaceInput } from '../shared/types';
+import { FINGERPRINT_LEVELS, SPACE_COLORS, type FingerprintLevel, type Space, type SpaceColor, type SpaceId, type SpaceInput } from '../shared/types';
 import { applyPrivacy } from './privacy';
 import { createStore, type JsonStore } from './store';
 
@@ -56,6 +56,12 @@ function cleanName(name: unknown): string {
 function cleanColor(color: unknown): SpaceColor {
   if (!SPACE_COLORS.includes(color as SpaceColor)) throw new Error(`Invalid space color: ${String(color)}`);
   return color as SpaceColor;
+}
+
+function cleanFingerprint(level: unknown, fallback: FingerprintLevel): FingerprintLevel {
+  if (level === undefined || level === null) return fallback;
+  if (!FINGERPRINT_LEVELS.includes(level as FingerprintLevel)) throw new Error('Invalid fingerprint level');
+  return level as FingerprintLevel;
 }
 
 /**
@@ -138,10 +144,11 @@ export function initSpaces(): void {
     ...s,
     ephemeral: false,
     proxy: typeof s.proxy === 'string' ? s.proxy : '',
+    fingerprint: FINGERPRINT_LEVELS.includes(s.fingerprint) ? s.fingerprint : 'standard',
     createdAt: typeof s.createdAt === 'number' ? s.createdAt : Date.now(),
   }));
   if (spaces.length === 0) {
-    spaces.push({ id: randomUUID().slice(0, 8), name: 'Personal', color: 'blue', ephemeral: false, proxy: '', createdAt: Date.now() });
+    spaces.push({ id: randomUUID().slice(0, 8), name: 'Personal', color: 'blue', ephemeral: false, proxy: '', fingerprint: 'standard', createdAt: Date.now() });
   }
   activeSpaceId = spaces.some((s) => s.id === file.activeSpaceId) ? file.activeSpaceId : spaces[0]!.id;
   store.set({ spaces, activeSpaceId });
@@ -163,6 +170,7 @@ export function createSpace(input: SpaceInput): Space {
     color: cleanColor(input?.color),
     ephemeral: input?.ephemeral === true,
     proxy: cleanProxy(input?.proxy),
+    fingerprint: cleanFingerprint(input?.fingerprint, input?.ephemeral === true ? 'strict' : 'standard'),
     createdAt: Date.now(),
   };
   if (space.ephemeral) ephemeral = [...ephemeral, space];
@@ -179,6 +187,7 @@ export function updateSpace(id: SpaceId, patch: Partial<SpaceInput>): Space {
     name: patch?.name !== undefined ? cleanName(patch.name) : current.name,
     color: patch?.color !== undefined ? cleanColor(patch.color) : current.color,
     proxy: patch?.proxy !== undefined ? cleanProxy(patch.proxy) : current.proxy,
+    fingerprint: cleanFingerprint(patch?.fingerprint, current.fingerprint),
   };
   if (next.ephemeral) ephemeral = ephemeral.map((s) => (s.id === id ? next : s));
   else requireStore().update((f) => ({ ...f, spaces: f.spaces.map((s) => (s.id === id ? next : s)) }));

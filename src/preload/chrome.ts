@@ -53,6 +53,7 @@ const api: VelaChromeAPI = {
     update: (id, patch) => invoke(C.spaceUpdate, id, patch),
     remove: (id) => invoke(C.spaceRemove, id),
     activate: (id) => invoke(C.spaceActivate, id),
+    regenerateFingerprint: (id) => invoke(C.spaceRegenerateFingerprint, id),
   },
 
   settings: {

@@ -1,5 +1,6 @@
 import { app, type Session, type WebContents } from 'electron';
 import type { PermissionKind, PermissionRequest, Space } from '../shared/types';
+import { applyFingerprintHeaders } from './fingerprint/headers';
 import { getSettings } from './settings';
 
 type Permission = Parameters<NonNullable<Parameters<Session['setPermissionCheckHandler']>[0]>>[1];
@@ -276,6 +277,7 @@ export function applyPrivacy(session: Session, space: Space): void {
       headers['DNT'] = '1';
       headers['Sec-GPC'] = '1';
     }
+    applyFingerprintHeaders(session, headers);
     if (settings.blockThirdPartyCookies && details.resourceType !== 'mainFrame') {
       const requestSite = siteOf(details.url);
       const topSite = siteOf(topFrameUrl(details)) ?? siteOf(details.initiatorOrigin);
