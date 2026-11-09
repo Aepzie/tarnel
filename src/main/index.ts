@@ -2,6 +2,7 @@ import { app, type BaseWindow, protocol, session as electronSession } from 'elec
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
+import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
@@ -112,6 +113,7 @@ if (!app.requestSingleInstanceLock()) {
       attachDownloads(ses);
       enableAdblockForSession(ses);
     });
+    initExtensions();
     onBlocked((wcId) => noteBlocked(wcId));
 
     onTabWebContents((wc, tabId) => {

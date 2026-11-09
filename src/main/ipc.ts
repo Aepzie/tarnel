@@ -8,6 +8,7 @@ import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
 import * as tabs from './tabs';
 import { getCompletedDownloadPath, getDownloadPath } from './downloads';
+import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { resolveInput, resolveInputDetailed } from './url';
 import { getChromeView, getMainWindow } from './window';
@@ -305,4 +306,5 @@ export function registerIpc(): void {
     chrome: process.versions.chrome ?? '',
     v8: process.versions.v8 ?? '',
   }));
+  registerExtensionIpc(handleChrome, handlePages);
 }

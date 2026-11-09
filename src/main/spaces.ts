@@ -268,6 +268,7 @@ export async function disposeEphemeralSpaces(): Promise<void> {
  */
 export async function whenSessionReady(id: SpaceId): Promise<void> {
   getSpaceSession(id);
+  await readyGates.get(id);
   for (;;) {
     const pending = proxyReady.get(id);
     if (!pending) return;
@@ -283,6 +284,15 @@ export function onSessionRemoved(hook: (session: Session) => void): void {
 function forgetSession(id: SpaceId): void {
   sessions.delete(id);
   proxyReady.delete(id);
+  readyGates.delete(id);
+}
+
+/** Extra work a new session must finish before pages load (e.g. extensions). Must never reject. */
+const readyGates = new Map<SpaceId, Promise<void>>();
+
+/** Delay whenSessionReady() for this Space until `gate` settles. Call from an onSessionCreated hook. */
+export function gateSessionReady(id: SpaceId, gate: Promise<void>): void {
+  readyGates.set(id, gate.catch(() => undefined));
 }
 
 function emitSessionRemoved(ses: Session): void {
