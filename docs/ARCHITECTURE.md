@@ -6,7 +6,7 @@ React + Tailwind + shadcn/ui UI ("Floating Islands", see DESIGN.md); every web p
 ## Process & layer model
 
 ```
-BrowserWindow (frame: false, bg = --bg)
+BaseWindow (frame: false; no webContents of its own — saves a renderer process)
 └─ contentView
    ├─ chromeView   WebContentsView  full window, loads dist/renderer/chrome/index.html   (base layer)
    └─ tabView(s)   WebContentsView  only the ACTIVE tab is attached, placed at ContentBounds (top layer)
