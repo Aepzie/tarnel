@@ -1,0 +1,53 @@
+package org.velabrowser.vela.core
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.LruCache
+import androidx.compose.runtime.mutableIntStateOf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
+
+/** Favicons by host: memory LRU + small PNGs on disk. Burner tabs only populate the memory cache. */
+class FaviconCache(context: Context, private val scope: CoroutineScope) {
+    private val dir = File(context.filesDir, "favicons").apply { mkdirs() }
+    private val memory = LruCache<String, Bitmap>(96)
+    private val missing = HashSet<String>()
+
+    /** Bumped whenever a new icon lands so composables reading [get] refresh. */
+    val revision = mutableIntStateOf(0)
+
+    fun get(host: String): Bitmap? {
+        revision.intValue
+        memory.get(host)?.let { return it }
+        if (host in missing) return null
+        val file = File(dir, "$host.png")
+        if (!file.exists()) {
+            missing += host
+            return null
+        }
+        return BitmapFactory.decodeFile(file.path)?.also { memory.put(host, it) }
+    }
+
+    fun put(host: String, icon: Bitmap, persist: Boolean) {
+        memory.put(host, icon)
+        missing -= host
+        revision.intValue++
+        if (!persist) return
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val scaled = if (icon.width > 64) Bitmap.createScaledBitmap(icon, 64, 64 * icon.height / icon.width, true) else icon
+                File(dir, "$host.png").outputStream().use { scaled.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            }
+        }
+    }
+
+    fun clearDisk() {
+        dir.listFiles()?.forEach { it.delete() }
+        memory.evictAll()
+        missing.clear()
+        revision.intValue++
+    }
+}
