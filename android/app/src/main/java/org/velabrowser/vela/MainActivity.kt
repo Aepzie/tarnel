@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity(), BrowserHost {
     override fun onResume() {
         super.onResume()
         browser.activeTab?.webView?.onResume()
+        browser.filterLists.updateIfStale(browser.isOnline())
     }
 
     override fun onPause() {

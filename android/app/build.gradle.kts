@@ -106,6 +106,10 @@ android {
             val screenshots = findProperty("vela.screenshots") as String?
             all { test ->
                 test.systemProperty("vela.screenshots", screenshots ?: "")
+                // Real filter lists for FilterListsTest.snapshotDeserializeTiming (opt-in).
+                val adblockLists = findProperty("vela.adblockLists") as String?
+                test.systemProperty("vela.adblockLists", adblockLists ?: "")
+                if (adblockLists != null) test.testLogging.showStandardStreams = true
                 test.systemProperty("roborazzi.test.record", "true")
                 test.maxHeapSize = "2g"
                 test.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")

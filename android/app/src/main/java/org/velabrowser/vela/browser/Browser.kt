@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 import org.velabrowser.vela.BuildConfig
 import org.velabrowser.vela.adblock.ContentBlocker
 import org.velabrowser.vela.adblock.ContentBlockers
+import org.velabrowser.vela.adblock.FilterLists
 import org.velabrowser.vela.adblock.NoopContentBlocker
 import org.velabrowser.vela.core.FaviconCache
 import org.velabrowser.vela.core.HistoryStore
@@ -71,6 +72,9 @@ class Browser(
     @Volatile
     var blocker: ContentBlocker = NoopContentBlocker
         private set
+
+    /** Filter lists: download, snapshot and the engine swap (see [FilterLists]). */
+    val filterLists = FilterLists(activity.applicationContext, scope) { engine -> blocker = engine }
 
     val spaces = mutableStateListOf<Space>()
     var activeSpaceId by mutableStateOf(Space.DEFAULT_ID)
@@ -127,10 +131,8 @@ class Browser(
             activeTab?.let(::select) ?: tabsIn(activeSpaceId).lastOrNull()?.let(::select) ?: newTab()
         }
         startSleeper()
-        scope.launch(Dispatchers.Default) {
-            val engine = runCatching { ContentBlockers.create(activity.applicationContext) }.getOrNull()
-            if (engine != null) blocker = engine
-        }
+        blocker = ContentBlockers.builtIn(activity.applicationContext)
+        filterLists.start(online = isOnline())
     }
 
     private fun loadThumbnails() {

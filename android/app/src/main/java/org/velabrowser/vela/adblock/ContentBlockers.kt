@@ -3,9 +3,9 @@ package org.velabrowser.vela.adblock
 import android.content.Context
 
 /**
- * Creates the app's [ContentBlocker]. This is the single place to swap in the filter-list engine from the
- * `:adblock` module (see android/README.md, "Ad blocking"). Called once, off the main thread.
+ * The blocker used from the first page load on: the small built-in host list. [FilterLists] swaps in the
+ * filter-list engine (`:adblock`) as soon as its snapshot is loaded or the lists are downloaded.
  */
 object ContentBlockers {
-    fun create(@Suppress("UNUSED_PARAMETER") context: Context): ContentBlocker = HostListBlocker()
+    fun builtIn(@Suppress("UNUSED_PARAMETER") context: Context): ContentBlocker = HostListBlocker()
 }

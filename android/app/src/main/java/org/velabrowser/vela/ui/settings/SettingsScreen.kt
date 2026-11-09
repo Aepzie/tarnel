@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Cookie
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Https
 import androidx.compose.material.icons.rounded.Info
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.PanTool
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -130,6 +132,9 @@ fun SettingsScreen(browser: Browser) {
                 ListRow("Safe Browsing", icon = Icons.Rounded.VerifiedUser, subtitle = "Always on — warns about phishing and malware.")
             }
 
+            SectionLabel("Ad blocking")
+            Group { FilterListRow(browser) }
+
             SectionLabel("Your data")
             Group {
                 browser.spaces.forEach { space ->
@@ -178,6 +183,47 @@ private fun Group(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun Toggle(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onChange: (Boolean) -> Unit) {
     ListRow(title, icon = icon, subtitle = subtitle, onClick = { onChange(!checked) }, trailing = { VelaSwitch(checked, onChange) })
+}
+
+@Composable
+private fun FilterListRow(browser: Browser) {
+    val c = LocalVela.current
+    val status = browser.filterLists.status
+    val enabled = browser.settings.settings.adblock
+    val subtitle = when {
+        status.updating -> "Downloading the latest filter lists…"
+        status.error != null -> status.error
+        status.engineReady -> {
+            val count = java.text.NumberFormat.getIntegerInstance().format(status.filters)
+            val updated = if (status.updatedAt > 0) {
+                android.text.format.DateUtils.getRelativeTimeSpanString(status.updatedAt, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString().lowercase()
+            } else {
+                "not yet"
+            }
+            "$count filters · updated $updated"
+        }
+        else -> "Built-in list until the filter lists are downloaded"
+    }
+    ListRow(
+        "EasyList, EasyPrivacy, Peter Lowe’s",
+        icon = Icons.Rounded.FilterList,
+        subtitle = if (enabled) subtitle else "Off — turn on “Block ads and trackers” above",
+        trailing = {
+            if (status.updating) {
+                CircularProgressIndicator(Modifier.size(18.dp), color = c.accent, strokeWidth = 2.dp, trackColor = c.surfaceStrong)
+            } else {
+                Pill("Update now", onClick = { browser.filterLists.update() })
+            }
+        },
+    )
+    if (status.error != null && !status.updating) {
+        Text(
+            "Check your connection and try again. Vela keeps using the lists it already has.",
+            style = VelaType.label,
+            color = c.danger,
+            modifier = Modifier.padding(start = 54.dp, end = 20.dp, bottom = 10.dp),
+        )
+    }
 }
 
 @Composable
