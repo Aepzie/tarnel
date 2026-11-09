@@ -12,10 +12,11 @@ import type { MixerEngineHandle, RealmAudioReport } from '../shared/audio-mixer-
  * Graph, per AudioContext (the engine's own processing context for media elements, plus every page
  * AudioContext that connects to its destination):
  *
- *   input ─► [mono] ─► [balance] ─► [bass shelf] ─► [EQ bands ≠ 0] ─► [compressor] ─► [volume] ─► [soft clip] ─► output ─► destination
- *                                                                                                        └─► meter (only while levels are read)
+ *   input ─► [mono] ─► [balance] ─► [bass shelf] ─► [EQ bands ≠ 0] ─► [compressor] ─► [volume] ─► [limiter ─► soft clip] ─► output ─► destination
+ *                                                                                                                    └─► meter (only while levels are read)
  *
- * Only the stages the settings need are wired; neutral settings leave input ─► output.
+ * Only the stages the settings need are wired (the limiter only when something boosts); neutral settings
+ * leave input ─► output.
  *
  * Sources: media elements (playing and unmuted) go into the processing context via
  * createMediaElementSource, MediaStream elements (WebRTC) via createMediaStreamSource with the
@@ -107,6 +108,8 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
   const EQ = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
   /** Soft clip: identity up to KNEE, then tanh towards 1; inputs up to ±HEADROOM (+18 dB) stay smooth. */
   const KNEE = 0.85;
+  const LIMIT_DB = -3;
+  const LIMIT_RATIO = 20;
   const HEADROOM = 8;
   const SMOOTHING = 0.015;
   const IDLE_SUSPEND_MS = 10_000;
@@ -284,8 +287,14 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
     // Gentle: evens out loud ads / quiet dialogue without pumping.
     const compressor = new DynamicsCompressorNode(context, { threshold: -24, knee: 24, ratio: 3, attack: 0.006, release: 0.25 });
     const volume = new GainNode(context);
+    // Boost safety: a fast 20:1 limiter rides the gain down (the spec's automatic makeup gain is cancelled, so
+    // anything below the threshold passes unchanged), the soft clipper catches what its attack lets through.
+    const limiter = new DynamicsCompressorNode(context, { threshold: LIMIT_DB, knee: 0, ratio: LIMIT_RATIO, attack: 0.002, release: 0.1 });
+    const makeupCut = new GainNode(context, { gain: Math.pow(10, (0.6 * LIMIT_DB * (1 - 1 / LIMIT_RATIO)) / 20) });
     const headroom = new GainNode(context, { gain: 1 / HEADROOM });
     const shaper = new WaveShaperNode(context, { curve: softClipCurve(), oversample: 'none' });
+    connect(limiter, makeupCut);
+    connect(makeupCut, headroom);
     connect(headroom, shaper);
     return {
       mono: stage(monoDown, monoUp),
@@ -300,7 +309,7 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
       compressorStage: stage(compressor),
       volume,
       volumeStage: stage(volume),
-      limiter: stage(headroom, shaper),
+      limiter: stage(limiter, shaper),
     };
   };
 
