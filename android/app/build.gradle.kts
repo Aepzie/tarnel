@@ -99,6 +99,21 @@ android {
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            // Screenshot tests (Robolectric + Roborazzi) only run with -Pvela.screenshots=<output dir>.
+            val screenshots = findProperty("vela.screenshots") as String?
+            all { test ->
+                test.systemProperty("vela.screenshots", screenshots ?: "")
+                test.systemProperty("roborazzi.test.record", "true")
+                test.maxHeapSize = "2g"
+                test.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+                if (screenshots == null) test.exclude("**/ScreenshotTest*")
+            }
+        }
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -118,4 +133,11 @@ dependencies {
     implementation(libs.compose.material.icons)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.androidx.test.junit)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
