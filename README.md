@@ -59,6 +59,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Preconnect on hover** — hovering a suggestion warms up the connection before you choose it.
 - **Command palette** (`Ctrl+K`) — navigate, search history, switch tabs and run commands from the keyboard.
 - **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
+- **Tab groups and vertical tabs** — named, colored, collapsible groups (drag tabs in and out, reorder groups), and an optional floating vertical tab island (`Ctrl+Shift+,`) that resizes and folds to an icon rail.
 - **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 - **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
@@ -133,6 +134,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 | `Ctrl+Shift+T`            | Reopen closed tab                   |
 | `Ctrl+F`                  | Find in page                        |
 | `Ctrl+Shift+S`            | Toggle focus mode (hide toolbar)    |
+| `Ctrl+Shift+,`            | Toggle horizontal / vertical tabs   |
 | `Ctrl+Shift+N`            | New Burner space                    |
 | `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab             |

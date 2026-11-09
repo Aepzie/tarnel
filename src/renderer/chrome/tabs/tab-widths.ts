@@ -20,6 +20,8 @@ export interface TabWidthInput {
   inactive: number;
   hasActive: boolean;
   separator: boolean;
+  /** Fixed extra width taken by other strip children (group chips incl. their gaps). */
+  reserved?: number;
 }
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
@@ -29,10 +31,10 @@ const clamp = (value: number, min: number, max: number): number => Math.min(max,
  * equally up to PILL_MAX. When crowded the omnibox yields first (down to OMNI_MIN) so titles stay
  * readable; only then do inactive pills shrink toward icon-only. With spare room the omnibox grows.
  */
-export function computeTabWidths({ available, pinnedInactive, inactive, hasActive, separator }: TabWidthInput): TabWidths {
+export function computeTabWidths({ available, pinnedInactive, inactive, hasActive, separator, reserved = 0 }: TabWidthInput): TabWidths {
   const children = pinnedInactive + inactive + (hasActive ? 1 : 0) + (separator ? 1 : 0) + 1;
   const fixed =
-    STRIP_PADDING + NEW_TAB_BUTTON + Math.max(0, children - 1) * GAP + pinnedInactive * PILL_MIN + (separator ? PINNED_SEPARATOR : 0);
+    STRIP_PADDING + NEW_TAB_BUTTON + Math.max(0, children - 1) * GAP + pinnedInactive * PILL_MIN + (separator ? PINNED_SEPARATOR : 0) + reserved;
   const free = Math.max(0, available - fixed);
 
   if (!hasActive) {

@@ -45,8 +45,11 @@ interface DialogState {
   editing: Space | null;
 }
 
-/** Top-island Space switcher: animated identity pill + glass dropdown with per-space actions. */
-export function SpaceSwitcher() {
+/**
+ * Top-island Space switcher: animated identity pill + glass dropdown with per-space actions.
+ * `compact` = mark only (collapsed vertical tab island).
+ */
+export function SpaceSwitcher({ compact = false }: { compact?: boolean }) {
   const spaces = useBrowserSlice((s) => s.spaces);
   const activeSpaceId = useBrowserSlice((s) => s.activeSpaceId);
   const tabSpaceIds = useBrowserSlice((s) => s.tabs.map((tab) => tab.spaceId), shallowEqual);
@@ -130,7 +133,8 @@ export function SpaceSwitcher() {
             whileTap={reduce ? undefined : { scale: 0.96 }}
             transition={spring.snappy}
             className={cn(
-              'no-drag group/trigger relative flex h-8 max-w-44 shrink-0 items-center gap-1.5 rounded-[10px] pr-1.5 pl-2 text-[13px] text-foreground',
+              'no-drag group/trigger relative flex h-8 max-w-44 shrink-0 items-center gap-1.5 rounded-[10px] text-[13px] text-foreground',
+              compact ? 'w-8 justify-center' : 'pr-1.5 pl-2',
               'transition-colors duration-150 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent',
               active?.ephemeral && 'bg-orange-400/[0.06]',
             )}
@@ -143,15 +147,15 @@ export function SpaceSwitcher() {
                 <span className="size-2 rounded-full bg-muted-foreground/40" />
               </span>
             )}
-            <SpaceName space={active} reduce={Boolean(reduce)} spaces={spaces} />
-            <motion.span
+            {!compact && <SpaceName space={active} reduce={Boolean(reduce)} spaces={spaces} />}
+            {!compact && <motion.span
               aria-hidden
               className="grid size-4 shrink-0 place-items-center text-muted-foreground transition-colors group-hover/trigger:text-foreground"
               animate={{ rotate: menuOpen ? 180 : 0 }}
               transition={reduce ? { duration: 0 } : spring.snappy}
             >
               <ChevronDown className="size-3.5" strokeWidth={2} />
-            </motion.span>
+            </motion.span>}
           </motion.button>
         </DropdownMenuTrigger>
 

@@ -12,6 +12,7 @@ import { UpdateChip } from '../update/UpdateChip';
 import { NavButtons } from './NavButtons';
 import { CaptionButtons, TrafficLights } from './WindowControls';
 import { useIslandReveal } from './useIslandReveal';
+import { OmniboxBar } from '../vertical/OmniboxBar';
 import { settle } from '@/lib/vela';
 
 const ISLAND_HEIGHT = 44;
@@ -30,7 +31,7 @@ const Divider = () => <div aria-hidden className="mx-1 h-4 w-px shrink-0 bg-bord
  * over the page (overlay held) with a deeper shadow.
  */
 export function TopIsland() {
-  const { autoHideToolbar: autoHide } = useSettings();
+  const { autoHideToolbar: autoHide, tabLayout } = useSettings();
   const { islandRevealed, palette } = useChromeUI();
   const reduce = useReducedMotion();
   const islandRef = useRef<HTMLElement>(null);
@@ -72,7 +73,7 @@ export function TopIsland() {
         aria-label="Browser toolbar"
         inert={!visible}
         className={cn(
-          'island drag fixed inset-x-2 top-2 flex h-11 items-center gap-1 rounded-2xl px-2',
+          'island drag fixed top-2 right-2 left-[var(--chrome-left,0.5rem)] flex h-11 items-center gap-1 rounded-2xl px-2',
           isMac && 'pl-3',
           floating ? 'z-40' : 'z-30',
           !visible && 'pointer-events-none',
@@ -102,12 +103,18 @@ export function TopIsland() {
         )}
         <NavButtons />
         <Divider />
-        <div className="no-drag flex shrink-0 items-center">
-          <SpaceSwitcher />
-        </div>
-        <div className="flex h-full min-w-0 flex-1 items-center">
-          <TabStrip />
-        </div>
+        {tabLayout === 'vertical' ? (
+          <OmniboxBar />
+        ) : (
+          <>
+            <div className="no-drag flex shrink-0 items-center">
+              <SpaceSwitcher />
+            </div>
+            <div className="flex h-full min-w-0 flex-1 items-center">
+              <TabStrip />
+            </div>
+          </>
+        )}
         <div className="no-drag flex shrink-0 items-center gap-1">
           <UpdateChip />
           <DownloadsButton />

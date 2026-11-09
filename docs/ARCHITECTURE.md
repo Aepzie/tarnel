@@ -35,6 +35,27 @@ Cookies, localStorage, IndexedDB, cache, service workers, permissions and proxy 
 per space. Every tab belongs to exactly one space. Tabs are sandboxed (`sandbox: true`,
 `contextIsolation: true`, `nodeIntegration: false`), site isolation is on.
 
+## Tab groups & tab layouts
+
+* **Model** (`src/main/tab-groups.ts`): a group is `{ id, spaceId, name, color, collapsed }`; membership
+  lives on the tab (`TabState.groupId`). tabs.ts keeps one global `order`; `normalizeOrder()` puts pinned
+  tabs first and runs `clusterGroups()`, so a group's tabs are always contiguous and a group sits where its
+  first tab is. Pinned tabs are never grouped; moving a tab to another space drops its group; empty groups
+  are pruned on emit. tab-groups.ts reaches tabs.ts only through the `GroupTabModel` bound at load (no
+  import cycle). `BrowserState.groups` lists non-empty groups in display order.
+* **Persistence**: each saved tab carries its group (`SavedTab.group`), so the session file stays a flat
+  array and older files load unchanged.
+* **Renderer**: both layouts render a space's unpinned tabs as a flat list of *units*
+  (`tabs/groups/units.ts`: group header `g:<id>` + member tabs) inside one motion `Reorder.Group`;
+  `use-unit-drag.ts` turns a drop into `groups.placeTab(tab, beforeTabId, groupId)` or
+  `groups.move(group, beforeTabId)`. Collapsed groups contribute only their header (plus the active tab).
+* **Layouts** (`settings.tabLayout`, toggle `Ctrl+Shift+,`): *horizontal* = group chips in the top island
+  strip; *vertical* = `chrome/vertical/VerticalIsland.tsx`, a floating left island (width
+  `settings.sidebarWidth`, icon rail when `settings.sidebarCollapsed`, hover peek) while the top island
+  keeps nav + `OmniboxBar`. The vertical island owns a spacer in App's row, so `#viewport` (and thus the
+  page `WebContentsView` bounds) follows it; it publishes the column's left edge as `--chrome-left` for
+  the fixed top island.
+
 ## Directory ownership
 
 ```
@@ -55,6 +76,7 @@ src/main/privacy.ts    permissions, UA, headers       — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
 src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loaded)
 src/preload/chrome.ts  window.vela                    — ui
+src/main/tab-groups.ts tab groups (model + ordering)  — core
 src/renderer/chrome/*  top-island UI (React)          — ui
 src/preload/pages.ts   window.velaPages               — pages
 src/renderer/pages/*   newtab, settings, error        — pages

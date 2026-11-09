@@ -1,7 +1,7 @@
 import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContents } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
-import type { BrowserState, ContentBounds, SpaceId, TabState } from '../shared/types';
+import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
 import { upgradeToHttps } from './privacy';
@@ -9,6 +9,7 @@ import { rendererMemoryKB } from './perf/metrics';
 import type { SleepCandidate } from './perf/sleeper';
 import { getSettings } from './settings';
 import { getActiveSpaceId, getSpace, getSpaceSession, listSpaces, onSpacesChanged, removeSpace, setActiveSpaceId, whenSessionReady } from './spaces';
+import { bindGroupModel, clusterGroups, getGroup, groupsInOrder, pruneGroups, restoreGroup, savedGroup, type SavedGroup } from './tab-groups';
 import { NEWTAB_URL, isInternalUrl, isOpenableFromWeb, isSecureUrl, resolveInput } from './url';
 import * as windowLayer from './window';
 
@@ -19,6 +20,7 @@ export interface SavedTab {
   spaceId: SpaceId;
   pinned: boolean;
   active: boolean;
+  group?: SavedGroup;
 }
 
 export interface CreateTabOpts {
@@ -31,6 +33,8 @@ export interface CreateTabOpts {
   favicon?: string | null;
   /** Insert directly after this tab instead of appending. */
   afterId?: number;
+  /** Join this group (same space only). Defaults to the group of `afterId`'s tab. */
+  groupId?: TabGroupId | null;
 }
 
 interface Tab {
@@ -54,6 +58,7 @@ interface Tab {
   savedHistory: { entries: NavigationEntry[]; index: number } | null;
   /** Private memory the tab's renderer gave back when it was put to sleep (KB); null = unknown. */
   freedKB: number | null;
+  groupId: TabGroupId | null;
 }
 
 type WebContentsHook = (wc: WebContents, tabId: number) => void;
@@ -84,6 +89,7 @@ function scheduleEmit(): void {
   emitPending = true;
   setImmediate(() => {
     emitPending = false;
+    pruneGroups(new Set([...tabs.values()].flatMap((tab) => (tab.groupId ? [tab.groupId] : []))));
     for (const cb of stateListeners) {
       try {
         cb();
@@ -107,9 +113,14 @@ function tabsInSpace(spaceId: SpaceId): Tab[] {
   return order.map((id) => tabs.get(id)!).filter((t) => t.spaceId === spaceId);
 }
 
-/** Keep pinned tabs first while preserving relative order. */
+/** Keep pinned tabs first and every group's tabs together, otherwise preserving relative order. */
 function normalizeOrder(): void {
-  order = [...order.filter((id) => tabs.get(id)?.pinned), ...order.filter((id) => !tabs.get(id)?.pinned)];
+  const pinnedFirst = [...order.filter((id) => tabs.get(id)?.pinned), ...order.filter((id) => !tabs.get(id)?.pinned)];
+  order = clusterGroups(pinnedFirst, groupOf);
+}
+
+function groupOf(id: number): TabGroupId | null {
+  return tabs.get(id)?.groupId ?? null;
 }
 
 function errorPageUrl(code: number | string, desc: string, url: string): string {
@@ -395,6 +406,7 @@ export function onStateChanged(cb: () => void): void {
 
 export function createTab(opts: CreateTabOpts = {}): number {
   const spaceId = opts.spaceId && getSpace(opts.spaceId) ? opts.spaceId : getActiveSpaceId();
+  const groupId = opts.groupId === undefined ? (opts.afterId === undefined ? null : groupOf(opts.afterId)) : opts.groupId;
   const tab: Tab = {
     id: nextId++,
     spaceId,
@@ -413,6 +425,7 @@ export function createTab(opts: CreateTabOpts = {}): number {
     findText: '',
     savedHistory: null,
     freedKB: null,
+    groupId: !opts.pinned && groupId && getGroup(groupId)?.spaceId === spaceId ? groupId : null,
   };
   tabs.set(tab.id, tab);
   const afterIndex = opts.afterId === undefined ? -1 : order.indexOf(opts.afterId);
@@ -605,6 +618,7 @@ export function togglePin(id: number): void {
   const tab = tabs.get(id);
   if (!tab) return;
   tab.pinned = !tab.pinned;
+  tab.groupId = null;
   order = order.filter((tid) => tid !== id);
   const firstUnpinned = order.findIndex((tid) => !tabs.get(tid)?.pinned);
   // Newly pinned → end of pinned block; unpinned → start of unpinned block. Same index either way.
@@ -652,6 +666,7 @@ export function moveToSpace(id: number, spaceId: SpaceId): void {
   tab.savedHistory = null;
   tab.blockedCount = 0;
   tab.spaceId = spaceId;
+  tab.groupId = null;
   order = order.filter((tid) => tid !== id);
   order.push(id);
   normalizeOrder();
@@ -768,6 +783,7 @@ function toState(tab: Tab): TabState {
     blockedCount: tab.blockedCount,
     zoom: tab.zoom,
     secure: isSecureUrl(tab.url),
+    groupId: tab.groupId,
   };
 }
 
@@ -778,6 +794,7 @@ export function getBrowserState(): BrowserState {
     activeTabId,
     spaces: listSpaces(),
     activeSpaceId: getActiveSpaceId(),
+    groups: groupsInOrder(order, groupOf),
   };
 }
 
@@ -829,6 +846,7 @@ export function serializeSession(): SavedTab[] {
       spaceId: tab.spaceId,
       pinned: tab.pinned,
       active: activeBySpace.get(tab.spaceId) === tab.id,
+      ...(tab.groupId ? { group: savedGroup(tab.groupId) } : {}),
     }));
 }
 
@@ -856,6 +874,7 @@ export function restoreSession(saved: unknown): number {
       pinned: entry.pinned === true,
       title: typeof entry.title === 'string' ? entry.title : '',
       favicon: typeof entry.favicon === 'string' ? entry.favicon : null,
+      groupId: entry.pinned === true ? null : restoreGroup(entry.spaceId, entry.group),
     });
     const tab = tabs.get(id)!;
     tab.lastActiveAt = base + i;
@@ -868,3 +887,25 @@ export function restoreSession(saved: unknown): number {
   activateSpace(getActiveSpaceId());
   return restored;
 }
+
+bindGroupModel({
+  order: () => order,
+  tab: (id) => tabs.get(id),
+  setGroupId: (id, groupId) => {
+    const tab = tabs.get(id);
+    if (!tab) return;
+    tab.groupId = groupId;
+    if (groupId) tab.pinned = false;
+  },
+  commitOrder: (ids) => {
+    order = ids.filter((id) => tabs.has(id));
+    normalizeOrder();
+    scheduleEmit();
+  },
+  activeTabId: () => activeTabId,
+  activeSpaceId: getActiveSpaceId,
+  activate: activateTab,
+  close: closeTab,
+  create: (opts) => createTab({ ...opts, active: true }),
+  emit: scheduleEmit,
+});
