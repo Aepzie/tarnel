@@ -52,6 +52,9 @@ object SpaceColors {
         0xFF2DD4BF, // teal
     )
     const val BURNER: Long = 0xFFFB923C
+
+    /** Default Space blue — desktop's `--accent-space` default and the brand accent. */
+    const val DEFAULT: Long = 0xFF60A5FA
 }
 
 data class Space(
@@ -67,6 +70,6 @@ data class Space(
         const val SPACE_PREFIX = "space-"
         const val BURNER_PREFIX = "burner-"
         const val DEFAULT_ID = "personal"
-        val Default = Space(DEFAULT_ID, "Personal", SpaceColors.all[2])
+        val Default = Space(DEFAULT_ID, "Personal", SpaceColors.DEFAULT)
     }
 }

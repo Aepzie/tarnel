@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import org.velabrowser.vela.browser.Browser
@@ -210,12 +211,17 @@ private fun Hero(style: NewtabHero, compact: Boolean) {
             Box(contentAlignment = Alignment.Center) {
                 Box(
                     Modifier
-                        .size((150 * scale).dp)
-                        .background(Brush.radialGradient(listOf(c.accent.copy(alpha = 0.22f), Color.Transparent)), CircleShape),
+                        .size((210 * scale).dp)
+                        .background(Brush.radialGradient(listOf(c.accent.copy(alpha = if (c.dark) 0.20f else 0.16f), Color.Transparent)), CircleShape),
                 )
-                VelaMark(Modifier.size((132 * scale).dp), tint = c.text)
+                VelaMark(Modifier.size((132 * scale).dp))
             }
-            Text("Vela", style = VelaType.title.copy(fontSize = (28 * scale).sp, fontWeight = FontWeight.Medium), color = c.text)
+            Text(
+                "Vela",
+                style = VelaType.title.copy(fontSize = (24 * scale).sp, fontWeight = FontWeight.Light, letterSpacing = 0.42.em),
+                color = c.text.copy(alpha = 0.8f),
+                modifier = Modifier.padding(start = (10 * scale).dp),
+            )
         }
         NewtabHero.DATE -> {
             val now = rememberNow(60_000)
@@ -329,7 +335,7 @@ private fun SiteTile(browser: Browser, site: TopSite, modifier: Modifier, tile: 
                 .border(1.dp, c.ring, RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            SiteIcon(site.host, browser.favicons, size = 26.dp, corner = 7.dp)
+            SiteIcon(site.host, browser.favicons, size = 28.dp, corner = 8.dp, label = siteLabel(site))
         }
         Spacer(Modifier.height(8.dp))
         Text(
@@ -351,4 +357,9 @@ private fun siteLabel(site: TopSite): String {
     return prettyHost(UrlInput.siteOf(site.host))
 }
 
-private fun prettyHost(host: String): String = host.removePrefix("www.").removePrefix("m.").substringBefore('.').replaceFirstChar { it.titlecase(Locale.getDefault()) }
+private fun prettyHost(host: String): String = KnownNames[UrlInput.siteName(host)] ?: UrlInput.siteName(host).replaceFirstChar { it.titlecase(Locale.getDefault()) }
+
+private val KnownNames = mapOf(
+    "github" to "GitHub", "youtube" to "YouTube", "ycombinator" to "Hacker News", "duckduckgo" to "DuckDuckGo",
+    "stackoverflow" to "Stack Overflow", "linkedin" to "LinkedIn", "openstreetmap" to "OSM",
+)

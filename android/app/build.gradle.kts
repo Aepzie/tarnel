@@ -121,6 +121,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":adblock"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -140,4 +141,15 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// The engine's own (JUnit 5) tests run as part of the app's unit tests.
+tasks.matching { it.name == "testDebugUnitTest" }.configureEach { dependsOn(":adblock:test") }
+
+// Regenerates the logo drawables + BrandMark.kt from the desktop's src/shared/brand-mark.ts (needs node).
+tasks.register<Exec>("syncBrandMark") {
+    group = "vela"
+    description = "Regenerate the Android logo assets from src/shared/brand-mark.ts"
+    workingDir = rootDir
+    commandLine("node", "scripts/brand-mark.mjs")
 }

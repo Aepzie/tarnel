@@ -59,7 +59,7 @@ import org.velabrowser.vela.ui.components.ListRow
 import org.velabrowser.vela.ui.components.Pill
 import org.velabrowser.vela.ui.components.SectionLabel
 import org.velabrowser.vela.ui.components.SpaceDot
-import org.velabrowser.vela.ui.components.VelaMark
+import org.velabrowser.vela.ui.components.VelaAppIcon
 import org.velabrowser.vela.ui.components.VelaSwitch
 import org.velabrowser.vela.ui.components.pressable
 import org.velabrowser.vela.ui.theme.LocalVela
@@ -194,9 +194,7 @@ private fun About(browser: Browser) {
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(52.dp).background(Color(0xFF0B0B0D), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                VelaMark(Modifier.size(52.dp), tint = Color.White)
-            }
+            VelaAppIcon(size = 52.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text("Vela for Android", style = VelaType.heading, color = c.text)

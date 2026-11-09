@@ -12,7 +12,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import org.velabrowser.vela.R
+import org.velabrowser.vela.core.SpaceColors
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -83,10 +88,27 @@ fun velaColors(dark: Boolean, accent: Color): VelaColors = if (dark) {
 /** Space colors are tuned for dark UI; deepen them a little so they keep contrast on white. */
 private fun Color.darkenForLight(): Color = Color(red * 0.82f, green * 0.82f, blue * 0.82f, alpha)
 
-val LocalVela = compositionLocalOf { velaColors(true, Color(0xFFA78BFA)) }
+val LocalVela = compositionLocalOf { velaColors(true, Color(SpaceColors.DEFAULT)) }
+
+/** Geist Variable (OFL, Latin subset in res/font) — the desktop UI font — at the weights the UI uses. */
+@OptIn(ExperimentalTextApi::class)
+private fun geist(weight: FontWeight) = Font(
+    R.font.geist,
+    weight = weight,
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+)
+
+val Geist = FontFamily(
+    geist(FontWeight.ExtraLight),
+    geist(FontWeight.Light),
+    geist(FontWeight.Normal),
+    geist(FontWeight.Medium),
+    geist(FontWeight.SemiBold),
+    geist(FontWeight.Bold),
+)
 
 object VelaType {
-    private val family = FontFamily.SansSerif
+    val family = Geist
     val hero = TextStyle(fontFamily = family, fontWeight = FontWeight.Light, fontSize = 84.sp, letterSpacing = (-0.045).em, lineHeight = 92.sp)
     val title = TextStyle(fontFamily = family, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = (-0.02).em)
     val heading = TextStyle(fontFamily = family, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, letterSpacing = (-0.01).em)
@@ -95,6 +117,19 @@ object VelaType {
     val label = TextStyle(fontFamily = family, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 0.em)
     val caption = TextStyle(fontFamily = family, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.04.em)
     val omnibox = TextStyle(fontFamily = family, fontWeight = FontWeight.Medium, fontSize = 14.sp, letterSpacing = (-0.01).em)
+}
+
+private val MaterialTypography = androidx.compose.material3.Typography().let { t ->
+    androidx.compose.material3.Typography(
+        displayLarge = t.displayLarge.copy(fontFamily = Geist), displayMedium = t.displayMedium.copy(fontFamily = Geist),
+        displaySmall = t.displaySmall.copy(fontFamily = Geist), headlineLarge = t.headlineLarge.copy(fontFamily = Geist),
+        headlineMedium = t.headlineMedium.copy(fontFamily = Geist), headlineSmall = t.headlineSmall.copy(fontFamily = Geist),
+        titleLarge = t.titleLarge.copy(fontFamily = Geist), titleMedium = t.titleMedium.copy(fontFamily = Geist),
+        titleSmall = t.titleSmall.copy(fontFamily = Geist), bodyLarge = t.bodyLarge.copy(fontFamily = Geist),
+        bodyMedium = t.bodyMedium.copy(fontFamily = Geist), bodySmall = t.bodySmall.copy(fontFamily = Geist),
+        labelLarge = t.labelLarge.copy(fontFamily = Geist), labelMedium = t.labelMedium.copy(fontFamily = Geist),
+        labelSmall = t.labelSmall.copy(fontFamily = Geist),
+    )
 }
 
 @Composable
@@ -115,6 +150,6 @@ fun VelaTheme(dark: Boolean, accent: Color, content: @Composable () -> Unit) {
         )
     }
     CompositionLocalProvider(LocalVela provides colors) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = MaterialTypography, content = content)
     }
 }

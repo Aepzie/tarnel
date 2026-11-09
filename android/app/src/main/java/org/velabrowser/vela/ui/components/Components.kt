@@ -45,15 +45,22 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.velabrowser.vela.R
 import org.velabrowser.vela.core.FaviconCache
+import org.velabrowser.vela.core.UrlInput
+import org.velabrowser.vela.ui.brand.BrandMark
 import org.velabrowser.vela.ui.theme.LocalVela
 import org.velabrowser.vela.ui.theme.VelaType
 
@@ -145,14 +152,59 @@ fun SpaceDot(color: Color, modifier: Modifier = Modifier, size: Dp = 8.dp, glow:
     )
 }
 
+/** The Vela mark (desktop `brand-mark.ts`): body in [ink], cap in [accent] — the active Space color by default. */
 @Composable
-fun VelaMark(modifier: Modifier = Modifier, tint: Color = LocalVela.current.text) {
-    Icon(painterResource(R.drawable.ic_vela_mark), contentDescription = "Vela", modifier = modifier, tint = tint)
+fun VelaMark(modifier: Modifier = Modifier, ink: Color = LocalVela.current.text, accent: Color = LocalVela.current.accent) {
+    val paths = remember { BrandPaths.get() }
+    Canvas(modifier.semantics { contentDescription = "Vela" }) {
+        val scale = size.minDimension / BrandMark.VIEWBOX_SIZE
+        val dx = (size.width - BrandMark.VIEWBOX_SIZE * scale) / 2f
+        val dy = (size.height - BrandMark.VIEWBOX_SIZE * scale) / 2f
+        withTransform({
+            translate(dx, dy)
+            scale(scale, scale, pivot = Offset.Zero)
+            translate(-BrandMark.VIEWBOX_X, -BrandMark.VIEWBOX_Y)
+        }) {
+            drawPath(paths.first, ink)
+            drawPath(paths.second, accent)
+        }
+    }
+}
+
+private object BrandPaths {
+    private var cached: Pair<Path, Path>? = null
+    fun get(): Pair<Path, Path> = cached ?: (PathParser().parsePathString(BrandMark.BODY_PATH).toPath() to
+        PathParser().parsePathString(BrandMark.CAP_PATH).toPath()).also { cached = it }
+}
+
+/** The app icon as on the launcher and desktop: dark tile, soft blue glow, white sail with the blue cap. */
+@Composable
+fun VelaAppIcon(modifier: Modifier = Modifier, size: Dp = 52.dp) {
+    val accent = Color(BrandMark.ACCENT)
+    val shape = RoundedCornerShape(size * 0.24f)
+    Box(
+        modifier
+            .size(size)
+            .clip(shape)
+            .background(Color(BrandMark.TILE))
+            .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.24f), Color.Transparent), center = Offset.Unspecified))
+            .border(1.dp, Color.White.copy(alpha = 0.1f), shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        VelaMark(Modifier.size(size * 0.66f), ink = Color(BrandMark.INK), accent = accent)
+    }
 }
 
 /** Site icon from the favicon cache, or a monogram tile tinted with the accent. */
 @Composable
-fun SiteIcon(host: String?, favicons: FaviconCache, modifier: Modifier = Modifier, size: Dp = 20.dp, corner: Dp = 6.dp) {
+fun SiteIcon(
+    host: String?,
+    favicons: FaviconCache,
+    modifier: Modifier = Modifier,
+    size: Dp = 20.dp,
+    corner: Dp = 6.dp,
+    label: String? = null,
+) {
     val c = LocalVela.current
     val icon = host?.let { favicons.get(it) }
     val shape = RoundedCornerShape(corner)
@@ -160,7 +212,7 @@ fun SiteIcon(host: String?, favicons: FaviconCache, modifier: Modifier = Modifie
         val image = remember(icon) { icon.asImageBitmap() }
         Image(image, null, modifier.size(size).clip(shape))
     } else {
-        val letter = host?.let { org.velabrowser.vela.core.UrlInput.siteOf(it) }?.firstOrNull()?.uppercaseChar()?.toString() ?: "•"
+        val letter = UrlInput.monogram(host, label)
         Box(
             modifier
                 .size(size)
@@ -172,6 +224,7 @@ fun SiteIcon(host: String?, favicons: FaviconCache, modifier: Modifier = Modifie
                 letter,
                 color = c.accent,
                 style = androidx.compose.ui.text.TextStyle(
+                    fontFamily = VelaType.family,
                     fontSize = (size.value * 0.5f).sp,
                     lineHeight = (size.value * 0.5f).sp,
                     fontWeight = FontWeight.SemiBold,
@@ -246,10 +299,11 @@ fun VelaSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
         onCheckedChange = onCheckedChange,
         colors = SwitchDefaults.colors(
             checkedTrackColor = c.accent,
-            checkedThumbColor = if (c.dark) Color(0xFF09090B) else Color.White,
+            checkedThumbColor = Color.White,
             checkedBorderColor = c.accent,
             uncheckedTrackColor = c.surfaceStrong,
             uncheckedThumbColor = c.textMuted,
+            checkedIconColor = c.accent,
             uncheckedBorderColor = c.ring,
         ),
     )
