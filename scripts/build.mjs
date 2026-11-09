@@ -31,7 +31,9 @@ const nodeConfigs = [
     platform: 'node',
     format: 'cjs',
     target: 'node20',
-    external: ['electron', '@ghostery/*'],
+    // Extension libraries stay in node_modules: they resolve their preload scripts from there, and
+    // being external keeps them out of the startup bundle (loaded only when an extension runs).
+    external: ['electron', '@ghostery/*', 'electron-chrome-extensions', 'electron-chrome-web-store'],
   },
   {
     ...shared,
