@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-09
+
+### Added
+- Switchable start page: click the clock to cycle clock, clock with seconds, Vela logo, date, greeting and minimal (also in Settings → Appearance).
+
+### Changed
+- Memory readout now shows private memory (what Task Manager shows) instead of summed working sets, which double-counted shared pages.
+- "Saved by sleeping" is measured per tab at sleep time.
+- The window no longer keeps an idle renderer process alive (BaseWindow).
+- New tab: static background instead of animated blurred layers; no perpetual animations while idle (idle CPU and GPU usage near zero).
+- Lighter fonts (Latin subsets), lazy-loaded dialogs; `npm run dev` ships production React.
+
 ## [0.1.0] - 2026-11-09
 
 First public preview.
