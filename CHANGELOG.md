@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Optional end-to-end encrypted sync (Settings → Sync), off by default. Syncs settings, Spaces (name, color, proxy), open tabs (shown as "Other devices" in the command palette) and, if enabled, history through a folder you choose or a WebDAV server. Passphrase-derived key (scrypt) + AES-256-GCM, recovery key, no Vela-operated server.
+- Auto-update via GitHub releases: checks 10 s after startup and every 6 hours, downloads in the background and
+  installs on restart. An "Update ready · Restart" chip appears in the top island; release notes open from the chip
+  or from Settings → About → Updates, which also has "Check now", automatic download and pre-release options.
+  The Windows portable build, `.deb` packages and unsigned macOS builds only notify and link the release page.
+- `VELA_UPDATE_FEED=<url|dir>` points the updater at a generic feed for local testing.
+
+### Changed
+- macOS releases also ship a `.zip` (what the updater installs from once builds are signed).
 
 ## [0.1.1] - 2026-11-09
 

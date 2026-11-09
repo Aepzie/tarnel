@@ -33,6 +33,11 @@ A minimal Chromium-based desktop browser with sandboxed multi-session Spaces.
 Builds are not code-signed yet. On Windows, SmartScreen may show a warning on first launch — click
 **More info → Run anyway**. macOS Gatekeeper may warn as well.
 
+**Updates:** the Windows installer and the Linux AppImage update themselves — new versions download in the
+background and install when you restart Vela (or click **Update ready · Restart** in the toolbar). The portable
+`.exe`, the `.deb` and the (unsigned) macOS build only tell you when a new version is out and link to the
+release page. Configure it in **Settings → About → Updates**.
+
 ---
 
 ## Why Vela
@@ -56,6 +61,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
 - **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
+- **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
 - **Privacy defaults** — cleaned user agent, permissions denied by default, HTTPS-only upgrades,
   optional Do Not Track / Global Privacy Control and third-party cookie blocking.
 
@@ -190,7 +196,6 @@ Planned, not yet available:
 - [ ] Vertical tab groups
 - [ ] Split view
 - [ ] Per-space fingerprint protection
-- [ ] Auto-update
 
 Ideas and discussion are welcome in [issues](https://github.com/Aepzie/vela/issues).
 

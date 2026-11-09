@@ -83,6 +83,12 @@ export interface Settings {
   windowMaterial: WindowMaterial;
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
+  /** Check GitHub releases on startup and every 6 h. */
+  updateAutoCheck: boolean;
+  /** Download updates in the background (installable builds only). */
+  updateAutoDownload: boolean;
+  /** Offer pre-releases (e.g. 0.3.0-beta.1). */
+  updatePrerelease: boolean;
 }
 
 export interface Suggestion {
@@ -190,6 +196,9 @@ export const DEFAULT_SETTINGS: Settings = {
   autoHideToolbar: false,
   windowMaterial: 'mica',
   newtabHero: 'clock',
+  updateAutoCheck: true,
+  updateAutoDownload: true,
+  updatePrerelease: false,
 };
 
 /** What end-to-end encrypted sync carries. History is off by default. */
@@ -234,4 +243,35 @@ export interface SyncStatus {
   lastSyncAt: number | null;
   lastError: string | null;
   devices: SyncDevice[];
+}
+
+/**
+ * How this build can update itself. `install` = electron-updater downloads and installs (NSIS,
+ * AppImage, signed macOS); `notify` = only tells the user and links the release page.
+ */
+export type UpdateMode = 'install' | 'notify' | 'disabled';
+export type UpdateNotifyReason = 'portable' | 'mac-unsigned' | 'linux-package' | 'dev';
+
+export type UpdatePhase = 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'error';
+
+export interface UpdateStatus {
+  mode: UpdateMode;
+  reason?: UpdateNotifyReason;
+  phase: UpdatePhase;
+  currentVersion: string;
+  /** Newer version found (available / downloading / ready). */
+  version?: string;
+  releaseName?: string;
+  /** HTML (GitHub feed) or markdown/plain text (generic feed). Rendered as sanitized text. */
+  releaseNotes?: string;
+  releaseDate?: string;
+  releaseUrl?: string;
+  /** 0..100 while downloading. */
+  percent?: number;
+  bytesPerSecond?: number;
+  /** The download was started by the user (not in the background). */
+  manual?: boolean;
+  error?: string;
+  /** Epoch ms of the last finished check. */
+  checkedAt?: number;
 }
