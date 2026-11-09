@@ -1,24 +1,24 @@
 import { useEffect } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
+import { BRAND_BODY_PATH, BRAND_CAP_PATH, BRAND_GLYPH_VIEWBOX, brandIconDataUrl } from '@shared/brand-mark';
 import { cn } from '@/lib/utils';
 import { ease } from '@/lib/motion';
 
-/** Vela mark: a billowing sail (curved stroke) with three trailing dots. */
+/** Vela mark (same geometry as the app icon): body in currentColor, cap in the Space accent. */
 export function VelaMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={cn('size-5', className)} aria-hidden>
-      <path
-        d="M6 20.5C13.5 19 18.5 12.5 18.5 3.5C14 7.5 9.5 9.5 5 10"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="6.5" cy="14" r="1.25" fill="var(--accent-space)" />
-      <circle cx="9.75" cy="14.75" r="1.25" fill="var(--accent-space)" opacity="0.7" />
-      <circle cx="13" cy="13.25" r="1.25" fill="var(--accent-space)" opacity="0.45" />
+    <svg viewBox={BRAND_GLYPH_VIEWBOX} className={cn('size-5', className)} aria-hidden>
+      <path d={BRAND_BODY_PATH} fill="currentColor" />
+      <path d={BRAND_CAP_PATH} fill="var(--accent-space)" />
     </svg>
   );
+}
+
+const APP_ICON_URL = brandIconDataUrl();
+
+/** The full-colour app icon, pixel-identical to the taskbar / installer icon. */
+export function VelaAppIcon({ className }: { className?: string }) {
+  return <img src={APP_ICON_URL} alt="" draggable={false} className={cn('size-16 select-none', className)} />;
 }
 
 /** Number that tweens to each new value; jumps when reduced motion is requested. */

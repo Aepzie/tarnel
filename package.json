@@ -17,6 +17,7 @@
     "start": "electron .",
     "dev": "node scripts/build.mjs && electron .",
     "typecheck": "tsc --noEmit",
+    "icons": "electron scripts/icons.mjs",
     "dist": "node scripts/build.mjs --production && electron-builder",
     "dist:dir": "node scripts/build.mjs --production && electron-builder --dir"
   },
