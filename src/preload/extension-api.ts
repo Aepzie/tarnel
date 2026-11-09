@@ -1,10 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 /**
- * chrome.declarativeNetRequest for extension service workers and pages (registered as a session
- * preload by src/main/extensions/dnr/index.ts, before electron-chrome-extensions' own preload, which
- * freezes `chrome`). Calls travel over the library's `crx-msg` channel to the handlers in
- * src/main/extensions/dnr/api.ts; events use its `crx-add-listener` protocol.
+ * Extension-context additions on top of electron-chrome-extensions (registered as a session preload
+ * by src/main/extensions/dnr/index.ts, before the library's own preload, which freezes `chrome`):
+ * - chrome.declarativeNetRequest backed by Vela's engine. Calls travel over the library's `crx-msg`
+ *   channel to the handlers in src/main/extensions/dnr/api.ts; events use its `crx-add-listener`
+ *   protocol.
+ * - the `browser` namespace as an alias of the (library-completed) `chrome`.
  */
 
 type Invoke = (extensionId: string, name: string, args: unknown[]) => Promise<unknown>;
@@ -35,7 +37,7 @@ function installDeclarativeNetRequest(call: Invoke, on: Listen, off: Listen): vo
   const chromeApi = (globalThis as { chrome?: Record<string, unknown> & { runtime?: { id?: string; getManifest?: () => { permissions?: unknown[] }; lastError?: unknown } } }).chrome;
   const runtime = chromeApi?.runtime;
   const extensionId = runtime?.id;
-  if (!chromeApi || !runtime || !extensionId || chromeApi.declarativeNetRequest) return;
+  if (!chromeApi || !runtime || !extensionId) return;
   const permissions = runtime.getManifest?.().permissions ?? [];
   if (!permissions.includes('declarativeNetRequest') && !permissions.includes('declarativeNetRequestWithHostAccess')) return;
 
@@ -146,8 +148,42 @@ function installDeclarativeNetRequest(call: Invoke, on: Listen, off: Listen): vo
     onRuleMatchedDebug: event('onRuleMatchedDebug'),
   };
 
-  // Writable and extensible on purpose: extensions (uBlock Origin Lite) attach helpers to it.
-  Object.defineProperty(chromeApi, 'declarativeNetRequest', { value: api, enumerable: true, configurable: true, writable: true });
+  // Electron's extension bindings already define chrome.declarativeNetRequest (the API schema is
+  // compiled in) but nothing behind it evaluates rules: its methods are replaced in place, so the
+  // object identity extensions may have captured stays valid. It stays extensible on purpose:
+  // extensions (uBlock Origin Lite) attach helpers to it.
+  const existing = chromeApi.declarativeNetRequest as Record<string, unknown> | undefined;
+  if (existing && typeof existing === 'object' && Object.isExtensible(existing)) {
+    for (const [name, value] of Object.entries(api)) {
+      try {
+        Object.defineProperty(existing, name, { value, enumerable: true, configurable: true, writable: true });
+      } catch {
+        /* a frozen native constant: keep it */
+      }
+    }
+    return;
+  }
+  try {
+    Object.defineProperty(chromeApi, 'declarativeNetRequest', { value: api, enumerable: true, configurable: true, writable: true });
+  } catch {
+    /* chrome is frozen: nothing we can do from here */
+  }
+}
+
+/**
+ * Chromium also exposes the extension API as `browser`, a separate object from `chrome`.
+ * electron-chrome-extensions only fills in `chrome` (tabs, commands, action, …), so extensions that
+ * prefer `browser` (uBlock Origin Lite: `self.browser || self.chrome`) crashed on
+ * `browser.commands.onCommand`. Point `browser` at `chrome`. Runs in the main world.
+ */
+function aliasBrowserNamespace(): void {
+  const scope = globalThis as { chrome?: unknown; browser?: unknown };
+  if (!scope.chrome || !scope.browser || scope.browser === scope.chrome) return;
+  try {
+    Object.defineProperty(globalThis, 'browser', { get: () => scope.chrome, set: () => undefined, enumerable: false, configurable: true });
+  } catch {
+    /* not configurable here */
+  }
 }
 
 const isExtensionContext = process.type === 'service-worker' || (typeof location !== 'undefined' && location.href.startsWith('chrome-extension://'));
@@ -155,6 +191,7 @@ const isExtensionContext = process.type === 'service-worker' || (typeof location
 if (isExtensionContext) {
   try {
     contextBridge.executeInMainWorld({ func: installDeclarativeNetRequest, args: [invoke, addListener, removeListener] });
+    contextBridge.executeInMainWorld({ func: aliasBrowserNamespace });
   } catch {
     /* not an extension context the bridge can reach */
   }
