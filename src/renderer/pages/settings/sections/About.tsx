@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowUpRight } from 'lucide-react';
 import { rise } from '@/lib/motion';
 import { velaPages, type VelaPagesAPI } from '@/lib/vela';
-import { VelaMark } from '../components/brand';
+import { VelaAppIcon } from '../components/brand';
 import { Group, Row } from '../components/layout';
 import { UpdatesGroup } from '../components/updates';
 import { hasBridge } from '../store';
@@ -41,9 +41,7 @@ export function About() {
             aria-hidden
             className="absolute -inset-4 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--accent-space)_35%,transparent),transparent)] blur-md"
           />
-          <div className="relative grid size-16 place-items-center rounded-2xl bg-card ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]">
-            <VelaMark className="size-9 text-foreground" />
-          </div>
+          <VelaAppIcon className="relative size-16" />
         </div>
         <div>
           <h1 className="text-[22px] leading-8 font-semibold tracking-tight">Vela</h1>
