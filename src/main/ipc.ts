@@ -1,5 +1,5 @@
 import { app, ipcMain, nativeTheme, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { IPC } from '../shared/ipc';
+import { AUDIO_IPC, IPC } from '../shared/ipc';
 import {
   SPACE_COLORS,
   type ContentBounds,
@@ -25,6 +25,7 @@ import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openRe
 import { resolveInput, resolveInputDetailed } from './url';
 import { registerSyncIpc, remoteTabSuggestions } from './sync/loader';
 import { registerSplitIpc } from './split-ipc';
+import { setTabMediaDeviceFromChrome } from './audio-devices';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -329,6 +330,7 @@ export function registerIpc(): void {
   handleChrome(c.updateInstall, installUpdate);
   handleChrome(c.updateOpenRelease, openReleasePage);
   registerSplitIpc(handleChrome);
+  handleChrome(AUDIO_IPC.setDevice, (id, slot, choice) => setTabMediaDeviceFromChrome(int(id), slot, choice));
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());

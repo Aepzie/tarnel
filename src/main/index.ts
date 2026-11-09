@@ -3,6 +3,7 @@ import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
 import { initFingerprint } from './fingerprint';
+import { initAudioDevices } from './audio-devices';
 import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
@@ -110,6 +111,7 @@ if (!app.requestSingleInstanceLock()) {
     electronSession.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     initSpaces();
     initFingerprint();
+    initAudioDevices();
 
     void initAdblock().catch(() => undefined);
     onSessionCreated((ses) => {

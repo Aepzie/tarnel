@@ -57,7 +57,28 @@ export interface TabState {
   groupId: TabGroupId | null;
   /** Split view this tab is a pane of. Split members are adjacent and share their group. */
   splitId: SplitId | null;
+  /** Devices picked for this tab; null = all on "System default". */
+  devices: TabMediaDevices | null;
+  /** The current page was granted the microphone (cleared when the tab navigates away). */
+  micActive: boolean;
 }
+
+/** Speakers/headphones, microphone, camera. */
+export const MEDIA_DEVICE_SLOTS = ['output', 'input', 'camera'] as const;
+export type MediaDeviceSlot = (typeof MEDIA_DEVICE_SLOTS)[number];
+
+/**
+ * A device picked for a tab. Device ids are salted per origin, so it is matched by label in every
+ * frame; `ordinal` tells identical labels apart, `index` (among all devices of the kind) is used when
+ * labels are hidden (strict fingerprint protection reports generic ones).
+ */
+export interface MediaDeviceChoice {
+  label: string;
+  ordinal: number;
+  index: number;
+}
+
+export type TabMediaDevices = Partial<Record<MediaDeviceSlot, MediaDeviceChoice>>;
 
 export type SplitId = string;
 

@@ -1,7 +1,7 @@
 import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContents } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
-import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabState } from '../shared/types';
+import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabMediaDevices, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
 import { upgradeToHttps } from './privacy';
@@ -14,6 +14,7 @@ import { NEWTAB_URL, isInternalUrl, isOpenableFromWeb, isSecureUrl, resolveInput
 import * as windowLayer from './window';
 import { bindSplitModel, clusterSplits, detachFromSplit, isOnScreen, restoreSplits, savedSplit, splitIdOf, splitOf, splitsInOrder, unitOf, type SavedSplit } from './split';
 import { onPaneFocus, trackPanes, type Pane } from './split-panes';
+import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTabMediaDevices, tabMediaDevices } from './audio-devices/state';
 
 export interface SavedTab {
   url: string;
@@ -24,6 +25,7 @@ export interface SavedTab {
   active: boolean;
   group?: SavedGroup;
   split?: SavedSplit;
+  devices?: TabMediaDevices;
 }
 
 export interface CreateTabOpts {
@@ -508,6 +510,7 @@ function closeTabInternal(id: number, replace: boolean): void {
   order = order.filter((tid) => tid !== id);
   if (activeBySpace.get(tab.spaceId) === id) activeBySpace.delete(tab.spaceId);
   destroyView(tab, false);
+  forgetTabMedia(id);
 
   if (activeTabId !== id && wasOnScreen) showActive();
   if (activeTabId === id) {
@@ -826,6 +829,8 @@ function toState(tab: Tab): TabState {
     secure: isSecureUrl(tab.url),
     groupId: tab.groupId,
     splitId: splitIdOf(tab.id),
+    devices: tabMediaDevices(tab.id),
+    micActive: isMicActive(tab.id),
   };
 }
 
@@ -891,6 +896,7 @@ export function serializeSession(): SavedTab[] {
       active: activeBySpace.get(tab.spaceId) === tab.id,
       ...(tab.groupId ? { group: savedGroup(tab.groupId) } : {}),
       ...(splitIdOf(tab.id) ? { split: savedSplit(tab.id) } : {}),
+      ...(tabMediaDevices(tab.id) ? { devices: tabMediaDevices(tab.id)! } : {}),
     }));
 }
 
@@ -928,6 +934,7 @@ export function restoreSession(saved: unknown): number {
       activeBySpace.set(entry.spaceId, id);
     }
     if (entry.split) splitEntries.push({ tabId: id, saved: entry.split });
+    restoreTabMediaDevices(id, entry.devices);
     restored++;
   });
   restoreSplits(splitEntries);
@@ -984,6 +991,8 @@ bindSplitModel({
   create: ({ spaceId, afterId }) => createTab({ spaceId, afterId, active: false }),
   emit: scheduleEmit,
 });
+
+onTabMediaChanged(scheduleEmit);
 
 onPaneFocus((id) => {
   if (id !== activeTabId && isOnScreen(id)) activateTab(id);

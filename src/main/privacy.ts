@@ -170,6 +170,19 @@ export function setPermissionPrompter(next: PermissionPrompter): void {
 
 const scopes = new WeakMap<Session, PermissionScope>();
 
+/** Per-tab media devices (audio-devices/index.ts), injected for the same no-cycle reason as the prompter. */
+export interface MediaPermissionHooks {
+  /** Expose device ids/labels (and non-default setSinkId) to every frame of a tab the user routed. */
+  allowsDeviceAccess(webContents: WebContents | null, mediaType: string | undefined): boolean;
+  granted(webContents: WebContents, mediaTypes: ('video' | 'audio')[]): void;
+}
+
+let mediaHooks: MediaPermissionHooks | null = null;
+
+export function setMediaPermissionHooks(next: MediaPermissionHooks): void {
+  mediaHooks = next;
+}
+
 function sameOriginTop(requestingUrl: string | undefined, topUrl: string | undefined): string | null {
   const requesting = originOf(requestingUrl);
   const top = originOf(topUrl);
@@ -253,11 +266,15 @@ export function applyPrivacy(session: Session, space: Space): void {
       topUrl = undefined;
     }
     requestGrant(session, webContents, permission, details.isMainFrame, details.requestingUrl, topUrl, mediaTypesOf(details))
-      .then(callback)
+      .then((allow) => {
+        if (allow && permission === 'media') mediaHooks?.granted(webContents, mediaTypesOf(details) ?? ['video', 'audio']);
+        callback(allow);
+      })
       .catch(() => callback(false));
   });
 
   session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    if (permission === 'media' && mediaHooks?.allowsDeviceAccess(webContents, details.mediaType)) return true;
     let topUrl: string | undefined;
     try {
       topUrl = webContents?.getURL();

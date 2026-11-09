@@ -23,6 +23,7 @@ import type {
   UpdateStatus,
 } from './types';
 import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } from './types';
+import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -357,6 +358,18 @@ export interface VelaChromeAPI {
     activate(id: string, anchor: ExtensionAnchor, kind?: 'click' | 'contextmenu'): Promise<void>;
     setPinned(id: string, pinned: boolean): Promise<void>;
     openOptions(id: string): Promise<void>;
+  };
+}
+
+/** Per-tab media devices (chrome only). */
+export const AUDIO_IPC = {
+  setDevice: 'chrome:tab-set-media-device',
+} as const;
+
+export interface VelaChromeAPI {
+  mediaDevices: {
+    /** Route one slot of a tab to `choice`; null = back to "System default". Applies live. */
+    set(tabId: number, slot: MediaDeviceSlot, choice: MediaDeviceChoice | null): Promise<void>;
   };
 }
 
