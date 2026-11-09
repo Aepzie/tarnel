@@ -1,7 +1,7 @@
 {
   "name": "vela",
   "productName": "Vela",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A fast, quiet, ultra-clean browser with isolated multi-session Spaces.",
   "main": "dist/main/index.js",
   "license": "MIT",

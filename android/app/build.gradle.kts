@@ -5,6 +5,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/** The desktop package.json is the single source of the version; versionCode = major*10000 + minor*100 + patch. */
+val velaVersion: String = Regex("\"version\"\\s*:\\s*\"([^\"]+)\"")
+    .find(rootDir.resolve("../package.json").readText())!!.groupValues[1]
+val velaVersionCode: Int = velaVersion.substringBefore('-').split('.').map(String::toInt)
+    .let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+
 /**
  * Release signing is resolved from (first match wins):
  *  1. environment: VELA_KEYSTORE_FILE, VELA_KEYSTORE_PASSWORD, VELA_KEY_ALIAS, VELA_KEY_PASSWORD (CI)
@@ -49,8 +55,8 @@ android {
         applicationId = "org.velabrowser.vela"
         minSdk = 29
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = velaVersionCode
+        versionName = velaVersion
     }
 
     signingConfigs {

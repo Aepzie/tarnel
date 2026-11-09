@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-09
+
 ### Added
 - **Vela for Android** (`android/`): a native Kotlin + Jetpack Compose browser on Android System WebView. Floating
   bottom island that tucks away while reading, tab switcher with swipe-to-close, sleeping tabs and lazy session
@@ -101,7 +103,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Aepzie/vela/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Aepzie/vela/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Aepzie/vela/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Aepzie/vela/compare/v0.1.0...v0.1.1
