@@ -107,6 +107,18 @@ const api: VelaChromeAPI = {
     openRelease: () => invoke(C.updateOpenRelease),
   },
 
+  split: {
+    create: (tabIds, focus) => invoke(C.splitCreate, tabIds, focus ?? null),
+    add: (splitId, tabId, index) => invoke(C.splitAdd, splitId, tabId, index),
+    separate: (tabId) => invoke(C.splitSeparate, tabId),
+    close: (splitId) => invoke(C.splitClose, splitId),
+    resize: (splitId, ratioX, ratioY, commit) => invoke(C.splitResize, splitId, ratioX, ratioY, commit),
+    swap: (splitId) => invoke(C.splitSwap, splitId),
+    toggle: () => invoke(C.splitToggle),
+    peek: (open) => invoke(C.splitPeek, open),
+    onHover: (cb) => subscribe(E.splitHover, cb),
+  },
+
   platform: process.platform,
 };
 

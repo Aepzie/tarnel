@@ -1,6 +1,7 @@
 import { BaseWindow, WebContentsView, screen, type Rectangle } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
+import { splitGeometry } from '../shared/split-layout';
 import type { ContentBounds, WindowMaterial } from '../shared/types';
 import { getSettings } from './settings';
 import { createStore, type JsonStore } from './store';
@@ -14,9 +15,15 @@ const TAB_RADIUS = 12;
 
 let win: BaseWindow | null = null;
 let chromeView: WebContentsView | null = null;
+/** The focused page view: gets keyboard focus back after overlays, goes HTML-fullscreen. */
 let activeView: WebContentsView | null = null;
+/** Every attached page view in pane order (just `activeView` unless a split view is shown). */
+let visibleViews: WebContentsView[] = [];
+let splitRatios = { x: 0.5, y: 0.5 };
 let contentBounds: ContentBounds = { x: 0, y: 0, width: 0, height: 0 };
 let overlayOpen = false;
+/** Chrome raised without taking keyboard focus (split pane toolbar under the pointer). */
+let peekOpen = false;
 let htmlFullscreen = false;
 /** Window fullscreen state (F11) before a page entered HTML fullscreen. */
 let fullscreenBeforeHtml = false;
@@ -56,13 +63,34 @@ function layout(): void {
     activeView.setBounds({ x: 0, y: 0, ...size });
     return;
   }
-  setRadius(activeView, TAB_RADIUS);
-  activeView.setBounds({
-    x: Math.max(0, Math.round(contentBounds.x)),
-    y: Math.max(0, Math.round(contentBounds.y)),
-    width: Math.max(0, Math.round(contentBounds.width)),
-    height: Math.max(0, Math.round(contentBounds.height)),
+  if (visibleViews.length < 2) {
+    setRadius(activeView, TAB_RADIUS);
+    activeView.setBounds(roundedBounds(contentBounds));
+    return;
+  }
+  const { panes } = splitGeometry(roundedBounds(contentBounds), visibleViews.length, splitRatios.x, splitRatios.y);
+  visibleViews.forEach((view, index) => {
+    const pane = panes[index];
+    if (!pane) return;
+    setRadius(view, TAB_RADIUS);
+    view.setBounds(roundedBounds(pane));
   });
+}
+
+function roundedBounds(bounds: ContentBounds): Rectangle {
+  return {
+    x: Math.max(0, Math.round(bounds.x)),
+    y: Math.max(0, Math.round(bounds.y)),
+    width: Math.max(0, Math.round(bounds.width)),
+    height: Math.max(0, Math.round(bounds.height)),
+  };
+}
+
+/** Page views above the chrome (focused one last), then the chrome again while it is raised. */
+function restack(target: BaseWindow): void {
+  for (const view of visibleViews) if (view !== activeView) target.contentView.addChildView(view);
+  if (activeView) target.contentView.addChildView(activeView);
+  if ((overlayOpen || peekOpen) && chromeView) target.contentView.addChildView(chromeView);
 }
 
 /** Persist window bounds/maximized state (also called on quit before stores are flushed). */
@@ -159,17 +187,18 @@ function wireWindow(current: BaseWindow): void {
       win = null;
       chromeView = null;
       activeView = null;
+      visibleViews = [];
       htmlFullscreen = false;
       overlayOpen = false;
+      peekOpen = false;
     }),
   );
 }
 
-/** Re-add views in layer order: chrome base, active tab on top, chrome again when overlaid. */
+/** Re-add views in layer order: chrome base, page views on top, chrome again when raised. */
 function attachViews(target: BaseWindow): void {
   if (chromeView) target.contentView.addChildView(chromeView);
-  if (activeView) target.contentView.addChildView(activeView);
-  if (overlayOpen && chromeView) target.contentView.addChildView(chromeView);
+  restack(target);
 }
 
 /**
@@ -186,7 +215,7 @@ function swapWindow(material: WindowMaterial): void {
   const minimized = old.isMinimized();
   const next = buildWindow(material, old.getNormalBounds());
 
-  for (const view of [chromeView, activeView]) if (view) old.contentView.removeChildView(view);
+  for (const view of [chromeView, ...visibleViews]) if (view) old.contentView.removeChildView(view);
   for (const event of old.eventNames()) {
     if (typeof event !== 'string') continue;
     for (const listener of old.listeners(event)) {
@@ -253,9 +282,10 @@ export function createMainWindow(): BaseWindow {
   // the page (its transparent viewport would swallow every click). Uses the *current* window, which
   // may have been swapped since.
   const resetOverlay = (): void => {
-    if (!overlayOpen) return;
+    if (!overlayOpen && !peekOpen) return;
     overlayOpen = false;
-    if (activeView && win && !win.isDestroyed()) win.contentView.addChildView(activeView);
+    peekOpen = false;
+    if (win && !win.isDestroyed()) restack(win);
   };
   chromeWc.on('did-start-loading', resetOverlay);
   chromeWc.on('render-process-gone', () => {
@@ -289,19 +319,36 @@ export function getChromeView(): WebContentsView | null {
 
 /** Attach `view` as the single visible tab view (or detach all with null). */
 export function showView(view: WebContentsView | null): void {
+  showViews(view ? [view] : [], view);
+}
+
+/**
+ * Show `views` side by side in pane order (a single view fills the viewport as usual), `focused`
+ * being the active one. Views no longer listed are detached; an unchanged set is only re-laid out.
+ */
+export function showViews(views: WebContentsView[], focused: WebContentsView | null, ratios?: { x: number; y: number }): void {
   if (!win || win.isDestroyed()) return;
-  if (activeView && activeView !== view) win.contentView.removeChildView(activeView);
-  activeView = view;
-  if (view) {
-    win.contentView.addChildView(view);
-    if (overlayOpen && chromeView) win.contentView.addChildView(chromeView);
-  }
+  const next = focused && !views.includes(focused) ? [...views, focused] : views;
+  for (const view of visibleViews) if (!next.includes(view)) win.contentView.removeChildView(view);
+  // Panes never overlap, so moving focus between them must not re-stack (that would cancel the press).
+  const changed = next.length !== visibleViews.length || next.some((view, i) => view !== visibleViews[i]);
+  visibleViews = next;
+  activeView = focused;
+  if (ratios) splitRatios = ratios;
+  if (changed) restack(win);
   layout();
+}
+
+/** Live divider drag: re-place the visible panes, nothing else. */
+export function setSplitRatios(x: number, y: number): void {
+  splitRatios = { x, y };
+  if (visibleViews.length > 1) layout();
 }
 
 /** Forget a view that is being destroyed without re-laying out. */
 export function detachView(view: WebContentsView): void {
   if (win && !win.isDestroyed()) win.contentView.removeChildView(view);
+  visibleViews = visibleViews.filter((candidate) => candidate !== view);
   if (activeView === view) activeView = null;
 }
 
@@ -313,12 +360,18 @@ export function setContentBounds(bounds: ContentBounds): void {
 export function setOverlay(open: boolean): void {
   overlayOpen = open;
   if (!win || win.isDestroyed()) return;
+  restack(win);
   const top = open ? chromeView : activeView;
-  if (!top) return;
-  win.contentView.addChildView(top);
   // Keyboard input must follow the visible layer: palette/menus need focus while open,
   // the page gets it back once the overlay closes.
-  if (!top.webContents.isDestroyed()) top.webContents.focus();
+  if (top && !top.webContents.isDestroyed()) top.webContents.focus();
+}
+
+/** Raise the chrome above the pages without moving keyboard focus (hover surfaces over a pane). */
+export function setPeek(open: boolean): void {
+  if (peekOpen === open) return;
+  peekOpen = open;
+  if (win && !win.isDestroyed()) restack(win);
 }
 
 export function setHtmlFullscreen(on: boolean): void {
@@ -330,6 +383,9 @@ export function setHtmlFullscreen(on: boolean): void {
   if (on) {
     fullscreenBeforeHtml = win.isFullScreen();
     if (overlayOpen) setOverlay(false);
+    setPeek(false);
+    // In a split the fullscreen pane must cover its siblings.
+    if (activeView && visibleViews.length > 1) win.contentView.addChildView(activeView);
   }
   htmlFullscreen = on;
   const target = on || fullscreenBeforeHtml;

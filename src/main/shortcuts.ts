@@ -18,6 +18,7 @@ import {
   zoomTab,
 } from './tabs';
 import { getChromeView, getMainWindow, isHtmlFullscreen, sendToChrome, toggleFullscreen } from './window';
+import { toggleSplit } from './split';
 
 const isMac = process.platform === 'darwin';
 
@@ -103,6 +104,10 @@ function handle(input: Input): boolean {
         return once(() => sendCommand('toggle-sidebar'));
       case 'Comma':
         return once(() => updateSettings({ tabLayout: getSettings().tabLayout === 'vertical' ? 'horizontal' : 'vertical' }));
+      case 'KeyD':
+        return once(() => {
+          if (toggleSplit() !== null) sendCommand('command-palette');
+        });
       case 'Equal':
         withActive((id) => zoomTab(id, 1));
         return true;

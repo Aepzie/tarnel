@@ -49,6 +49,22 @@ export interface TabState {
   secure: boolean;
   /** Tab group this tab belongs to (never set on pinned tabs). Group members are contiguous. */
   groupId: TabGroupId | null;
+  /** Split view this tab is a pane of. Split members are adjacent and share their group. */
+  splitId: SplitId | null;
+}
+
+export type SplitId = string;
+
+/** 2–4 tabs of one Space shown side by side (2 = columns, 3 = left + stacked right, 4 = 2×2). */
+export interface TabSplit {
+  id: SplitId;
+  spaceId: SpaceId;
+  /** Pane order: left to right, then top to bottom. */
+  tabIds: number[];
+  /** Share of the width taken by the left column (0..1). */
+  ratioX: number;
+  /** Share of the height taken by the top row (3–4 panes). */
+  ratioY: number;
 }
 
 export type TabGroupId = string;
@@ -76,6 +92,8 @@ export interface BrowserState {
   activeSpaceId: SpaceId;
   /** Groups of all spaces in display order (by their first tab); only non-empty groups are listed. */
   groups: TabGroup[];
+  /** Split views of all spaces. The one holding `activeTabId` is on screen. */
+  splits: TabSplit[];
 }
 
 export type SearchEngine = 'duckduckgo' | 'google' | 'brave' | 'startpage' | 'ecosia';

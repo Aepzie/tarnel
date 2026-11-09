@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '@shared/types';
  * Single IPC subscription for the browser chrome. Components select slices with the hooks below.
  * ---------------------------------------------------------------------------------------------- */
 
-const EMPTY_STATE: BrowserState = { tabs: [], activeTabId: null, spaces: [], activeSpaceId: '', groups: [] };
+const EMPTY_STATE: BrowserState = { tabs: [], activeTabId: null, spaces: [], activeSpaceId: '', groups: [], splits: [] };
 
 let browserState: BrowserState = EMPTY_STATE;
 let settingsState: Settings = DEFAULT_SETTINGS;
