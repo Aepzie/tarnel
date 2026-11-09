@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Vela for Android** (`android/`): a native Kotlin + Jetpack Compose browser on Android System WebView. Floating
+  bottom island that tucks away while reading, tab switcher with swipe-to-close, sleeping tabs and lazy session
+  restore, Spaces isolated through WebView profiles, Burner spaces wiped on close, the desktop-style new tab page
+  (tap the clock to cycle styles), history, settings, downloads, in-app permission prompts and privacy defaults
+  (HTTPS-only, third-party cookies blocked, DNT/GPC, Safe Browsing). CI builds, tests and lints it; `v*` tags
+  produce a release APK.
+
 ## [0.2.1] - 2026-11-09
 
 ### Added
