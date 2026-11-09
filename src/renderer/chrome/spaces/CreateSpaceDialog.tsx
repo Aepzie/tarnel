@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ChevronRight, Flame, Loader2, ShieldCheck } from 'lucide-react';
-import { SPACE_COLORS, type Space, type SpaceColor, type SpaceId } from '@shared/types';
+import { SPACE_COLORS, type FingerprintLevel, type Space, type SpaceColor, type SpaceId } from '@shared/types';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,7 @@ import { SPACE_HEX, vela } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { ColorSwatches } from './ColorSwatches';
+import { FingerprintPicker } from './FingerprintPicker';
 import { SpaceMark } from './SpaceMark';
 import { GLASS_SURFACE } from './surface';
 
@@ -31,7 +32,7 @@ export function ipcErrorMessage(error: unknown, fallback: string): string {
   return clean || fallback;
 }
 
-/** Create (or edit) a Space: name, color, Burner switch, optional per-space proxy. */
+/** Create (or edit) a Space: name, color, Burner switch, optional per-space proxy and fingerprint level. */
 export function CreateSpaceDialog({ open, onOpenChange, editing = null }: CreateSpaceDialogProps) {
   useOverlayPresence(open);
   const reduce = useReducedMotion();
@@ -45,6 +46,9 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
   const [color, setColor] = useState<SpaceColor>('blue');
   const [ephemeral, setEphemeral] = useState(false);
   const [proxy, setProxy] = useState('');
+  const [fingerprint, setFingerprint] = useState<FingerprintLevel>('standard');
+  /** Until the user picks a level, Burner implies Strict. */
+  const fingerprintTouched = useRef(false);
   const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -56,15 +60,18 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
       setColor(editing.color);
       setEphemeral(editing.ephemeral);
       setProxy(editing.proxy);
-      setAdvanced(Boolean(editing.proxy));
+      setFingerprint(editing.fingerprint);
+      setAdvanced(Boolean(editing.proxy) || editing.fingerprint !== (editing.ephemeral ? 'strict' : 'standard'));
     } else {
       const used = new Set(spaces.map((space) => space.color));
       setName('');
       setColor(SPACE_COLORS.find((c) => !used.has(c)) ?? 'blue');
       setEphemeral(false);
       setProxy('');
+      setFingerprint('standard');
       setAdvanced(false);
     }
+    fingerprintTouched.current = false;
     setBusy(false);
     setError('');
     createdRef.current = null;
@@ -83,9 +90,9 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
     const finalName = name.trim() || (editing?.name ?? fallbackName);
     try {
       if (editing) {
-        await vela().spaces.update(editing.id, { name: finalName, color, proxy: proxy.trim() });
+        await vela().spaces.update(editing.id, { name: finalName, color, proxy: proxy.trim(), fingerprint });
       } else {
-        const createdId = createdRef.current ?? (await vela().spaces.create({ name: finalName, color, ephemeral, proxy: proxy.trim() })).id;
+        const createdId = createdRef.current ?? (await vela().spaces.create({ name: finalName, color, ephemeral, proxy: proxy.trim(), fingerprint })).id;
         createdRef.current = createdId;
         try {
           await vela().spaces.activate(createdId);
@@ -199,7 +206,14 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
                     Lives in memory only. No history, cookies or cache survive.
                   </span>
                 </span>
-                <Switch id={`${ids}-burner`} checked={ephemeral} onCheckedChange={setEphemeral} />
+                <Switch
+                  id={`${ids}-burner`}
+                  checked={ephemeral}
+                  onCheckedChange={(burner) => {
+                    setEphemeral(burner);
+                    if (!fingerprintTouched.current) setFingerprint(burner ? 'strict' : 'standard');
+                  }}
+                />
               </label>
             )}
 
@@ -247,6 +261,17 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
                         <ShieldCheck className="size-3 shrink-0" strokeWidth={1.75} />
                         Only this Space's traffic is routed. Leave empty for direct.
                       </span>
+                    </div>
+                    <div className="pt-4">
+                      <FingerprintPicker
+                        value={fingerprint}
+                        hex={hex}
+                        spaceId={editing?.id}
+                        onChange={(level) => {
+                          fingerprintTouched.current = true;
+                          setFingerprint(level);
+                        }}
+                      />
                     </div>
                   </motion.div>
                 )}

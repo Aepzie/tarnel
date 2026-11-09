@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Eraser, Flame, Plus, RotateCw, ShieldCheck, Trash } from 'lucide-react';
-import type { Space, SpaceColor, SpaceInput } from '@shared/types';
+import { AlertCircle, Eraser, Fingerprint, Flame, Plus, RotateCw, ShieldCheck, Trash } from 'lucide-react';
+import type { FingerprintLevel, Space, SpaceColor, SpaceInput } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { ease, rise, spring } from '@/lib/motion';
 import { SPACE_HEX, velaPages } from '@/lib/vela';
@@ -10,11 +10,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ConfirmActions } from '../components/confirm';
-import { Swatches } from '../components/controls';
+import { Segmented, Swatches, type SegmentOption } from '../components/controls';
 import { Row, SectionHeader } from '../components/layout';
 import { errorText, hasBridge, useSettings } from '../store';
 
 const PROXY_PLACEHOLDER = 'socks5://127.0.0.1:9050';
+
+const FINGERPRINT_OPTIONS: readonly SegmentOption<FingerprintLevel>[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'strict', label: 'Strict' },
+];
+
+const FINGERPRINT_HINTS: Record<FingerprintLevel, string> = {
+  off: 'Sites see this device’s real fingerprint.',
+  standard: 'Subtle per-site noise on canvas, WebGL and audio; generalized hardware.',
+  strict: 'Also masks screen size, media devices and client hints. May break a few sites.',
+};
 
 const cardMotion = {
   initial: { opacity: 0, y: 8, scale: 0.98 },
@@ -78,7 +90,10 @@ function SpaceCard({
   const confirmedColor = useRef<SpaceColor>(space.color);
   const [proxy, setProxy] = useState(space.proxy);
   const [proxyError, setProxyError] = useState<string | null>(null);
+  const [fingerprint, setFingerprint] = useState<FingerprintLevel>(space.fingerprint);
+  const [fingerprintError, setFingerprintError] = useState<string | null>(null);
 
+  useEffect(() => setFingerprint(space.fingerprint), [space.fingerprint]);
   useEffect(() => {
     confirmedColor.current = space.color;
     setColor(space.color);
@@ -140,6 +155,15 @@ function SpaceCard({
         setColorError(errorText(error, 'Could not change color'));
       },
     );
+  };
+
+  const pickFingerprint = (next: FingerprintLevel) => {
+    setFingerprint(next);
+    setFingerprintError(null);
+    save({ fingerprint: next }).catch((error) => {
+      setFingerprint(space.fingerprint);
+      setFingerprintError(errorText(error, 'Could not change fingerprint protection'));
+    });
   };
 
   const hex = SPACE_HEX[color];
@@ -221,12 +245,29 @@ function SpaceCard({
             <FieldError id={`${id}-proxy-error`} message={proxyError} />
           </div>
         </Row>
+        <Row title="Fingerprint" description={FINGERPRINT_HINTS[fingerprint]} className="items-start">
+          <div className="flex flex-col items-end">
+            <Segmented label={`Fingerprint protection for ${space.name}`} value={fingerprint} options={FINGERPRINT_OPTIONS} onChange={pickFingerprint} />
+            <FieldError id={`${id}-fingerprint-error`} message={fingerprintError} />
+          </div>
+        </Row>
       </div>
 
       <footer className="flex items-center border-t border-border bg-muted/40 px-2 py-2">
         <ConfirmActions
           className="w-full"
           actions={[
+            {
+              id: 'fingerprint',
+              label: 'New fingerprint',
+              icon: Fingerprint,
+              disabled: fingerprint === 'off',
+              disabledReason: 'Fingerprint protection is off',
+              message: 'Show every site a new fingerprint?',
+              confirmLabel: 'Regenerate',
+              successLabel: 'New fingerprint on next load',
+              run: () => velaPages().regenerateFingerprint(space.id),
+            },
             {
               id: 'clear',
               label: 'Clear data',
@@ -265,6 +306,9 @@ function NewSpaceCard({ onCreated }: { onCreated: (space: Space) => void }) {
   const [color, setColor] = useState<SpaceColor>('violet');
   const [ephemeral, setEphemeral] = useState(false);
   const [proxy, setProxy] = useState('');
+  const [fingerprint, setFingerprint] = useState<FingerprintLevel>('standard');
+  /** Until the user picks a level, Burner implies Strict. */
+  const fingerprintTouched = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -275,12 +319,14 @@ function NewSpaceCard({ onCreated }: { onCreated: (space: Space) => void }) {
     setBusy(true);
     setError(null);
     try {
-      const created = await velaPages().createSpace({ name: value, color, ephemeral, proxy: proxy.trim() });
+      const created = await velaPages().createSpace({ name: value, color, ephemeral, proxy: proxy.trim(), fingerprint });
       onCreated(created);
       markSaved();
       setName('');
       setProxy('');
       setEphemeral(false);
+      setFingerprint('standard');
+      fingerprintTouched.current = false;
     } catch (failure) {
       setError(errorText(failure, 'Could not create Space'));
     } finally {
@@ -345,7 +391,21 @@ function NewSpaceCard({ onCreated }: { onCreated: (space: Space) => void }) {
             id={`${id}-burner`}
             aria-describedby={`${id}-burner-desc`}
             checked={ephemeral}
-            onCheckedChange={setEphemeral}
+            onCheckedChange={(burner) => {
+              setEphemeral(burner);
+              if (!fingerprintTouched.current) setFingerprint(burner ? 'strict' : 'standard');
+            }}
+          />
+        </Row>
+        <Row title="Fingerprint" description={FINGERPRINT_HINTS[fingerprint]}>
+          <Segmented
+            label="New Space fingerprint protection"
+            value={fingerprint}
+            options={FINGERPRINT_OPTIONS}
+            onChange={(level) => {
+              fingerprintTouched.current = true;
+              setFingerprint(level);
+            }}
           />
         </Row>
       </div>
