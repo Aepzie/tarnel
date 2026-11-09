@@ -11,6 +11,10 @@ import type {
   SpaceId,
   SpaceInput,
   Suggestion,
+  SyncCategories,
+  SyncSetupInput,
+  SyncStatus,
+  SyncTransportInput,
   TopSite,
   UICommand,
 } from './types';
@@ -84,6 +88,14 @@ export const IPC = {
     currentSpace: 'pages:current-space',
     history: 'pages:history',
     historyDelete: 'pages:history-delete',
+    syncStatus: 'pages:sync-status',
+    syncPickFolder: 'pages:sync-pick-folder',
+    syncProbe: 'pages:sync-probe',
+    syncEnable: 'pages:sync-enable',
+    syncSetCategories: 'pages:sync-set-categories',
+    syncNow: 'pages:sync-now',
+    syncRecoveryKey: 'pages:sync-recovery-key',
+    syncDisconnect: 'pages:sync-disconnect',
   },
 } as const;
 
@@ -198,6 +210,20 @@ export interface VelaPagesAPI {
   history(query: string, limit: number, before?: number): Promise<HistoryEntry[]>;
   /** Remove one URL from history. */
   deleteHistory(url: string): Promise<void>;
+  /** Optional end-to-end encrypted sync (see docs/ARCHITECTURE.md → Sync). */
+  sync: {
+    status(): Promise<SyncStatus>;
+    /** Native folder picker; null when cancelled. */
+    pickFolder(): Promise<string | null>;
+    /** Whether the location already holds Vela sync data (→ join instead of create). */
+    probe(transport: SyncTransportInput): Promise<{ exists: boolean }>;
+    enable(input: SyncSetupInput): Promise<SyncStatus>;
+    setCategories(categories: SyncCategories): Promise<SyncStatus>;
+    now(): Promise<SyncStatus>;
+    recoveryKey(): Promise<string>;
+    /** wipeRemote also deletes the encrypted data at the remote for every device. */
+    disconnect(wipeRemote: boolean): Promise<SyncStatus>;
+  };
 }
 
 declare global {

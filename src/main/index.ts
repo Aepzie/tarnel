@@ -13,6 +13,7 @@ import { getSettings, onSettingsChanged } from './settings';
 import { attachShortcuts } from './shortcuts';
 import { disposeEphemeralSpaces, getActiveSpaceId, initSpaces, onSessionCreated } from './spaces';
 import { createStore, flushAllStores, type JsonStore } from './store';
+import { initSync, stopSync } from './sync/loader';
 import {
   activateSpace,
   createTab,
@@ -145,6 +146,7 @@ if (!app.requestSingleInstanceLock()) {
       sleepTab,
       getSleepAfterMinutes: () => getSettings().sleepAfterMinutes,
     });
+    initSync();
   });
 
   app.on('activate', () => {
@@ -163,6 +165,7 @@ if (!app.requestSingleInstanceLock()) {
     if (quitState === 'disposing') return;
     quitState = 'disposing';
     stopSleeper();
+    stopSync();
     // Persist everything first so a slow/failed disposal can never lose state.
     try {
       saveSession();

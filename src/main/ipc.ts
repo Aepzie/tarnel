@@ -10,6 +10,7 @@ import * as tabs from './tabs';
 import { getCompletedDownloadPath, getDownloadPath } from './downloads';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { resolveInput, resolveInputDetailed } from './url';
+import { registerSyncIpc, remoteTabSuggestions } from './sync/loader';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -132,6 +133,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
     push({ kind: 'tab', title: tab.title || tab.url, url: tab.url, tabId: tab.id });
   }
   for (const entry of suggest(input, 6)) push(entry);
+  for (const entry of remoteTabSuggestions(input, 3)) push(entry);
   return results;
 }
 
@@ -305,4 +307,5 @@ export function registerIpc(): void {
     chrome: process.versions.chrome ?? '',
     v8: process.versions.v8 ?? '',
   }));
+  registerSyncIpc(handlePages);
 }
