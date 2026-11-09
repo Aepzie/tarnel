@@ -85,6 +85,23 @@ object UrlInput {
         }?.takeIf { it.isNotBlank() }
     }
 
+    /** "en.m.wikipedia.org" → "wikipedia": the name part of the registrable domain. */
+    fun siteName(host: String): String {
+        val site = siteOf(host.lowercase(Locale.ROOT).trim('.'))
+        if (site.all { it.isDigit() || it == '.' || it == ':' }) return site
+        return site.substringBefore('.')
+    }
+
+    /**
+     * Letter for a favicon placeholder: the first letter of a display [label] (e.g. "Hacker News" → H) when
+     * one is given, otherwise of the site name, so "en.wikipedia.org" is W and "m.youtube.com" is Y.
+     */
+    fun monogram(host: String?, label: String? = null): String {
+        label?.trim()?.firstOrNull { it.isLetterOrDigit() }?.let { return it.uppercaseChar().toString() }
+        val name = host?.takeIf { it.isNotBlank() }?.let(::siteName) ?: return "•"
+        return name.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "•"
+    }
+
     /** Registrable-ish domain used to decide whether a request is third-party for the content blocker. */
     fun siteOf(host: String): String {
         val parts = host.split('.')

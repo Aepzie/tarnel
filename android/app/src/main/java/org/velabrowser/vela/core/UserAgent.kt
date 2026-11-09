@@ -10,4 +10,10 @@ object UserAgent {
         val mobile = if (raw.contains("Mobile")) " Mobile" else ""
         return "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$major.0.0.0$mobile Safari/537.36"
     }
+
+    /** The desktop Chrome UA for "Desktop site" (same Chrome version, Linux desktop platform, no "Mobile"). */
+    fun desktop(mobile: String): String {
+        val major = Regex("Chrome/(\\d+)").find(mobile)?.groupValues?.get(1) ?: "133"
+        return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$major.0.0.0 Safari/537.36"
+    }
 }

@@ -74,4 +74,25 @@ class UrlInputTest {
             UserAgent.clean(raw),
         )
     }
+
+    @Test
+    fun monogramUsesTheSiteNameNotSubdomains() {
+        assertEquals("W", UrlInput.monogram("en.wikipedia.org"))
+        assertEquals("W", UrlInput.monogram("en.m.wikipedia.org"))
+        assertEquals("Y", UrlInput.monogram("m.youtube.com"))
+        assertEquals("G", UrlInput.monogram("www.github.com"))
+        assertEquals("B", UrlInput.monogram("news.bbc.co.uk"))
+        assertEquals("H", UrlInput.monogram("news.ycombinator.com", "Hacker News"))
+        assertEquals("•", UrlInput.monogram(null))
+        assertEquals("wikipedia", UrlInput.siteName("en.wikipedia.org"))
+    }
+
+    @Test
+    fun desktopUserAgentDropsMobileMarkers() {
+        val mobile = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36"
+        assertEquals(
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            UserAgent.desktop(mobile),
+        )
+    }
 }

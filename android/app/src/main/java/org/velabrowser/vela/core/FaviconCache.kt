@@ -10,7 +10,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
-/** Favicons by host: memory LRU + small PNGs on disk. Burner tabs only populate the memory cache. */
+/**
+ * Favicons by host: memory LRU + small PNGs on disk. Burner tabs only populate the memory cache.
+ * Each icon is also filed under its site ("en.wikipedia.org" → "wikipedia.org"), so a top site or a sibling
+ * subdomain finds it too.
+ */
 class FaviconCache(context: Context, private val scope: CoroutineScope) {
     private val dir = File(context.filesDir, "favicons").apply { mkdirs() }
     private val memory = LruCache<String, Bitmap>(96)
@@ -21,6 +25,10 @@ class FaviconCache(context: Context, private val scope: CoroutineScope) {
 
     fun get(host: String): Bitmap? {
         revision.intValue
+        return lookup(host) ?: UrlInput.siteOf(host).takeIf { it != host }?.let(::lookup)
+    }
+
+    private fun lookup(host: String): Bitmap? {
         memory.get(host)?.let { return it }
         if (host in missing) return null
         val file = File(dir, "$host.png")
@@ -32,14 +40,17 @@ class FaviconCache(context: Context, private val scope: CoroutineScope) {
     }
 
     fun put(host: String, icon: Bitmap, persist: Boolean) {
-        memory.put(host, icon)
-        missing -= host
+        val keys = listOf(host, UrlInput.siteOf(host)).distinct()
+        keys.forEach {
+            memory.put(it, icon)
+            missing -= it
+        }
         revision.intValue++
         if (!persist) return
         scope.launch(Dispatchers.IO) {
             runCatching {
                 val scaled = if (icon.width > 64) Bitmap.createScaledBitmap(icon, 64, 64 * icon.height / icon.width, true) else icon
-                File(dir, "$host.png").outputStream().use { scaled.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                keys.forEach { key -> File(dir, "$key.png").outputStream().use { scaled.compress(Bitmap.CompressFormat.PNG, 100, it) } }
             }
         }
     }
