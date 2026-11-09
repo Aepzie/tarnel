@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Tab groups: named, colored, collapsible groups per Space. Create them from the tab context menu or the command palette, drag tabs in and out, drag groups to reorder; rename, recolor, ungroup or close a group from its menu. Groups are restored with the session.
+- Vertical tab layout (Settings → Appearance, `Ctrl+Shift+,`): a floating tab island on the left with pinned tabs as an icon grid and groups as collapsible sections. Resize it by dragging its edge, fold it to an icon rail (hover to peek).
+- Command palette: "New tab group", "Tab layout", "Collapse / Expand all groups".
+
 ## [0.1.1] - 2026-11-09
 
 ### Added
