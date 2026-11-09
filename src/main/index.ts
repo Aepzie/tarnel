@@ -3,6 +3,7 @@ import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
 import { initFingerprint } from './fingerprint';
+import { initIdentity } from './identity';
 import { initAudioDevices } from './audio-devices';
 import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
@@ -110,6 +111,7 @@ if (!app.requestSingleInstanceLock()) {
     setPermissionPrompter(chromePermissionPrompter);
     electronSession.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     initSpaces();
+    initIdentity();
     initFingerprint();
     initAudioDevices();
 
