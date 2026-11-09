@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Extensions: `chrome.declarativeNetRequest`. Static rulesets (enable / disable, individual static rules), dynamic
+  rules (kept across restarts, per Space) and session rules; block, allow, allowAllRequests, upgradeScheme,
+  redirect (URL, extension resource, URL transform, regex substitution) and modifyHeaders with Chrome's priority
+  and precedence rules; rule-count badges, `getMatchedRules`, `isRegexSupported` and `testMatchOutcome`.
+  uBlock Origin Lite now blocks ads and trackers, including its filtering modes and per-site exceptions. Rules
+  are indexed per extension (uBO Lite's ~20k default rules compile in about 0.2–0.4 s at startup; matching
+  costs a few microseconds per request).
 - Settings → Performance → **Frame rate** (Windows): *Match display* (default), *Highest* or *Primary display*, with
   the detected displays and their refresh rates, the frame rate the page actually gets, and "Restart to apply".
   Frame caps and an "unlimited" mode are not offered: Chromium has no clean on-screen cap, and uncapping measured
@@ -29,7 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rewriting their scripts, so module imports, `importScripts`, relative URLs and CSP behave as before. Starting a
   worker takes about 2–3 ms longer in protected Spaces; Spaces with protection off are untouched.
 
+### Changed
+- All `webRequest` hooks of a Space (built-in blocker, privacy headers, extension rules) now run through one
+  ordered pipeline per session, since Electron allows a single listener per event. Behavior is unchanged.
+
 ### Fixed
+- Extensions that use the `browser` namespace (e.g. uBlock Origin Lite) crashed at startup because
+  `browser.commands` and other APIs were missing; `browser` now refers to the complete `chrome` object.
 - Vela no longer runs at the primary monitor's refresh rate on a faster second display (Windows): with a 144 Hz
   laptop panel next to a 75 Hz primary monitor it drew at 75 fps, now at 144 fps.
 - Android: smoother tab switcher, settings and history: the page underneath stops drawing once the panel covers it,

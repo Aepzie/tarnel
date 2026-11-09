@@ -2,6 +2,7 @@ import { app, ipcMain, net } from 'electron';
 import { readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ElectronBlocker, type Request } from '@ghostery/adblocker-electron';
+import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
 import { onSessionRemoved } from '../spaces';
 import { createStore, type JsonStore } from '../store';
@@ -96,11 +97,63 @@ function attachEvents(engine: ElectronBlocker): void {
   engine.on('request-redirected', recordBlocked);
 }
 
+type BeforeRequestListener = (details: Electron.OnBeforeRequestListenerDetails, callback: (response: Electron.CallbackResponse) => void) => void;
+type HeadersReceivedListener = (details: Electron.OnHeadersReceivedListenerDetails, callback: (response: Electron.HeadersReceivedResponse) => void) => void;
+
+/**
+ * What the library's BlockingContext touches on a session, routed through the shared webRequest
+ * dispatcher (net/dispatcher.ts): Electron allows one listener per webRequest event, and the
+ * dispatcher also runs extension declarativeNetRequest and the privacy header stage. The library
+ * keeps doing everything else exactly as before (preload, IPC, CSP injection, redirects).
+ */
+interface BlockerSession {
+  registerPreloadScript: Electron.Session['registerPreloadScript'];
+  unregisterPreloadScript: Electron.Session['unregisterPreloadScript'];
+  webRequest: {
+    onBeforeRequest(filter: Electron.WebRequestFilter | null, listener?: BeforeRequestListener | null): void;
+    onHeadersReceived(filter: Electron.WebRequestFilter | null, listener?: HeadersReceivedListener | null): void;
+  };
+}
+
+const facades = new WeakMap<Electron.Session, BlockerSession>();
+
+/** The library's listeners answer synchronously; turn the callback into a return value. */
+function callSync<D, R>(listener: (details: D, callback: (response: R) => void) => void, details: D): R | undefined {
+  let response: R | undefined;
+  listener(details, (value) => {
+    response = value;
+  });
+  return response;
+}
+
+function facadeOf(session: Electron.Session): Electron.Session {
+  let facade = facades.get(session);
+  if (!facade) {
+    facade = {
+      registerPreloadScript: (script) => session.registerPreloadScript(script),
+      unregisterPreloadScript: (id) => session.unregisterPreloadScript(id),
+      webRequest: {
+        onBeforeRequest(_filter, listener) {
+          if (!listener) return removeWebRequestStage(session, 'beforeRequest', 'adblock');
+          addWebRequestStage(session, 'beforeRequest', 'adblock', STAGE_ORDER.adblock, (details) => callSync(listener, details));
+        },
+        onHeadersReceived(_filter, listener) {
+          if (!listener) return removeWebRequestStage(session, 'headersReceived', 'adblock');
+          addWebRequestStage(session, 'headersReceived', 'adblock', STAGE_ORDER.adblock, (details) => callSync(listener, details));
+        },
+      },
+    };
+    facades.set(session, facade);
+  }
+  return facade as unknown as Electron.Session;
+}
+
 function enableIn(engine: ElectronBlocker, session: Electron.Session): void {
   try {
-    if (engine.isBlockingEnabled(session)) return;
+    const facade = facadeOf(session);
+    if (engine.isBlockingEnabled(facade)) return;
     for (const channel of IPC_CHANNELS) ipcMain.removeHandler(channel);
-    engine.enableBlockingInSession(session);
+    engine.enableBlockingInSession(facade);
   } catch (err) {
     console.error('[adblock] enable failed', err);
   }
@@ -108,7 +161,8 @@ function enableIn(engine: ElectronBlocker, session: Electron.Session): void {
 
 function disableIn(engine: ElectronBlocker, session: Electron.Session): void {
   try {
-    if (engine.isBlockingEnabled(session)) engine.disableBlockingInSession(session);
+    const facade = facadeOf(session);
+    if (engine.isBlockingEnabled(facade)) engine.disableBlockingInSession(facade);
   } catch (err) {
     console.error('[adblock] disable failed', err);
   }

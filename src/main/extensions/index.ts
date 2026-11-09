@@ -6,6 +6,7 @@ import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState, S
 import { gateSessionReady, getActiveSpaceId, getSpaceSession, listSpaces, onSessionCreated, onSessionRemoved, onSpacesChanged } from '../spaces';
 import { closeTab, getBrowserState, getTabSpaceId, onStateChanged, onTabWebContents, tabIdForWebContents } from '../tabs';
 import { getMainWindow, sendToChrome } from '../window';
+import { deleteDnrState } from './dnr';
 import { forgetManifest, readManifest, readMeta, staticInfo } from './manifest';
 import {
   cleanSpaces,
@@ -194,6 +195,7 @@ export async function removeExtension(id: string): Promise<void> {
   for (const tab of getBrowserState().tabs) if (tab.url.startsWith(`chrome-extension://${id}/`)) closeTab(tab.id);
   clearError(id);
   forgetManifest(entry.path);
+  await deleteDnrState(id, listSpaces().map((space) => space.id));
   if (entry.source === 'store') await removeStoreFiles(resolve(entry.path, '..'));
 }
 

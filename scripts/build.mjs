@@ -47,7 +47,7 @@ const nodeConfigs = [
   },
   {
     ...shared,
-    entryPoints: [join(src, 'preload', 'chrome.ts'), join(src, 'preload', 'pages.ts'), join(src, 'preload', 'fingerprint.ts'), join(src, 'preload', 'fingerprint-worker.ts'), join(src, 'preload', 'audio-devices.ts'), join(src, 'preload', 'audio-mixer.ts'), join(src, 'preload', 'identity.ts')],
+    entryPoints: [join(src, 'preload', 'chrome.ts'), join(src, 'preload', 'pages.ts'), join(src, 'preload', 'fingerprint.ts'), join(src, 'preload', 'fingerprint-worker.ts'), join(src, 'preload', 'audio-devices.ts'), join(src, 'preload', 'audio-mixer.ts'), join(src, 'preload', 'identity.ts'), join(src, 'preload', 'extension-api.ts')],
     outdir: join(out, 'preload'),
     platform: 'node',
     format: 'cjs',
@@ -72,7 +72,7 @@ if (watch) {
   const contexts = await Promise.all(nodeConfigs.map((config) => context(config)));
   await Promise.all(contexts.map((ctx) => ctx.watch()));
   await buildRenderer();
-  console.log('[vela] watching…');
+  console.log('[vela] watchingâ€¦');
 } else {
   await Promise.all([...nodeConfigs.map((config) => esbuild(config)), buildRenderer()]);
   console.log('[vela] build complete');
