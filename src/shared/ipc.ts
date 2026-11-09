@@ -13,6 +13,7 @@ import type {
   Suggestion,
   TopSite,
   UICommand,
+  UpdateStatus,
 } from './types';
 
 /**
@@ -57,6 +58,10 @@ export const IPC = {
     downloadOpen: 'chrome:download-open',
     downloadShow: 'chrome:download-show',
     permissionRespond: 'chrome:permission-respond',
+    updateGet: 'chrome:update-get',
+    updateDownload: 'chrome:update-download',
+    updateInstall: 'chrome:update-install',
+    updateOpenRelease: 'chrome:update-open-release',
   },
   chromeEvents: {
     state: 'chrome-event:state',
@@ -67,6 +72,7 @@ export const IPC = {
     download: 'chrome-event:download',
     permission: 'chrome-event:permission',
     permissionCancel: 'chrome-event:permission-cancel',
+    update: 'chrome-event:update',
   },
   pages: {
     getSettings: 'pages:get-settings',
@@ -84,10 +90,31 @@ export const IPC = {
     currentSpace: 'pages:current-space',
     history: 'pages:history',
     historyDelete: 'pages:history-delete',
+    updateGet: 'pages:update-get',
+    updateWatch: 'pages:update-watch',
+    updateCheck: 'pages:update-check',
+    updateDownload: 'pages:update-download',
+    updateInstall: 'pages:update-install',
+    updateOpenRelease: 'pages:update-open-release',
+  },
+  pagesEvents: {
+    update: 'pages-event:update',
   },
 } as const;
 
 export type Unsubscribe = () => void;
+
+/** Auto-update controls shared by the chrome (`vela.updates`) and settings (`velaPages.updates`). */
+export interface VelaUpdatesAPI {
+  get(): Promise<UpdateStatus>;
+  onStatus(cb: (status: UpdateStatus) => void): Unsubscribe;
+  /** Start downloading an available update (install mode only). */
+  download(): Promise<void>;
+  /** Save the session, quit and run the downloaded installer. */
+  install(): Promise<void>;
+  /** Open the release page of the available version in a new tab. */
+  openRelease(): Promise<void>;
+}
 
 export interface CreateTabOptions {
   url?: string;
@@ -174,6 +201,8 @@ export interface VelaChromeAPI {
     setOverlay(open: boolean): Promise<void>;
   };
 
+  updates: VelaUpdatesAPI;
+
   platform: NodeJS.Platform;
 }
 
@@ -198,6 +227,10 @@ export interface VelaPagesAPI {
   history(query: string, limit: number, before?: number): Promise<HistoryEntry[]>;
   /** Remove one URL from history. */
   deleteHistory(url: string): Promise<void>;
+  updates: VelaUpdatesAPI & {
+    /** Check now; resolves when the check finished (status carries the result). */
+    check(): Promise<void>;
+  };
 }
 
 declare global {

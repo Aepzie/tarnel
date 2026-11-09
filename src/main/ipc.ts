@@ -9,6 +9,7 @@ import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSessio
 import * as tabs from './tabs';
 import { getCompletedDownloadPath, getDownloadPath } from './downloads';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
+import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openReleasePage, watchUpdates } from './updater';
 import { resolveInput, resolveInputDetailed } from './url';
 import { getChromeView, getMainWindow } from './window';
 
@@ -265,6 +266,10 @@ export function registerIpc(): void {
     if (typeof allow !== 'boolean' || typeof remember !== 'boolean') throw new TypeError('Invalid permission response');
     handlePermissionResponse(str(id, MAX_ID, 'permission id'), allow, remember);
   });
+  handleChrome(c.updateGet, getUpdateStatus);
+  handleChrome(c.updateDownload, () => downloadUpdate());
+  handleChrome(c.updateInstall, installUpdate);
+  handleChrome(c.updateOpenRelease, openReleasePage);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
@@ -299,6 +304,12 @@ export function registerIpc(): void {
     const id = tabId === null ? null : tabs.getTabSpaceId(tabId);
     return id ? (getSpace(id) ?? null) : null;
   });
+  handlePages(p.updateGet, getUpdateStatus);
+  handlePages(p.updateWatch, (event) => watchUpdates(event.sender));
+  handlePages(p.updateCheck, () => checkForUpdates());
+  handlePages(p.updateDownload, () => downloadUpdate());
+  handlePages(p.updateInstall, installUpdate);
+  handlePages(p.updateOpenRelease, openReleasePage);
   handlePages(p.version, () => ({
     app: app.getVersion(),
     electron: process.versions.electron ?? '',
