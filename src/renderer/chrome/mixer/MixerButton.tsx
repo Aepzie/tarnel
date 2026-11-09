@@ -19,7 +19,7 @@ function Activity({ reduce }: { reduce: boolean }) {
   return (
     <motion.span
       aria-hidden
-      className="absolute top-[3px] right-[2px] flex h-[8px] items-end gap-[1.5px] rounded-[3px] bg-[var(--island)] px-[2px] py-px"
+      className="absolute -top-px -right-px flex h-[11px] items-end gap-[1.5px] rounded-full bg-[var(--island)] px-[3px] py-[2px]"
       initial={{ opacity: 0, scale: 0.4 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.4 }}
@@ -28,7 +28,7 @@ function Activity({ reduce }: { reduce: boolean }) {
       {BAR_HEIGHTS.map((heights, index) => (
         <motion.span
           key={index}
-          className="h-full w-[1.5px] origin-bottom rounded-full bg-space"
+          className="h-full w-[2px] origin-bottom rounded-full bg-space"
           initial={{ scaleY: heights[0] }}
           animate={reduce ? { scaleY: 0.7 } : { scaleY: heights }}
           transition={reduce ? { duration: 0 } : { duration: 0.9 + index * 0.17, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }}
