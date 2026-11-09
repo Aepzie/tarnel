@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.PanTool
 import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -51,8 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.webkit.WebViewCompat
 import org.velabrowser.vela.BuildConfig
 import org.velabrowser.vela.browser.Browser
+import org.velabrowser.vela.browser.LocalRefreshRate
 import org.velabrowser.vela.browser.Panel
 import org.velabrowser.vela.core.NewtabHero
+import org.velabrowser.vela.core.RefreshRateMode
 import org.velabrowser.vela.core.SearchEngine
 import org.velabrowser.vela.core.Settings
 import org.velabrowser.vela.core.ThemeMode
@@ -123,6 +126,9 @@ fun SettingsScreen(browser: Browser) {
                 }
             }
 
+            SectionLabel("Display")
+            Group { RefreshRateRow(s.refreshRate) { mode -> update { it.copy(refreshRate = mode) } } }
+
             SectionLabel("Privacy & security")
             Group {
                 Toggle("Block ads and trackers", "Blocked before they load. Fewer bytes, faster pages.", Icons.Rounded.Shield, s.adblock) { v -> update { it.copy(adblock = v) } }
@@ -183,6 +189,35 @@ private fun Group(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun Toggle(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, checked: Boolean, onChange: (Boolean) -> Unit) {
     ListRow(title, icon = icon, subtitle = subtitle, onClick = { onChange(!checked) }, trailing = { VelaSwitch(checked, onChange) })
+}
+
+/** Refresh rate: Auto / High / Standard plus what this screen offers and runs at right now. */
+@Composable
+private fun RefreshRateRow(selected: RefreshRateMode, onSelect: (RefreshRateMode) -> Unit) {
+    val c = LocalVela.current
+    val display = LocalRefreshRate.current
+    val rates = display?.supportedRates.orEmpty()
+    val current = display?.currentRate ?: 0
+    ListRow(
+        "Refresh rate",
+        icon = Icons.Rounded.Speed,
+        subtitle = when {
+            rates.isEmpty() -> selected.summary
+            rates.size == 1 -> "This screen runs at ${rates.single()} Hz only."
+            else -> "This screen: ${rates.joinToString(" · ")} Hz" + if (current > 0) " · now $current Hz" else ""
+        },
+    )
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        RefreshRateMode.entries.forEach { mode ->
+            Pill(mode.label, Modifier.weight(1f), selected = selected == mode) { onSelect(mode) }
+        }
+    }
+    Text(
+        if (rates.size > 1 || rates.isEmpty()) selected.summary else "${selected.summary} Nothing to switch on this screen.",
+        style = VelaType.label,
+        color = c.textFaint,
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
+    )
 }
 
 @Composable

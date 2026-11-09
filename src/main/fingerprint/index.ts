@@ -7,17 +7,25 @@ import { registrableDomain } from '../privacy';
 import { getSpace, listSpaces, onSessionCreated, onSessionRemoved, onSpacesChanged } from '../spaces';
 import { setHeaderProfile } from './headers';
 import { deriveWords, pruneSeeds, regenerateSeed, seedFor } from './seeds';
+import { answerServiceWorkers, protectWorkersOf } from './workers';
 
 const PRELOAD = join(__dirname, '..', 'preload', 'fingerprint.js');
+const WORKER_PRELOAD = join(__dirname, '..', 'preload', 'fingerprint-worker.js');
 const PRELOAD_ID = 'vela-fingerprint';
 
 interface SessionEntry {
   spaceId: SpaceId;
-  /** Registered preload id, or null while the space is 'off' (nothing is injected at all). */
+  /** Registered frame preload id, or null while the space is 'off' (nothing is injected at all). */
   preload: string | null;
+  /** Registered service-worker preload id, same lifetime. */
+  workerPreload: string | null;
 }
 
 const entries = new Map<Session, SessionEntry>();
+/** Tabs and popups whose dedicated/shared workers are being patched → stop function. */
+const workerGuards = new Map<WebContents, () => void>();
+/** WebContents types that host web pages of a Space (not DevTools, extension pages, offscreen). */
+const PAGE_TYPES = new Set(['window', 'browserView', 'webview']);
 
 /** Picks one of the `count` highest candidates not above the real value. */
 function bucket(real: number, candidates: readonly number[], count: number, word: number): number {
@@ -51,8 +59,22 @@ function isProtected(space: Space | undefined): space is Space {
   return !!space && space.fingerprint !== 'off';
 }
 
-/** Site used for the noise key: the top-level page's eTLD+1, so third-party frames differ per site. */
-function topSite(event: IpcMainEvent, href: unknown): string | null {
+/** Site used for the noise key: eTLD+1 of http(s) URLs; null for internal pages (never patched). */
+function siteOf(href: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return 'opaque';
+  }
+  if (url.protocol === 'blob:') return siteOf(url.pathname);
+  if (url.protocol === 'vela:' || url.protocol === 'devtools:' || url.protocol === 'chrome:') return null;
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return url.protocol;
+  return registrableDomain(url.hostname);
+}
+
+/** The frame's top-level page URL, so third-party frames differ per site. */
+function topUrlOf(event: IpcMainEvent, href: unknown): string {
   const frame = event.senderFrame;
   let topUrl = typeof href === 'string' ? href : '';
   try {
@@ -60,22 +82,18 @@ function topSite(event: IpcMainEvent, href: unknown): string | null {
   } catch {
     /* frame gone */
   }
-  let url: URL;
-  try {
-    url = new URL(topUrl);
-  } catch {
-    return 'opaque';
-  }
-  if (url.protocol === 'vela:' || url.protocol === 'devtools:' || url.protocol === 'chrome:') return null;
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return url.protocol;
-  return registrableDomain(url.hostname);
+  return topUrl;
 }
 
-function configFor(event: IpcMainEvent, href: unknown): FingerprintConfig | null {
-  const entry = entries.get(event.sender.session);
+/**
+ * Patch config for a realm of `session` whose key site is `url`: the top-level page for frames and
+ * dedicated workers, the worker's own URL / scope for shared and service workers.
+ */
+function configForUrl(session: Session, url: string): FingerprintConfig | null {
+  const entry = entries.get(session);
   const space = entry ? getSpace(entry.spaceId) : undefined;
   if (!isProtected(space)) return null;
-  const site = topSite(event, href);
+  const site = siteOf(url);
   if (site === null) return null;
   const seed = seedFor(space);
   return { strict: space.fingerprint === 'strict', key: deriveWords(seed, `site:${site}`), ...hardwareFor(seed) };
@@ -103,46 +121,86 @@ function applyWebRtc(wc: WebContents): void {
   }
 }
 
+/** Starts or stops patching the workers of a page WebContents to match its Space's protection. */
+function syncWorkerGuard(wc: WebContents): void {
+  if (wc.isDestroyed()) return;
+  const entry = entries.get(wc.session);
+  const wanted = !!entry && isProtected(getSpace(entry.spaceId)) && PAGE_TYPES.has(wc.getType());
+  const stop = workerGuards.get(wc);
+  if (wanted === !!stop) return;
+  if (stop) {
+    workerGuards.delete(wc);
+    stop();
+    return;
+  }
+  const guard = protectWorkersOf(wc, configForUrl);
+  if (!guard) return;
+  workerGuards.set(wc, guard);
+  wc.once('destroyed', () => {
+    if (workerGuards.get(wc) !== guard) return;
+    workerGuards.delete(wc);
+    guard();
+  });
+}
+
+function unregister(session: Session, entry: SessionEntry): void {
+  if (entry.preload) session.unregisterPreloadScript(entry.preload);
+  if (entry.workerPreload) session.unregisterPreloadScript(entry.workerPreload);
+  entry.preload = null;
+  entry.workerPreload = null;
+}
+
 function sync(session: Session, entry: SessionEntry): void {
   const space = getSpace(entry.spaceId);
   if (isProtected(space)) {
     entry.preload ??= session.registerPreloadScript({ id: `${PRELOAD_ID}-${entry.spaceId}`, type: 'frame', filePath: PRELOAD });
+    entry.workerPreload ??= session.registerPreloadScript({
+      id: `${PRELOAD_ID}-worker-${entry.spaceId}`,
+      type: 'service-worker',
+      filePath: WORKER_PRELOAD,
+    });
     setHeaderProfile(session, { strict: space.fingerprint === 'strict', memory: hardwareFor(seedFor(space)).memory });
   } else {
-    if (entry.preload) session.unregisterPreloadScript(entry.preload);
-    entry.preload = null;
+    unregister(session, entry);
     setHeaderProfile(session, null);
   }
 }
 
 function syncAll(): void {
   for (const [session, entry] of entries) sync(session, entry);
-  for (const wc of allWebContents.getAllWebContents()) applyWebRtc(wc);
+  for (const wc of allWebContents.getAllWebContents()) {
+    applyWebRtc(wc);
+    syncWorkerGuard(wc);
+  }
   pruneSeeds(new Set(listSpaces().map((space) => space.id)));
 }
 
 export function initFingerprint(): void {
   ipcMain.on(FINGERPRINT_CONFIG_CHANNEL, (event, href: unknown) => {
     try {
-      event.returnValue = configFor(event, href);
+      event.returnValue = configForUrl(event.sender.session, topUrlOf(event, href));
     } catch {
       event.returnValue = null;
     }
   });
   onSessionCreated((session, space) => {
     if (entries.has(session)) return;
-    const entry: SessionEntry = { spaceId: space.id, preload: null };
+    const entry: SessionEntry = { spaceId: space.id, preload: null, workerPreload: null };
     entries.set(session, entry);
+    answerServiceWorkers(session, configForUrl);
     sync(session, entry);
   });
   onSessionRemoved((session) => {
     const entry = entries.get(session);
-    if (entry?.preload) session.unregisterPreloadScript(entry.preload);
+    if (entry) unregister(session, entry);
     entries.delete(session);
     setHeaderProfile(session, null);
   });
   onSpacesChanged(syncAll);
-  app.on('web-contents-created', (_event, wc) => applyWebRtc(wc));
+  app.on('web-contents-created', (_event, wc) => {
+    applyWebRtc(wc);
+    syncWorkerGuard(wc);
+  });
 }
 
 /** New random seed: every site sees a new fingerprint after its next load. */

@@ -15,6 +15,8 @@ import * as windowLayer from './window';
 import { bindSplitModel, clusterSplits, detachFromSplit, isOnScreen, restoreSplits, savedSplit, splitIdOf, splitOf, splitsInOrder, unitOf, type SavedSplit } from './split';
 import { onPaneFocus, trackPanes, type Pane } from './split-panes';
 import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTabMediaDevices, tabMediaDevices } from './audio-devices/state';
+import { forgetTabAudio, onTabAudioChanged, restoreTabAudio, tabAudioSettings } from './audio-mixer/state';
+import type { TabAudioSettings } from '../shared/audio-mixer';
 
 export interface SavedTab {
   url: string;
@@ -26,6 +28,7 @@ export interface SavedTab {
   group?: SavedGroup;
   split?: SavedSplit;
   devices?: TabMediaDevices;
+  audio?: TabAudioSettings;
 }
 
 export interface CreateTabOpts {
@@ -511,6 +514,7 @@ function closeTabInternal(id: number, replace: boolean): void {
   if (activeBySpace.get(tab.spaceId) === id) activeBySpace.delete(tab.spaceId);
   destroyView(tab, false);
   forgetTabMedia(id);
+  forgetTabAudio(id);
 
   if (activeTabId !== id && wasOnScreen) showActive();
   if (activeTabId === id) {
@@ -860,6 +864,11 @@ export function listSleepCandidates(): SleepCandidate[] {
   });
 }
 
+/** Every tab in display order with its audible flag (audio mixer). */
+export function listTabAudibility(): { id: number; audible: boolean }[] {
+  return order.map((id) => ({ id, audible: tabs.get(id)!.audible }));
+}
+
 export function countTabs(): { awake: number; asleep: number; freedKB: number[] } {
   let awake = 0;
   const freedKB: number[] = [];
@@ -897,6 +906,7 @@ export function serializeSession(): SavedTab[] {
       ...(tab.groupId ? { group: savedGroup(tab.groupId) } : {}),
       ...(splitIdOf(tab.id) ? { split: savedSplit(tab.id) } : {}),
       ...(tabMediaDevices(tab.id) ? { devices: tabMediaDevices(tab.id)! } : {}),
+      ...(tabAudioSettings(tab.id) ? { audio: tabAudioSettings(tab.id)! } : {}),
     }));
 }
 
@@ -935,6 +945,7 @@ export function restoreSession(saved: unknown): number {
     }
     if (entry.split) splitEntries.push({ tabId: id, saved: entry.split });
     restoreTabMediaDevices(id, entry.devices);
+    restoreTabAudio(id, entry.audio);
     restored++;
   });
   restoreSplits(splitEntries);
@@ -993,6 +1004,15 @@ bindSplitModel({
 });
 
 onTabMediaChanged(scheduleEmit);
+
+// Mixer sliders change settings many times a second: persist (via the state emit) at most twice a second.
+let audioSaveTimer: NodeJS.Timeout | null = null;
+onTabAudioChanged(() => {
+  audioSaveTimer ??= setTimeout(() => {
+    audioSaveTimer = null;
+    scheduleEmit();
+  }, 500);
+});
 
 onPaneFocus((id) => {
   if (id !== activeTabId && isOnScreen(id)) activateTab(id);

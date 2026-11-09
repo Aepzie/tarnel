@@ -75,6 +75,8 @@ them (useful for bisecting a site bug).
 | `disable-domain-reliability` | No network-error beacons to Google. |
 | `disable-component-update` | No Chrome component downloads we don't consume. |
 
+| `enable-features=UseCompositorClockVSyncInterval` (Windows, conditional) | Frame pacing on mixed-refresh setups, see [Frame rate](#8-frame-rate-windows). |
+
 `enable-features` / `disable-features` are *merged* with any existing value, because Chromium only
 honours the last occurrence of each.
 
@@ -90,6 +92,38 @@ honours the last occurrence of each.
 | `disable-features=MediaDevicesSystemMonitorCaching` | Tried to let the video-capture service exit after YouTube's device enumeration. Measured: the process stays anyway. |
 | `force-gpu-mem-discardable-limit-mb` | Tried to shrink GPU memory kept after tabs sleep. Measured: no meaningful change. |
 | `js-flags` (V8 tuning) | V8 defaults are tuned on far more workloads than we can test. No clear win. |
+| `disable-frame-rate-limit`, `disable-gpu-vsync` ("unlimited fps") | Measured: rAF *dropped* from 144/75 to ~59 fps on Windows 11 (DirectComposition throttles the uncapped frames). Not offered. |
+| `limit-fps=N`, `max-gum-fps` (frame caps) | Chromium has no switch that caps on-screen frame production: `limit-fps` is ignored, `max-gum-fps` only limits getUserMedia capture. No 60/120/144 Hz caps are offered for that reason. |
+| `force_high_performance_gpu` / `force_low_power_gpu` | No effect on the frame rate (measured, hybrid Intel + NVIDIA laptop); left to Windows' per-app GPU setting. |
+
+### 8. Frame rate (Windows)
+Stock Chromium on Windows paces every window to the **primary** display's vblank. On a laptop with a
+144 Hz panel next to a 75 Hz primary monitor, Vela therefore drew at 75 fps on the 144 Hz panel — that is
+the "doesn't feel smooth" report. `UseCompositorClockVSyncInterval` paces to the DWM compositor clock
+instead, which ticks at the *fastest* connected display's rate: right for a window on that display, wasted
+(and unevenly paced) frames on a slower one. `src/main/perf/frame-rate.ts` therefore decides at launch:
+
+| Settings → Performance → Frame rate | Switch set when |
+|---|---|
+| **Match display** (default) | the window opens on a display faster than the primary one |
+| **Highest** | any connected display is faster than the primary one |
+| **Primary display** | never (stock Chromium; saves GPU work on a fast laptop panel) |
+
+Feature switches are fixed for the process lifetime and `screen` is unavailable before `ready`, so the
+decision uses the display layout saved during the previous run (`userData/displays.json`) and the saved
+window bounds. When the setting, the layout or the window's display no longer match the running process,
+Settings shows "Restart to apply" with a Restart button (`app.relaunch()`). Single-refresh-rate setups and
+macOS/Linux are unaffected: Chromium already follows the display there. Settings also lists the detected
+displays (`displayFrequency`) and the fps the settings page itself measures with `requestAnimationFrame`.
+
+Measured (rAF over 4 s in the new-tab page and the chrome UI, isolated profile, Windows 11, Electron 45;
+built-in 144 Hz panel on the Intel iGPU + 75 Hz primary monitor on the NVIDIA dGPU):
+
+| Window on | Before (stock / `VELA_NO_FLAGS=1`) | After, Match display |
+|---|---|---|
+| 144 Hz panel | 75 fps (13.3 ms) | **144 fps (6.9 ms)**, 0 frames > 1.5× median |
+| 75 Hz primary | 75 fps | 75 fps (switch not set) |
+| 75 Hz primary, *Highest* | — | 144 fps (oversampling, as documented) |
 
 ## Measuring it in-app
 

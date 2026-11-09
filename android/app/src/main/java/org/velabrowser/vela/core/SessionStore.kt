@@ -71,7 +71,10 @@ class SessionStore(context: Context) {
         runCatching { File(thumbs, "$tabId.jpg").outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 78, it) } }
     }
 
-    fun loadThumbnail(tabId: String): Bitmap? = File(thumbs, "$tabId.jpg").takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path) }
+    /** Decoded straight into GPU memory, so the tab switcher never uploads thumbnails on its first frames. */
+    fun loadThumbnail(tabId: String): Bitmap? = File(thumbs, "$tabId.jpg").takeIf { it.exists() }?.let {
+        BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.HARDWARE })
+    }
 
     fun deleteThumbnail(tabId: String) {
         File(thumbs, "$tabId.jpg").delete()

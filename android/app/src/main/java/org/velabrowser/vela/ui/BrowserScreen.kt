@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -31,6 +32,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,6 +69,14 @@ fun BrowserScreen(browser: Browser, fullscreenView: View?, onExitFullscreen: () 
 
     BackHandler(enabled = panel == Panel.NONE && !browser.editing && (tab?.canGoBack == true)) { browser.goBack() }
 
+    val tabsShown = remember { MutableTransitionState(false) }.apply { targetState = panel == Panel.TABS }
+    val historyShown = remember { MutableTransitionState(false) }.apply { targetState = panel == Panel.HISTORY }
+    val settingsShown = remember { MutableTransitionState(false) }.apply { targetState = panel == Panel.SETTINGS }
+    var switcherPeek by remember { mutableStateOf(false) }
+    // A full-screen opaque panel that finished animating in hides the page: the WebView would otherwise keep
+    // drawing (and the page keep animating) underneath on every frame of the panel's own scrolling.
+    val pageCovered = !switcherPeek && listOf(tabsShown, historyShown, settingsShown).any { it.isIdle && it.currentState }
+
     Box(Modifier.fillMaxSize().background(c.background)) {
         when {
             tab == null -> Unit
@@ -75,7 +88,7 @@ fun BrowserScreen(browser: Browser, fullscreenView: View?, onExitFullscreen: () 
                     .imePadding()
                     .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
             ) {
-                WebHost(tab)
+                WebHost(tab, visible = !pageCovered)
                 tab.error?.let { error -> PageErrorView(browser, tab, error) }
             }
         }
@@ -97,19 +110,19 @@ fun BrowserScreen(browser: Browser, fullscreenView: View?, onExitFullscreen: () 
         if (browser.editing) OmniboxOverlay(browser)
 
         AnimatedVisibility(
-            visible = panel == Panel.TABS,
+            visibleState = tabsShown,
             enter = fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.86f, stiffness = 520f), initialScale = 1.06f),
             exit = fadeOut(tween(160)) + scaleOut(tween(200), targetScale = 1.04f),
-        ) { TabSwitcher(browser) }
+        ) { TabSwitcher(browser, onPeek = { switcherPeek = it }) }
 
         AnimatedVisibility(
-            visible = panel == Panel.HISTORY,
+            visibleState = historyShown,
             enter = slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 500f)) { it / 3 } + fadeIn(tween(160)),
             exit = slideOutHorizontally(tween(200)) { it / 4 } + fadeOut(tween(160)),
         ) { HistoryScreen(browser) }
 
         AnimatedVisibility(
-            visible = panel == Panel.SETTINGS,
+            visibleState = settingsShown,
             enter = slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = 500f)) { it / 3 } + fadeIn(tween(160)),
             exit = slideOutHorizontally(tween(200)) { it / 4 } + fadeOut(tween(160)),
         ) { SettingsScreen(browser) }
@@ -139,13 +152,17 @@ fun BrowserScreen(browser: Browser, fullscreenView: View?, onExitFullscreen: () 
     }
 }
 
-/** Hosts the active tab's WebView. Only the active tab is attached; others stay detached (or asleep). */
+/**
+ * Hosts the active tab's WebView. Only the active tab is attached; others stay detached (or asleep).
+ * [visible] = false keeps it attached (no reload, no detach cost) but stops it from drawing.
+ */
 @Composable
-private fun WebHost(tab: Tab) {
+private fun WebHost(tab: Tab, visible: Boolean) {
     val webView = tab.webView
     AndroidView(
         factory = { context -> FrameLayout(context) },
         update = { frame ->
+            frame.visibility = if (visible) View.VISIBLE else View.INVISIBLE
             val current = if (frame.childCount > 0) frame.getChildAt(0) else null
             if (current === webView) return@AndroidView
             frame.removeAllViews()

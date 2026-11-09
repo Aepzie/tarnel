@@ -86,6 +86,9 @@ class Browser(
     var panel by mutableStateOf(Panel.NONE)
     var editing by mutableStateOf(false)
     var islandExpanded by mutableStateOf(true)
+
+    /** Page scroll steps of the active tab (refresh-rate boost while a page flings). */
+    var onScrollActivity: (() -> Unit)? = null
     var contextTarget by mutableStateOf<ContextTarget?>(null)
     var permissionPrompt by mutableStateOf<PermissionPrompt?>(null)
         private set
@@ -451,16 +454,20 @@ class Browser(
         load(tab, url)
     }
 
-    /** Snapshot of the active tab for the switcher; [then] runs once the copy is taken (or failed). */
+    /**
+     * Snapshot of the active tab for the switcher; [then] runs once the copy is taken (or failed). Skipped while
+     * the page is hidden under a full-screen panel (the window copy would show the panel, not the page).
+     */
     fun captureActive(then: (() -> Unit)? = null) {
         val tab = activeTab
         val webView = tab?.webView
-        if (tab == null || webView == null || !webView.isAttachedToWindow || webView.width == 0 || tab.error != null) {
+        if (tab == null || webView == null || !webView.isShown || webView.width == 0 || tab.error != null) {
             then?.invoke()
             return
         }
         host.capture(webView, THUMB_SCALE) { bitmap ->
             if (bitmap != null) {
+                bitmap.prepareToDraw()
                 tab.thumbnail = bitmap.asImageBitmap()
                 if (!spaceOf(tab).burner) scope.launch(Dispatchers.IO) { session.saveThumbnail(tab.id, bitmap) }
             }
@@ -590,6 +597,7 @@ class Browser(
         webView.setOnLongClickListener { onLongPress(tab, webView) }
         webView.onDragDirection = { down -> if (tab === activeTab && !editing) islandExpanded = !down }
         webView.onReachedTop = { if (tab === activeTab) islandExpanded = true }
+        webView.onScrollActivity = { onScrollActivity?.invoke() }
         tab.webView = webView
         return webView
     }

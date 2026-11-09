@@ -37,6 +37,7 @@ data class Settings(
     val blockThirdPartyCookies: Boolean = true,
     val doNotTrack: Boolean = true,
     val newtabHero: NewtabHero = NewtabHero.CLOCK,
+    val refreshRate: RefreshRateMode = RefreshRateMode.AUTO,
 )
 
 /** Desktop Space palette (docs/DESIGN.md). ARGB. */

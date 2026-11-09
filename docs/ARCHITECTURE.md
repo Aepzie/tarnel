@@ -48,9 +48,34 @@ The seed never leaves main.
   `contextBridge.executeInMainWorld` runs `src/preload/fingerprint-main-world.ts` in the page's main world before any
   page script. A new iframe's initial `about:blank` document gets no preload, so DOM insertions that add a frame
   patch the child realm on the spot (plus `contentWindow` / `contentDocument`).
+* **Workers** (`src/main/fingerprint/workers.ts`) — the same `protectMainWorld` source (it assumes no DOM) runs in
+  every worker global scope before the worker's first statement, with the config of the page that owns it:
+  * *Dedicated workers* (classic, module, `blob:`, `data:`, nested) and *shared workers*: each tab/popup
+    WebContents of a protected Space gets its own DevTools-protocol client (`webContents.debugger`) with
+    `Target.setAutoAttach({ waitForDebuggerOnStart, flatten, filter: no service workers })`, re-applied in every
+    attached frame and worker, so workers of out-of-process iframes and nested workers are held too. A held worker
+    gets `Runtime.evaluate(patch)`, then `Runtime.runIfWaitingForDebugger`; commands of one session run in order, so
+    the patch always precedes the worker script. Held out-of-process iframes are resumed only after their own
+    `setAutoAttach` answered (it answers at commit; an earlier resume is lost and the frame stays paused). Shared
+    workers are not children of a page: `Target.setDiscoverTargets({ filter: shared_worker })` reports them on
+    creation and the tab that has a document of the worker's origin attaches (`attachToTarget`) while the script is
+    still being fetched. No script is rewritten, so module imports, `importScripts`, relative URLs and CSP
+    (`worker-src`) behave natively; no Runtime/Debugger domain is enabled, so pages cannot observe the client.
+    User-opened DevTools and `--remote-debugging-port` clients coexist with it (Chromium allows several clients);
+    if another client already owns the debugger, that tab's workers stay unpatched. Spaces set to `'off'` attach
+    nothing (switching detaches).
+  * *Service workers*: a `service-worker` session preload (`dist/preload/fingerprint-worker.js`,
+    `src/preload/fingerprint-worker.ts`) runs before the worker script without any tab, asks main synchronously on
+    the worker's own `ServiceWorkerMain.ipc` (wired at the `'starting'` running status, before the preload runs;
+    an unanswered `sendSync` would hang the worker, so it always answers) and patches the scope through
+    `contextBridge.executeInMainWorld`.
+  * Cost: ~2–3 ms more per dedicated worker start (median 8–9 ms vs 6 ms for an empty worker), one IPC per service
+    worker start.
 * **Determinism** — main derives `key = HMAC(seed, top-level eTLD+1)`: stable per site across reloads and restarts,
-  different per site and per Space; third-party iframes use the top-level site's key. Hardware values derive from
-  the seed only (same machine across all sites of a Space).
+  different per site and per Space; third-party iframes use the top-level site's key, and so do the workers they
+  start (dedicated: the tab's top-level page; shared: the top-level page of the tab that claims it; service: the
+  scope's site, the top-level site for first-party workers). Hardware values derive from the seed only (same
+  machine across all sites of a Space).
 * **Native look** — patched functions keep `name`, `length`, prototype and no `prototype` property;
   `Function.prototype.toString` returns the native source for them, also across same-origin realms.
 
@@ -69,12 +94,17 @@ The seed never leaves main.
 | Media device labels | real | generic ("Microphone", "Camera", "Speakers") |
 | `getGamepads()` | real | always empty |
 
-**Not protected:** dedicated/shared/service workers (they see the real `hardwareConcurrency`, WebGL renderer and
-unnoised `OffscreenCanvas`; wrapping workers would break module workers, relative imports and CSP), CSS media
-queries (`device-width`, resolution), DOM-based font enumeration, timezone/`Intl` (left alone: spoofing breaks
-calendars, banking and booking sites), the IP address itself (use a per-Space proxy). Fingerprinting test suites
-(CreepJS) can still detect *that* noise is applied (pixel/audio noise, worker vs. window mismatch); what they
-cannot do is link two Spaces through it. Changes apply to pages loaded afterwards.
+Every row applies in workers too where the API exists there (`WorkerNavigator`, `OffscreenCanvas` 2D/WebGL,
+`TextMetrics`, `NavigatorUAData`); workers have no screen, media devices, gamepads, battery or Web Audio.
+
+**Not protected:** CSS media queries (`device-width`, resolution), DOM-based font enumeration, timezone/`Intl` (left
+alone: spoofing breaks calendars, banking and booking sites), the IP address itself (use a per-Space proxy), worklets
+(audio/paint worklets: no navigator, detached unpatched). Worker gaps: a third-party *service* worker is keyed by its
+own site (its top-level site is not known in main), a shared worker that two tabs of different top-level sites embed
+through the same third-party origin may get the other tab's key, and a worker that is already running when a Space is
+switched on stays unpatched until it restarts. Fingerprinting test suites (CreepJS) can still detect *that* noise is
+applied (pixel/audio noise); what they cannot do is link two Spaces through it. Changes apply to pages loaded
+afterwards.
 ## Browser identity (every Space)
 
 Google's sign-in refuses embedded browsers ("This browser or app may not be secure"). Electron is Chromium's content
@@ -86,8 +116,11 @@ other signals must also look like a stock Chromium browser. Vela does not claim 
 * **User-Agent**: `Chrome/<major>.0.0.0` (Chromium's UA reduction); the build number is only available through
   hints. Set in `app.userAgentFallback` and per session (`privacy.ts`), so workers and popups get it too.
 * **`window.chrome`**: the identity preload (`registerPreloadScript`, type `frame`, every session) runs
-  `shapeMainWorld` in the main world of every http(s) frame: `chrome.app` / `csi()` / `loadTimes()` with Chromium's
-  shape and values from Navigation Timing, functions with native `toString`.
+  `shapeMainWorld` in the main world of every frame with an http(s) *origin* (so `about:srcdoc` frames too):
+  `chrome.app` / `csi()` / `loadTimes()` with Chromium's shape and values from Navigation Timing, functions with
+  native `toString`. Preloads never run in a new iframe's initial `about:blank` (or what `document.write` puts in
+  it), so, like the fingerprint patch, DOM insertions that add a frame and `contentWindow` / `contentDocument` shape
+  the same-origin child realm on the spot (objects and functions created in the child's realm).
 * **Client hints**: Electron has no client-hints delegate, so its network stack sends no `Sec-CH-UA*` on
   navigations and ignores `Accept-CH`. The chrome UI preload (and each top frame) sends the real
   `getHighEntropyValues()` once (`vela:identity-hints`, read in the isolated world); `onBeforeSendHeaders`
@@ -187,6 +220,85 @@ preloads don't get the `window.chrome` shape.
   native `toString`, but the routing is observable by a page in a routed tab (e.g. the `allow` attribute).
 * **Cost when unused**: no preload, no listeners in pages, no permission change; the chrome enumerates nothing.
 
+## Audio mixer (UI: `src/renderer/chrome/mixer/*`)
+
+Contract: `src/shared/audio-mixer.ts` (settings, presets, levels, routing) + `window.vela.mixer`. The UI only talks
+to that API, plus the existing tab mute (`tabs.toggleMute`) and per-tab devices (`mediaDevices.set`).
+
+* **Entry**: `MixerButton` in the top island's right cluster (both tab layouts), `Ctrl+Shift+M` (main sends the
+  `audio-mixer` UI command; in focus mode it reveals the island first) and the palette command "Audio mixer"
+  (`mixer-commands.ts`). The button shows three bouncing bars while any tab is audible. The popover holds the overlay
+  (`useOverlayPresence`).
+* **State** (`mixer-store.ts`): one `useSyncExternalStore` store mirroring `MixerTabState[]` from `get()`/`onState`.
+  Edits apply locally at once and stream to main through `set` throttled per tab (40 ms, leading + trailing); pushes
+  from main within 500 ms of a local edit keep the local settings so a dragged fader never jitters. Channel strips =
+  tabs that are audible, muted or known to the mixer, in tab order. **Solo** mutes the other channels through the tab
+  mute and remembers exactly which ones, so un-soloing (or soloing another tab) unmutes only those.
+* **Levels** (`levels.ts`): `watchLevels(true)` only while the panel is mounted (open); pushes (~20 Hz) land in a
+  plain map, never in React state. One shared rAF loop drives the meters (instant attack, linear release in dB space,
+  0.9 s peak hold), the 16-bin spectrum canvas and the bass wave; meters write `clip-path`/`transform` on refs.
+  Levels older than 400 ms count as silence. Reduced motion: no interpolation, no wave/ping animation.
+* **EQ graph** (`EqGraph.tsx`, `eq-math.ts`): the curve is the summed RBJ biquad magnitude of what the engine applies
+  (peaking per band, Q 1.41; low shelf for bass boost, Q 0.707) on a 20 Hz–20 kHz log axis, ±15 dB view with a ±12 dB
+  grid; with the EQ off a dashed ghost shows the bands. Handles are `role="slider"` (Up/Down ±1 dB, Shift ±0.5,
+  PageUp/Down ±3, Left/Right/Home/End move between bands, Delete/double-click reset). Editing a band turns the EQ on
+  and clears `preset`.
+* **Routing**: `partial` → the detail header says only volume applies to some audio (strip: "Volume only");
+  `idle` → "No sound yet". Spectrum only for `full`.
+* **Devices**: the detail pane reuses `chrome/audio` (`useDeviceSections` + `selectDevice`), no own enumeration.
+* **Dev mock** (`mock.ts`): when `mixer.get()` rejects with "No handler registered" (no engine in main), the store
+  swaps in a simulated engine for the first N tabs (localStorage `vela:mixer-mock-tabs`, default 3) with animated
+  levels/spectrum that follow the settings, and the header shows "Simulated". With real handlers it is never created.
+## Audio mixer (engine)
+
+Per-tab volume (0–2), balance, mono, 10-band EQ (31 Hz–16 kHz, ±12 dB), bass boost and a gentle compressor; contract
+in `src/shared/audio-mixer.ts`, chrome API `vela.mixer`. Desktop only. Mute stays the tab mute (`setAudioMuted`).
+
+* **Model** (`src/main/audio-mixer/state.ts`): only non-default settings are stored, persisted as `SavedTab.audio`
+  (the save is debounced while sliders move). Chrome input is type-checked and clamped (`applyAudioPatch`); a
+  preset without bands loads its bands (and its bass boost if it has one), editing bands drops the preset unless they
+  still match. `vela.mixer.get()` / the `stateEvent` push list tabs that are audible or have settings, in tab order.
+* **Injection** (`src/main/audio-mixer/index.ts`): like audio devices, `dist/preload/audio-mixer.js` is a frame
+  preload registered only on Spaces with a tab whose settings are not `isNeutralAudio`; it asks main synchronously
+  (`vela:mixer-engine`) and runs `src/preload/audio-mixer-main-world.ts` in the main world before page scripts.
+  Documents already loaded get the same function via `WebFrameMain.executeJavaScript` in every frame (cross-origin
+  iframes included); later changes only call the installed handle's `update()` (coalesced to one push per 16 ms).
+  Neutral settings switch installed engines to bypass; new documents of the tab then get nothing.
+* **Graph** (one chain per realtime AudioContext): `input → [mono] → [balance] → [bass lowshelf] → [EQ peaking Q 1.41,
+  bands ≠ 0] → [compressor −24 dB/3:1/knee 24] → [volume] → [limiter → soft clip] → output → destination`. Only the
+  stages the settings need are wired; the limiter (20:1 at −3 dBFS, attack 2 ms, its automatic makeup gain cancelled)
+  and the tanh soft clipper (transparent below 0.85) are added only when something boosts, so quiet material passes
+  bit-exact. Parameters move with a 15 ms time constant. Balance is a true balance (each side ≤ 1), not a panner.
+* **Sources**: media elements go through the engine's own processing AudioContext (`latencyHint: 'interactive'`,
+  created on first playback, suspended after 10 s with nothing playing). Page AudioContexts keep their own context:
+  `AudioNode.connect/disconnect` to a realtime destination is redirected into that context's chain (offline contexts
+  untouched). WebRTC / `srcObject` MediaStreams use `createMediaStreamSource` with the element natively muted
+  (Chromium gives silence for remote streams through `createMediaElementSource`); the page still sees its own
+  `muted` / `volume`, and pause silences the stream. Muted elements (background videos) are left alone until unmuted.
+* **Silence pitfall**: capturing an element is permanent (closing the context does not release it) and Web Audio
+  outputs zeros for media the page may not read. Elements are captured only for blob:/data:/MSE/MediaStream sources,
+  CORS loads (`crossOrigin` set) and same-origin URLs whose same-origin `HEAD` (mode `same-origin`) does not redirect
+  away; cross-origin no-CORS media, encrypted media (`mediaKeys`) and elements with a page-chosen `sinkId` stay native
+  and only get `min(volume, 1)` through `element.volume` (the page keeps reading its own value) → routing `partial`.
+  A page that later calls `createMediaElementSource` on a captured element gets a MediaStream bridge from the
+  processing context instead of an exception.
+* **Audio devices**: the processing context reads `destination` through the (possibly patched) prototype getter, so
+  the per-tab output route steers it; a live route change pokes engines (`touch()`) so it follows too.
+* **Routing / levels**: main asks engine frames for their routing (`report(false)`) on media start/pause and audible
+  changes. While the chrome watches (`watchLevels(true)`), main polls every engine frame of each audible tab every
+  50 ms (`report(true)`: L/R peak from 4096-sample analysers after the chain, 16 log bins 20 Hz–20 kHz mapped from
+  −90…−10 dB); results are validated, max-merged per tab and pushed as `TabAudioLevel[]`. Analysers are connected
+  only while being read (disconnected 1.5 s after the last read); audible tabs without an engine report 0 and `[]`.
+  Watching stops when the chrome navigates or crashes.
+* **Cost**: unused → no preload, nothing in pages. Measured (Windows 11, one tab playing a WAV): +0.6 % of one core in
+  the renderer for a single stage, +1.6 % with every stage, +0.2–0.3 % in the audio service.
+* **Limits**: page AudioContexts connected before a live (non-preload) install, detached `new Audio()` already
+  playing at that moment and shadow-DOM media are not routed until reload / their next `play()`; an element captured
+  with a readable source that later switches to a cross-origin no-CORS source plays silent until reload; captured
+  elements ignore a page-chosen `setSinkId` (MediaStream elements are released instead); the bridge node is a
+  `MediaStreamAudioSourceNode`, not a `MediaElementAudioSourceNode`. Patched functions report native `toString`, but
+  the engine is observable by the page (`Symbol.for('vela.mixer')`).
+
 ## Directory ownership
 
 ```
@@ -204,8 +316,8 @@ src/main/settings.ts   settings                       — data
 src/main/spaces.ts     spaces + sessions              — data
 src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
-src/main/fingerprint/* per-space fingerprint seeds, preload registration, header hints — data
-src/preload/fingerprint*.ts  main-world fingerprint patch (session preload) — data
+src/main/fingerprint/* per-space fingerprint seeds, preload registration, header hints, worker patching (CDP) — data
+src/preload/fingerprint*.ts  main-world fingerprint patch (frame + service-worker session preloads) — data
 src/main/identity/*, src/preload/identity*.ts  Chromium identity: window.chrome shape, client-hint headers (every Space) — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
 src/main/extensions/*  Chrome extensions (lazy)       — extensions
@@ -216,7 +328,9 @@ src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
 src/main/split*.ts     split view (model, pane pointer, IPC) — core
 src/main/audio-devices/*, src/preload/audio-devices*.ts  per-tab audio devices (route, preload, main-world patch) — core
+src/main/audio-mixer/*, src/preload/audio-mixer*.ts  per-tab audio mixer engine (settings, preload, Web Audio graph) — core
 src/renderer/chrome/*  top-island UI (React)          — ui
+src/renderer/chrome/mixer/*  audio mixer panel (strips, EQ graph, levels, dev mock) — ui
 src/preload/pages.ts   window.velaPages               — pages
 src/renderer/pages/*   newtab, settings, error        — pages
 src/renderer/shared/   tokens.css (design tokens)
@@ -288,6 +402,14 @@ Third-party cookie blocking strips the `Cookie` header on third-party sub-resour
 ### `src/main/perf/flags.ts`
 ```ts
 export function applyChromiumFlags(): void; // called before app 'ready'
+```
+
+### `src/main/perf/frame-rate.ts`
+```ts
+export function frameRateFeatures(): string[];       // before 'ready': ['UseCompositorClockVSyncInterval'] when settings.frameRate + saved display layout + saved window bounds call for it (Windows)
+export function initFrameRate(): void;               // after 'ready': save the display layout (userData/displays.json) for the next launch, kept current on display changes
+export function getFrameRateStatus(): FrameRateStatus; // displays + Hz, rate Chromium paces to, restartRequired (velaPages.frameRate)
+export function relaunchApp(): void;                 // velaPages.relaunch
 ```
 
 ### `src/main/perf/adblock.ts`

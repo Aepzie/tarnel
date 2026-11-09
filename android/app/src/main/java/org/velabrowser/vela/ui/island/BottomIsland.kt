@@ -60,8 +60,10 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -282,26 +284,29 @@ private fun TabsButton(count: Int, onClick: () -> Unit, onLongClick: () -> Unit)
     }
 }
 
+/** Progress and fade are read in the draw phase only: an animating bar redraws, it never recomposes or relayouts. */
 @Composable
 private fun LoadingBar(tab: Tab?, modifier: Modifier) {
     val c = LocalVela.current
     val loading = tab?.loading == true
-    val progress by animateFloatAsState(if (loading) ((tab?.progress ?: 0).coerceAtLeast(8) / 100f) else 1f, spring(stiffness = 120f), label = "progress")
-    val alpha by animateFloatAsState(if (loading) 1f else 0f, tween(if (loading) 120 else 420), label = "progressAlpha")
+    val progress = animateFloatAsState(if (loading) ((tab?.progress ?: 0).coerceAtLeast(8) / 100f) else 1f, spring(stiffness = 120f), label = "progress")
+    val alpha = animateFloatAsState(if (loading) 1f else 0f, tween(if (loading) 120 else 420), label = "progressAlpha")
     Box(
         modifier
             .padding(horizontal = 22.dp)
             .fillMaxWidth()
             .height(2.dp)
-            .graphicsLayer { this.alpha = alpha },
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth(progress)
-                .fillMaxHeight()
-                .background(c.accent, CircleShape),
-        )
-    }
+            .drawBehind {
+                val opacity = alpha.value
+                if (opacity <= 0f) return@drawBehind
+                drawRoundRect(
+                    color = c.accent,
+                    size = Size(size.width * progress.value, size.height),
+                    cornerRadius = CornerRadius(size.height / 2f),
+                    alpha = opacity,
+                )
+            },
+    )
 }
 
 @Composable

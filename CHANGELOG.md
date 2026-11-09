@@ -15,6 +15,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uBlock Origin Lite now blocks ads and trackers, including its filtering modes and per-site exceptions. Rules
   are indexed per extension (uBO Lite's ~20k default rules compile in about 0.2–0.4 s at startup; matching
   costs a few microseconds per request).
+- Settings → Performance → **Frame rate** (Windows): *Match display* (default), *Highest* or *Primary display*, with
+  the detected displays and their refresh rates, the frame rate the page actually gets, and "Restart to apply".
+  Frame caps and an "unlimited" mode are not offered: Chromium has no clean on-screen cap, and uncapping measured
+  slower (~59 fps).
+- Android: Settings → Display → **Refresh rate**: *Auto* (the system decides, Vela asks for the fastest rate while
+  you scroll, fling or something animates), *High* (always the fastest mode, e.g. 120 Hz) or *Standard* (60 Hz,
+  saves battery), showing the rates the screen supports and the current one.
+- **Audio mixer** (`Ctrl+Shift+M`, the mixer button in the toolbar or "Audio mixer" in the palette): a channel
+  strip per tab with sound (volume 0–200 % with a 100 % detent, balance, mute, solo, live stereo meters with peak
+  hold, jump to tab) and, for the selected tab, a 10-band equalizer drawn as its real frequency response over the
+  live spectrum, presets (Flat, Bass, Vocal, Treble, Loudness, Podcast, Night), bass boost with gain and corner
+  frequency, mono, "Even out volume" and the tab's speaker and microphone. The toolbar button shows when something
+  is playing.
+- Per-tab audio mixer engine: volume up to 200 %, balance, mono, a 10-band equalizer with presets, bass boost and a gentle compressor for every tab, applied live to media elements, Web Audio and WebRTC playback (iframes included) and restored with the session. Boosts go through a limiter, so they don't clip harshly. Cross-origin media that Web Audio cannot read is never silenced: it only gets the tab volume. Works together with per-tab audio devices. Tabs without mixer settings pay nothing.
+- **Fingerprint protection inside workers**: dedicated, module, blob/data, nested, shared and service workers now
+  report the same hardware buckets, GPU model, canvas/WebGL noise (`OffscreenCanvas`, `readPixels`) and (Strict)
+  reduced client hints as the page that runs them, so fingerprinting scripts no longer see a window/worker mismatch
+  ("hardwareConcurrency does not match worker scope"). Workers are patched before their first line runs, without
+  rewriting their scripts, so module imports, `importScripts`, relative URLs and CSP behave as before. Starting a
+  worker takes about 2–3 ms longer in protected Spaces; Spaces with protection off are untouched.
 
 ### Changed
 - All `webRequest` hooks of a Space (built-in blocker, privacy headers, extension rules) now run through one
@@ -23,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Extensions that use the `browser` namespace (e.g. uBlock Origin Lite) crashed at startup because
   `browser.commands` and other APIs were missing; `browser` now refers to the complete `chrome` object.
+- Vela no longer runs at the primary monitor's refresh rate on a faster second display (Windows): with a 144 Hz
+  laptop panel next to a 75 Hz primary monitor it drew at 75 fps, now at 144 fps.
+- Android: smoother tab switcher, settings and history: the page underneath stops drawing once the panel covers it,
+  tab thumbnails are decoded as hardware bitmaps, and the loading bar no longer recomposes the island on every frame.
+- `window.chrome` (`app`, `csi`, `loadTimes`) was missing in same-origin child frames that are not loaded from the
+  network (a new iframe's `about:blank`, `srcdoc`, `document.write`), a classic embedded-browser check.
 
 ## [0.3.0] - 2026-11-09
 

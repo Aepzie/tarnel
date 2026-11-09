@@ -31,6 +31,7 @@ class SettingsStore(context: Context) {
             putBoolean("blockThirdPartyCookies", next.blockThirdPartyCookies)
             putBoolean("doNotTrack", next.doNotTrack)
             putString("newtabHero", next.newtabHero.name)
+            putString("refreshRate", next.refreshRate.name)
         }
     }
 
@@ -44,6 +45,7 @@ class SettingsStore(context: Context) {
             blockThirdPartyCookies = prefs.getBoolean("blockThirdPartyCookies", defaults.blockThirdPartyCookies),
             doNotTrack = prefs.getBoolean("doNotTrack", defaults.doNotTrack),
             newtabHero = runCatching { NewtabHero.valueOf(prefs.getString("newtabHero", null)!!) }.getOrDefault(defaults.newtabHero),
+            refreshRate = runCatching { RefreshRateMode.valueOf(prefs.getString("refreshRate", null)!!) }.getOrDefault(defaults.refreshRate),
         )
     }
 }

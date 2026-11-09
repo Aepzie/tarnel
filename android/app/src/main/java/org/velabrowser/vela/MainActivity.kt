@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.MotionEvent
 import android.view.PixelCopy
 import android.view.View
 import android.webkit.WebChromeClient
@@ -22,6 +23,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +37,8 @@ import androidx.lifecycle.lifecycleScope
 import org.velabrowser.vela.browser.Browser
 import org.velabrowser.vela.browser.BrowserHost
 import org.velabrowser.vela.browser.Downloads
+import org.velabrowser.vela.browser.LocalRefreshRate
+import org.velabrowser.vela.browser.RefreshRateController
 import org.velabrowser.vela.core.FaviconCache
 import org.velabrowser.vela.core.SessionStore
 import org.velabrowser.vela.core.ThemeMode
@@ -44,6 +48,7 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 
 class MainActivity : ComponentActivity(), BrowserHost {
     private lateinit var browser: Browser
+    private lateinit var refreshRate: RefreshRateController
 
     private var fullscreenView by mutableStateOf<View?>(null)
     private var fullscreenExit: (() -> Unit)? = null
@@ -83,6 +88,9 @@ class MainActivity : ComponentActivity(), BrowserHost {
             },
         )
         browser.restore(launchUrl(intent))
+        refreshRate = RefreshRateController(this) { browser.activeTab?.webView }
+        refreshRate.start(app.settings.settings.refreshRate)
+        browser.onScrollActivity = refreshRate::onActivity
 
         setContent {
             val settings = browser.settings.settings
@@ -100,8 +108,11 @@ class MainActivity : ComponentActivity(), BrowserHost {
                 browser.setWebDarkMode(dark)
             }
             LaunchedEffect(settings.theme) { applyNightMode(settings.theme) }
+            LaunchedEffect(settings.refreshRate) { refreshRate.setMode(settings.refreshRate) }
             VelaTheme(dark = dark, accent = ComposeColor(browser.activeSpace.color)) {
-                BrowserScreen(browser, fullscreenView, onExitFullscreen = ::exitFullscreenFromUser)
+                CompositionLocalProvider(LocalRefreshRate provides refreshRate) {
+                    BrowserScreen(browser, fullscreenView, onExitFullscreen = ::exitFullscreenFromUser)
+                }
             }
         }
     }
@@ -128,7 +139,13 @@ class MainActivity : ComponentActivity(), BrowserHost {
         browser.onTrimMemory(level)
     }
 
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        refreshRate.onActivity()
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onDestroy() {
+        refreshRate.stop()
         if (isFinishing) browser.onFinishing()
         super.onDestroy()
     }
