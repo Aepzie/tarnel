@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Optional end-to-end encrypted sync (Settings → Sync), off by default. Syncs settings, Spaces (name, color, proxy), open tabs (shown as "Other devices" in the command palette) and, if enabled, history through a folder you choose or a WebDAV server. Passphrase-derived key (scrypt) + AES-256-GCM, recovery key, no Vela-operated server.
+
 ## [0.1.1] - 2026-11-09
 
 ### Added
