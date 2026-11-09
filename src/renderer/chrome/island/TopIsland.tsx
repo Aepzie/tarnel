@@ -10,6 +10,7 @@ import { PerfChip } from '../perf/PerfChip';
 import { DownloadsButton } from '../downloads/DownloadsButton';
 import { ExtensionsButton } from '../extensions/ExtensionsButton';
 import { UpdateChip } from '../update/UpdateChip';
+import { MixerButton } from '../mixer/MixerButton';
 import { NavButtons } from './NavButtons';
 import { CaptionButtons, TrafficLights } from './WindowControls';
 import { useIslandReveal } from './useIslandReveal';
@@ -120,6 +121,7 @@ export function TopIsland() {
           <ExtensionsButton />
           <UpdateChip />
           <DownloadsButton />
+          <MixerButton />
           <PerfChip />
         </div>
         {!isMac && (

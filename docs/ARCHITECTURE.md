@@ -187,6 +187,85 @@ preloads don't get the `window.chrome` shape.
   native `toString`, but the routing is observable by a page in a routed tab (e.g. the `allow` attribute).
 * **Cost when unused**: no preload, no listeners in pages, no permission change; the chrome enumerates nothing.
 
+## Audio mixer (UI: `src/renderer/chrome/mixer/*`)
+
+Contract: `src/shared/audio-mixer.ts` (settings, presets, levels, routing) + `window.vela.mixer`. The UI only talks
+to that API, plus the existing tab mute (`tabs.toggleMute`) and per-tab devices (`mediaDevices.set`).
+
+* **Entry**: `MixerButton` in the top island's right cluster (both tab layouts), `Ctrl+Shift+M` (main sends the
+  `audio-mixer` UI command; in focus mode it reveals the island first) and the palette command "Audio mixer"
+  (`mixer-commands.ts`). The button shows three bouncing bars while any tab is audible. The popover holds the overlay
+  (`useOverlayPresence`).
+* **State** (`mixer-store.ts`): one `useSyncExternalStore` store mirroring `MixerTabState[]` from `get()`/`onState`.
+  Edits apply locally at once and stream to main through `set` throttled per tab (40 ms, leading + trailing); pushes
+  from main within 500 ms of a local edit keep the local settings so a dragged fader never jitters. Channel strips =
+  tabs that are audible, muted or known to the mixer, in tab order. **Solo** mutes the other channels through the tab
+  mute and remembers exactly which ones, so un-soloing (or soloing another tab) unmutes only those.
+* **Levels** (`levels.ts`): `watchLevels(true)` only while the panel is mounted (open); pushes (~20 Hz) land in a
+  plain map, never in React state. One shared rAF loop drives the meters (instant attack, linear release in dB space,
+  0.9 s peak hold), the 16-bin spectrum canvas and the bass wave; meters write `clip-path`/`transform` on refs.
+  Levels older than 400 ms count as silence. Reduced motion: no interpolation, no wave/ping animation.
+* **EQ graph** (`EqGraph.tsx`, `eq-math.ts`): the curve is the summed RBJ biquad magnitude of what the engine applies
+  (peaking per band, Q 1.41; low shelf for bass boost, Q 0.707) on a 20 Hz–20 kHz log axis, ±15 dB view with a ±12 dB
+  grid; with the EQ off a dashed ghost shows the bands. Handles are `role="slider"` (Up/Down ±1 dB, Shift ±0.5,
+  PageUp/Down ±3, Left/Right/Home/End move between bands, Delete/double-click reset). Editing a band turns the EQ on
+  and clears `preset`.
+* **Routing**: `partial` → the detail header says only volume applies to some audio (strip: "Volume only");
+  `idle` → "No sound yet". Spectrum only for `full`.
+* **Devices**: the detail pane reuses `chrome/audio` (`useDeviceSections` + `selectDevice`), no own enumeration.
+* **Dev mock** (`mock.ts`): when `mixer.get()` rejects with "No handler registered" (no engine in main), the store
+  swaps in a simulated engine for the first N tabs (localStorage `vela:mixer-mock-tabs`, default 3) with animated
+  levels/spectrum that follow the settings, and the header shows "Simulated". With real handlers it is never created.
+## Audio mixer (engine)
+
+Per-tab volume (0–2), balance, mono, 10-band EQ (31 Hz–16 kHz, ±12 dB), bass boost and a gentle compressor; contract
+in `src/shared/audio-mixer.ts`, chrome API `vela.mixer`. Desktop only. Mute stays the tab mute (`setAudioMuted`).
+
+* **Model** (`src/main/audio-mixer/state.ts`): only non-default settings are stored, persisted as `SavedTab.audio`
+  (the save is debounced while sliders move). Chrome input is type-checked and clamped (`applyAudioPatch`); a
+  preset without bands loads its bands (and its bass boost if it has one), editing bands drops the preset unless they
+  still match. `vela.mixer.get()` / the `stateEvent` push list tabs that are audible or have settings, in tab order.
+* **Injection** (`src/main/audio-mixer/index.ts`): like audio devices, `dist/preload/audio-mixer.js` is a frame
+  preload registered only on Spaces with a tab whose settings are not `isNeutralAudio`; it asks main synchronously
+  (`vela:mixer-engine`) and runs `src/preload/audio-mixer-main-world.ts` in the main world before page scripts.
+  Documents already loaded get the same function via `WebFrameMain.executeJavaScript` in every frame (cross-origin
+  iframes included); later changes only call the installed handle's `update()` (coalesced to one push per 16 ms).
+  Neutral settings switch installed engines to bypass; new documents of the tab then get nothing.
+* **Graph** (one chain per realtime AudioContext): `input → [mono] → [balance] → [bass lowshelf] → [EQ peaking Q 1.41,
+  bands ≠ 0] → [compressor −24 dB/3:1/knee 24] → [volume] → [limiter → soft clip] → output → destination`. Only the
+  stages the settings need are wired; the limiter (20:1 at −3 dBFS, attack 2 ms, its automatic makeup gain cancelled)
+  and the tanh soft clipper (transparent below 0.85) are added only when something boosts, so quiet material passes
+  bit-exact. Parameters move with a 15 ms time constant. Balance is a true balance (each side ≤ 1), not a panner.
+* **Sources**: media elements go through the engine's own processing AudioContext (`latencyHint: 'interactive'`,
+  created on first playback, suspended after 10 s with nothing playing). Page AudioContexts keep their own context:
+  `AudioNode.connect/disconnect` to a realtime destination is redirected into that context's chain (offline contexts
+  untouched). WebRTC / `srcObject` MediaStreams use `createMediaStreamSource` with the element natively muted
+  (Chromium gives silence for remote streams through `createMediaElementSource`); the page still sees its own
+  `muted` / `volume`, and pause silences the stream. Muted elements (background videos) are left alone until unmuted.
+* **Silence pitfall**: capturing an element is permanent (closing the context does not release it) and Web Audio
+  outputs zeros for media the page may not read. Elements are captured only for blob:/data:/MSE/MediaStream sources,
+  CORS loads (`crossOrigin` set) and same-origin URLs whose same-origin `HEAD` (mode `same-origin`) does not redirect
+  away; cross-origin no-CORS media, encrypted media (`mediaKeys`) and elements with a page-chosen `sinkId` stay native
+  and only get `min(volume, 1)` through `element.volume` (the page keeps reading its own value) → routing `partial`.
+  A page that later calls `createMediaElementSource` on a captured element gets a MediaStream bridge from the
+  processing context instead of an exception.
+* **Audio devices**: the processing context reads `destination` through the (possibly patched) prototype getter, so
+  the per-tab output route steers it; a live route change pokes engines (`touch()`) so it follows too.
+* **Routing / levels**: main asks engine frames for their routing (`report(false)`) on media start/pause and audible
+  changes. While the chrome watches (`watchLevels(true)`), main polls every engine frame of each audible tab every
+  50 ms (`report(true)`: L/R peak from 4096-sample analysers after the chain, 16 log bins 20 Hz–20 kHz mapped from
+  −90…−10 dB); results are validated, max-merged per tab and pushed as `TabAudioLevel[]`. Analysers are connected
+  only while being read (disconnected 1.5 s after the last read); audible tabs without an engine report 0 and `[]`.
+  Watching stops when the chrome navigates or crashes.
+* **Cost**: unused → no preload, nothing in pages. Measured (Windows 11, one tab playing a WAV): +0.6 % of one core in
+  the renderer for a single stage, +1.6 % with every stage, +0.2–0.3 % in the audio service.
+* **Limits**: page AudioContexts connected before a live (non-preload) install, detached `new Audio()` already
+  playing at that moment and shadow-DOM media are not routed until reload / their next `play()`; an element captured
+  with a readable source that later switches to a cross-origin no-CORS source plays silent until reload; captured
+  elements ignore a page-chosen `setSinkId` (MediaStream elements are released instead); the bridge node is a
+  `MediaStreamAudioSourceNode`, not a `MediaElementAudioSourceNode`. Patched functions report native `toString`, but
+  the engine is observable by the page (`Symbol.for('vela.mixer')`).
+
 ## Directory ownership
 
 ```
@@ -214,7 +293,9 @@ src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
 src/main/split*.ts     split view (model, pane pointer, IPC) — core
 src/main/audio-devices/*, src/preload/audio-devices*.ts  per-tab audio devices (route, preload, main-world patch) — core
+src/main/audio-mixer/*, src/preload/audio-mixer*.ts  per-tab audio mixer engine (settings, preload, Web Audio graph) — core
 src/renderer/chrome/*  top-island UI (React)          — ui
+src/renderer/chrome/mixer/*  audio mixer panel (strips, EQ graph, levels, dev mock) — ui
 src/preload/pages.ts   window.velaPages               — pages
 src/renderer/pages/*   newtab, settings, error        — pages
 src/renderer/shared/   tokens.css (design tokens)

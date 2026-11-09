@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import { AUDIO_IPC, EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 import { reportIdentityHints } from './identity-hints';
+import { MIXER_IPC } from '../shared/audio-mixer';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -134,6 +135,14 @@ const api: VelaChromeAPI = {
 
   mediaDevices: {
     set: (tabId, slot, choice) => invoke(AUDIO_IPC.setDevice, tabId, slot, choice),
+  },
+  mixer: {
+    get: () => invoke(MIXER_IPC.get),
+    onState: (cb) => subscribe(MIXER_IPC.stateEvent, cb),
+    set: (tabId, patch) => invoke(MIXER_IPC.set, tabId, patch),
+    reset: (tabId) => invoke(MIXER_IPC.reset, tabId),
+    watchLevels: (on) => invoke(MIXER_IPC.watchLevels, on),
+    onLevels: (cb) => subscribe(MIXER_IPC.levelsEvent, cb),
   },
 };
 
