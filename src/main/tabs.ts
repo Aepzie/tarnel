@@ -1,10 +1,11 @@
-import { WebContentsView, type BrowserWindow, type NavigationEntry, type WebContents } from 'electron';
+import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContents } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
 import type { BrowserState, ContentBounds, SpaceId, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
 import { upgradeToHttps } from './privacy';
+import { rendererMemoryKB } from './perf/metrics';
 import type { SleepCandidate } from './perf/sleeper';
 import { getSettings } from './settings';
 import { getActiveSpaceId, getSpace, getSpaceSession, listSpaces, onSpacesChanged, removeSpace, setActiveSpaceId, whenSessionReady } from './spaces';
@@ -51,6 +52,8 @@ interface Tab {
   findText: string;
   /** Navigation history captured when put to sleep, restored on wake. */
   savedHistory: { entries: NavigationEntry[]; index: number } | null;
+  /** Private memory the tab's renderer gave back when it was put to sleep (KB); null = unknown. */
+  freedKB: number | null;
 }
 
 type WebContentsHook = (wc: WebContents, tabId: number) => void;
@@ -329,6 +332,7 @@ function wake(tab: Tab): WebContents {
   const existing = liveWc(tab);
   if (existing && !existing.isCrashed()) return existing;
   if (existing) destroyView(tab, false);
+  tab.freedKB = null;
   const wc = createView(tab).webContents;
   const saved = tab.savedHistory;
   tab.savedHistory = null;
@@ -368,7 +372,7 @@ function destroyView(tab: Tab, keepHistory: boolean): void {
 // ---------------------------------------------------------------------------
 // public API
 
-export function initTabs(win: BrowserWindow): void {
+export function initTabs(win: BaseWindow): void {
   if (!spacesHooked) {
     spacesHooked = true;
     onSpacesChanged(scheduleEmit);
@@ -408,6 +412,7 @@ export function createTab(opts: CreateTabOpts = {}): number {
     errorUrl: null,
     findText: '',
     savedHistory: null,
+    freedKB: null,
   };
   tabs.set(tab.id, tab);
   const afterIndex = opts.afterId === undefined ? -1 : order.indexOf(opts.afterId);
@@ -562,9 +567,36 @@ export function stopTab(id: number): void {
   liveWc(tabs.get(id))?.stop();
 }
 
+/**
+ * Private memory the tab's renderer process gives back when the tab is destroyed: 0 when the
+ * process is shared with another live tab (Chromium may host same-site tabs together).
+ */
+function exclusiveRendererKB(tab: Tab): number | null {
+  const wc = liveWc(tab);
+  if (!wc) return null;
+  const own = framePids(wc);
+  for (const other of tabs.values()) {
+    const otherWc = other === tab ? null : liveWc(other);
+    if (otherWc) for (const pid of framePids(otherWc)) own.delete(pid);
+  }
+  return rendererMemoryKB([...own]);
+}
+
+/** Every renderer process hosting a frame of `wc`: the page itself plus out-of-process iframes. */
+function framePids(wc: WebContents): Set<number> {
+  const pids = new Set<number>([wc.getOSProcessId()]);
+  try {
+    for (const frame of wc.mainFrame.framesInSubtree) pids.add(frame.osProcessId);
+  } catch {
+    /* frame tree unavailable while the renderer is going away */
+  }
+  return pids;
+}
+
 export function sleepTab(id: number): void {
   const tab = tabs.get(id);
   if (!tab || !tab.view || id === activeTabId) return;
+  tab.freedKB = exclusiveRendererKB(tab);
   destroyView(tab, true);
   scheduleEmit();
 }
@@ -763,10 +795,14 @@ export function listSleepCandidates(): SleepCandidate[] {
   });
 }
 
-export function countTabs(): { awake: number; asleep: number } {
+export function countTabs(): { awake: number; asleep: number; freedKB: number[] } {
   let awake = 0;
-  for (const tab of tabs.values()) if (liveWc(tab)) awake++;
-  return { awake, asleep: tabs.size - awake };
+  const freedKB: number[] = [];
+  for (const tab of tabs.values()) {
+    if (liveWc(tab)) awake++;
+    else if (tab.freedKB !== null) freedKB.push(tab.freedKB);
+  }
+  return { awake, asleep: tabs.size - awake, freedKB };
 }
 
 export function searchOpenTabs(query: string, limit: number): TabState[] {
