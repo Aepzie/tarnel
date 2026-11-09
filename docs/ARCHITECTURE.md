@@ -187,6 +187,36 @@ preloads don't get the `window.chrome` shape.
   native `toString`, but the routing is observable by a page in a routed tab (e.g. the `allow` attribute).
 * **Cost when unused**: no preload, no listeners in pages, no permission change; the chrome enumerates nothing.
 
+## Audio mixer (UI: `src/renderer/chrome/mixer/*`)
+
+Contract: `src/shared/audio-mixer.ts` (settings, presets, levels, routing) + `window.vela.mixer`. The UI only talks
+to that API, plus the existing tab mute (`tabs.toggleMute`) and per-tab devices (`mediaDevices.set`).
+
+* **Entry**: `MixerButton` in the top island's right cluster (both tab layouts), `Ctrl+Shift+M` (main sends the
+  `audio-mixer` UI command; in focus mode it reveals the island first) and the palette command "Audio mixer"
+  (`mixer-commands.ts`). The button shows three bouncing bars while any tab is audible. The popover holds the overlay
+  (`useOverlayPresence`).
+* **State** (`mixer-store.ts`): one `useSyncExternalStore` store mirroring `MixerTabState[]` from `get()`/`onState`.
+  Edits apply locally at once and stream to main through `set` throttled per tab (40 ms, leading + trailing); pushes
+  from main within 500 ms of a local edit keep the local settings so a dragged fader never jitters. Channel strips =
+  tabs that are audible, muted or known to the mixer, in tab order. **Solo** mutes the other channels through the tab
+  mute and remembers exactly which ones, so un-soloing (or soloing another tab) unmutes only those.
+* **Levels** (`levels.ts`): `watchLevels(true)` only while the panel is mounted (open); pushes (~20 Hz) land in a
+  plain map, never in React state. One shared rAF loop drives the meters (instant attack, linear release in dB space,
+  0.9 s peak hold), the 16-bin spectrum canvas and the bass wave; meters write `clip-path`/`transform` on refs.
+  Levels older than 400 ms count as silence. Reduced motion: no interpolation, no wave/ping animation.
+* **EQ graph** (`EqGraph.tsx`, `eq-math.ts`): the curve is the summed RBJ biquad magnitude of what the engine applies
+  (peaking per band, Q 1.41; low shelf for bass boost, Q 0.707) on a 20 Hz–20 kHz log axis, ±15 dB view with a ±12 dB
+  grid; with the EQ off a dashed ghost shows the bands. Handles are `role="slider"` (Up/Down ±1 dB, Shift ±0.5,
+  PageUp/Down ±3, Left/Right/Home/End move between bands, Delete/double-click reset). Editing a band turns the EQ on
+  and clears `preset`.
+* **Routing**: `partial` → the detail header says only volume applies to some audio (strip: "Volume only");
+  `idle` → "No sound yet". Spectrum only for `full`.
+* **Devices**: the detail pane reuses `chrome/audio` (`useDeviceSections` + `selectDevice`), no own enumeration.
+* **Dev mock** (`mock.ts`): when `mixer.get()` rejects with "No handler registered" (no engine in main), the store
+  swaps in a simulated engine for the first N tabs (localStorage `vela:mixer-mock-tabs`, default 3) with animated
+  levels/spectrum that follow the settings, and the header shows "Simulated". With real handlers it is never created.
+
 ## Directory ownership
 
 ```
@@ -215,6 +245,7 @@ src/main/tab-groups.ts tab groups (model + ordering)  — core
 src/main/split*.ts     split view (model, pane pointer, IPC) — core
 src/main/audio-devices/*, src/preload/audio-devices*.ts  per-tab audio devices (route, preload, main-world patch) — core
 src/renderer/chrome/*  top-island UI (React)          — ui
+src/renderer/chrome/mixer/*  audio mixer panel (strips, EQ graph, levels, dev mock) — ui
 src/preload/pages.ts   window.velaPages               — pages
 src/renderer/pages/*   newtab, settings, error        — pages
 src/renderer/shared/   tokens.css (design tokens)

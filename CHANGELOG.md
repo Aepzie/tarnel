@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Audio mixer** (`Ctrl+Shift+M`, the mixer button in the toolbar or "Audio mixer" in the palette): a channel
+  strip per tab with sound (volume 0–200 % with a 100 % detent, balance, mute, solo, live stereo meters with peak
+  hold, jump to tab) and, for the selected tab, a 10-band equalizer drawn as its real frequency response over the
+  live spectrum, presets (Flat, Bass, Vocal, Treble, Loudness, Podcast, Night), bass boost with gain and corner
+  frequency, mono, "Even out volume" and the tab's speaker and microphone. The toolbar button shows when something
+  is playing.
+
 ## [0.3.0] - 2026-11-09
 
 ### Added
