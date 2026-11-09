@@ -1,87 +1,29 @@
+/* Accent aurora baked into one static paint: three radial gradients on a single non-composited
+   layer (no blur, no will-change, no animation), so it costs no GPU textures beyond the page itself.
+   Positions/radii match where the former drifting blobs came to rest. Absolute (not fixed) inside
+   the non-scrolling page root, so neither it nor the content above it gets promoted to its own layer. */
 .vt-aurora {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  contain: strict;
-  z-index: 0;
-}
-
-.vt-blob {
+  --vt-a: 9%;
+  --vt-b: 7%;
+  --vt-c: 6%;
   position: absolute;
-  width: 70vmax;
-  height: 70vmax;
-  border-radius: 9999px;
-  background: radial-gradient(closest-side, var(--accent-space), transparent);
-  opacity: 0.09;
-  will-change: transform;
-  backface-visibility: hidden;
-  animation: var(--vt-anim) ease-in-out 1 alternate both;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle 33.6vmax at 16vmax 9vmax, color-mix(in oklab, var(--accent-space) var(--vt-a), transparent), transparent),
+    radial-gradient(circle 31.8vmax at calc(100vw - 4vmax) 3vmax, color-mix(in oklab, var(--accent-space) var(--vt-b), transparent), transparent),
+    radial-gradient(circle 35.2vmax at 56vmax calc(100vh + 11vmax), color-mix(in oklab, var(--accent-space) var(--vt-c), transparent), transparent);
 }
 
-:root.light .vt-blob {
-  opacity: 0.13;
-}
-
-.vt-blob-a {
-  top: -38vmax;
-  left: -22vmax;
-  --vt-anim: vt-drift-a 20s;
-}
-
-.vt-blob-b {
-  top: -30vmax;
-  right: -30vmax;
-  width: 60vmax;
-  height: 60vmax;
-  opacity: 0.07;
-  --vt-anim: vt-drift-b 20s;
-}
-
-.vt-blob-c {
-  bottom: -46vmax;
-  left: 18vmax;
-  width: 64vmax;
-  height: 64vmax;
-  opacity: 0.06;
-  --vt-anim: vt-drift-c 20s;
-}
-
-:root.light .vt-blob-b,
-:root.light .vt-blob-c {
-  opacity: 0.1;
-}
-
-@keyframes vt-drift-a {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(9vmax, 6vmax, 0) scale(1.08); }
-  100% { transform: translate3d(3vmax, 12vmax, 0) scale(0.96); }
-}
-
-@keyframes vt-drift-b {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(-10vmax, 8vmax, 0) scale(0.94); }
-  100% { transform: translate3d(-4vmax, 3vmax, 0) scale(1.06); }
-}
-
-@keyframes vt-drift-c {
-  0% { transform: translate3d(0, 0, 0) scale(1.04); }
-  50% { transform: translate3d(-8vmax, -7vmax, 0) scale(1); }
-  100% { transform: translate3d(6vmax, -3vmax, 0) scale(1.1); }
-}
-
-:root[data-hidden] .vt-blob {
-  animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vt-blob {
-    animation: none !important;
-  }
+:root.light .vt-aurora {
+  --vt-a: 13%;
+  --vt-b: 10%;
+  --vt-c: 10%;
 }
 
 .vt-noise {
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
@@ -113,23 +55,6 @@
   inset: -45%;
   border-radius: 9999px;
   background: radial-gradient(closest-side, var(--accent-space), transparent);
-  opacity: 0.1;
+  opacity: 0.14;
   pointer-events: none;
-  will-change: transform, opacity;
-  animation: vt-breathe 6s ease-in-out infinite alternate;
-}
-
-@keyframes vt-breathe {
-  from { opacity: 0.08; transform: scale(0.9); }
-  to { opacity: 0.2; transform: scale(1.06); }
-}
-
-:root[data-hidden] .vt-hero-glow {
-  animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vt-hero-glow {
-    animation: none;
-  }
 }

@@ -8,7 +8,10 @@ const src = join(root, 'src');
 const out = join(root, 'dist');
 const watch = process.argv.includes('--watch');
 const production = process.argv.includes('--production');
-const mode = production ? 'production' : 'development';
+// React/Vite always build in production mode (dev React is ~3x larger and slower, which skews
+// every memory/perf measurement). `--dev-react` opts into development builds for debugging.
+// `--production` only controls minification and sourcemaps.
+const mode = process.argv.includes('--dev-react') ? 'development' : 'production';
 
 const shared = {
   bundle: true,
@@ -47,7 +50,7 @@ async function buildRenderer() {
     configFile: join(root, 'vite.config.mts'),
     mode,
     logLevel: 'warn',
-    build: watch ? { watch: {} } : {},
+    build: { minify: production, sourcemap: !production, ...(watch ? { watch: {} } : {}) },
   });
 }
 

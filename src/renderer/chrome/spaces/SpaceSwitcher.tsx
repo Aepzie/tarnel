@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'motion/react';
 import { Check, ChevronDown, Ellipsis, Eraser, Flame, Pencil, Plus, Trash2 } from 'lucide-react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
@@ -19,11 +19,15 @@ import { shallowEqual, useBrowserSlice, useCommand } from '@/hooks/browser';
 import { settle, vela } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { CreateSpaceDialog } from './CreateSpaceDialog';
-import { DeleteSpaceDialog } from './DeleteSpaceDialog';
 import { SpaceColorRow } from './SpaceColorRow';
 import { SpaceMark } from './SpaceMark';
 import { GLASS_SURFACE, MENU_LABEL, MENU_ROW } from './surface';
+
+/** Dialogs are rarely opened: keep them out of the startup bundle, prefetch when the menu opens. */
+const loadCreateDialog = () => import('./CreateSpaceDialog');
+const loadDeleteDialog = () => import('./DeleteSpaceDialog');
+const CreateSpaceDialog = lazy(() => loadCreateDialog().then((module) => ({ default: module.CreateSpaceDialog })));
+const DeleteSpaceDialog = lazy(() => loadDeleteDialog().then((module) => ({ default: module.DeleteSpaceDialog })));
 
 const BURNER_INPUT = { name: 'Burner', color: 'orange', ephemeral: true } as const;
 
@@ -55,6 +59,17 @@ export function SpaceSwitcher() {
   const [dialog, setDialog] = useState<DialogState>({ open: false, editing: null });
   const [deleting, setDeleting] = useState<Space | null>(null);
   const skipFocusRestore = useRef(false);
+  // Mounted on first use, then kept mounted so close animations still play.
+  const createUsed = useRef(false);
+  const deleteUsed = useRef(false);
+  if (dialog.open) createUsed.current = true;
+  if (deleting) deleteUsed.current = true;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    void loadCreateDialog();
+    void loadDeleteDialog();
+  }, [menuOpen]);
 
   // Bridges the gap between the menu closing and a dialog mounting so the page never flashes on top.
   useOverlayPresence(menuOpen || handoff);
@@ -195,12 +210,18 @@ export function SpaceSwitcher() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CreateSpaceDialog
-        open={dialog.open}
-        editing={dialog.editing}
-        onOpenChange={(open) => setDialog((current) => ({ ...current, open }))}
-      />
-      <DeleteSpaceDialog space={deleting} onOpenChange={(open) => !open && setDeleting(null)} />
+      <Suspense fallback={null}>
+        {createUsed.current && (
+          <CreateSpaceDialog
+            open={dialog.open}
+            editing={dialog.editing}
+            onOpenChange={(open) => setDialog((current) => ({ ...current, open }))}
+          />
+        )}
+        {deleteUsed.current && (
+          <DeleteSpaceDialog space={deleting} onOpenChange={(open) => !open && setDeleting(null)} />
+        )}
+      </Suspense>
     </>
   );
 }
@@ -240,12 +261,15 @@ function SpaceName({ space, spaces, reduce }: { space: Space | undefined; spaces
   );
 }
 
-/** Thin orange light that sweeps around the pill border of a Burner space. */
+/**
+ * Thin orange light that sweeps around the pill border of a Burner space. A few CSS sweeps on entry,
+ * then it rests: an endless background-position loop repainted the island for as long as you browsed.
+ */
 function BurnerShimmer({ reduce }: { reduce: boolean }) {
   return (
-    <motion.span
+    <span
       aria-hidden
-      className="pointer-events-none absolute inset-0 rounded-[10px] p-px"
+      className={cn('pointer-events-none absolute inset-0 rounded-[10px] p-px', !reduce && 'vela-burner-sweep')}
       style={{
         backgroundImage:
           'linear-gradient(110deg, rgb(251 146 60 / 0.22) 0%, rgb(251 146 60 / 0.22) 42%, rgb(254 215 170 / 0.95) 50%, rgb(251 146 60 / 0.22) 58%, rgb(251 146 60 / 0.22) 100%)',
@@ -255,8 +279,6 @@ function BurnerShimmer({ reduce }: { reduce: boolean }) {
         WebkitMaskComposite: 'xor',
         mask: 'linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)',
       }}
-      animate={reduce ? undefined : { backgroundPosition: ['100% 0%', '0% 0%'] }}
-      transition={{ duration: 2.4, ease: 'linear', repeat: Infinity, repeatDelay: 1.6 }}
     />
   );
 }

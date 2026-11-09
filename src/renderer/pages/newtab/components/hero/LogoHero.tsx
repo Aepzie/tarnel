@@ -14,7 +14,7 @@ const DRAW_DURATION = 0.9;
 const DRAW_STAGGER = 0.14;
 const STARS_AT = DRAW_DURATION + DRAW_STAGGER;
 
-/** The Vela sail: strokes draw in, then the stars pop with an accent glow; a slow breathing halo behind. */
+/** The Vela sail: strokes draw in, then the stars pop with an accent glow; a soft static halo behind. */
 export function LogoHero() {
   const still = useReducedMotion() ?? false;
   const maskId = `vela-gaps-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
