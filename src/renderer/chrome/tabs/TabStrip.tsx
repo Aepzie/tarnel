@@ -12,8 +12,10 @@ import { useScrollFade } from './use-scroll-fade';
 import { computeTabWidths } from './tab-widths';
 import { GroupChip, chipWidth } from './groups/GroupChip';
 import { useEditingGroup } from './groups/group-ui';
-import type { TabUnit, Unit } from './groups/units';
+import { unitTabs, type TabUnit, type Unit } from './groups/units';
 import { useUnitDrag } from './groups/use-unit-drag';
+import { SplitTabItem } from './SplitTabItem';
+import { useSpaceSplits } from '../split/split-state';
 
 const CHIP_GAP = 4;
 const noop = (): void => {};
@@ -77,9 +79,10 @@ export function TabStrip() {
     return { pinned: pinnedOrder ? applyOrder(pinnedOrder, byPinned) : [...byPinned.values()], restTabs };
   }, [tabs, pinnedOrder]);
 
-  const drag = useUnitDrag(restTabs, groups, activeTabId, activeSpaceId);
+  const splits = useSpaceSplits();
+  const drag = useUnitDrag(restTabs, groups, splits, activeTabId, activeSpaceId);
   const units = drag.units;
-  const rest = useMemo(() => units.flatMap((unit) => (unit.kind === 'tab' ? [unit.tab] : [])), [units]);
+  const rest = useMemo(() => units.flatMap(unitTabs), [units]);
 
   useEffect(() => {
     if (!pinnedDragging.current) setPinnedOrder(null);
@@ -197,13 +200,30 @@ export function TabStrip() {
 
   const renderUnit = (unit: Unit, index: number) => {
     if (unit.kind === 'tab') return renderItem(unit.tab, unit);
+    if (unit.kind === 'split') {
+      return (
+        <SplitTabItem
+          key={unit.key}
+          unit={unit}
+          activeTabId={activeTabId}
+          paletteOpen={paletteOpen}
+          omniboxWidth={widths?.omnibox}
+          pillWidth={widths?.pill}
+          compact={widths?.iconOnly ?? false}
+          onDragStart={drag.onSplitDragStart}
+          onDragEnd={drag.onSplitDragEnd}
+          groupColor={unit.group ? SPACE_HEX[unit.group.color] : undefined}
+          groupEnd={unit.lastInGroup}
+        />
+      );
+    }
     const next = units[index + 1];
     return (
       <GroupChip
         key={unit.key}
         group={unit.group}
         count={unit.count}
-        linked={next?.kind === 'tab' && next.group?.id === unit.group.id}
+        linked={!!next && next.kind !== 'group' && next.group?.id === unit.group.id}
         editing={editingGroup === unit.group.id}
         onDragStart={onGroupDragStart}
         onDragEnd={drag.onGroupDragEnd}
