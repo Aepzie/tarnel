@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-09
+
 ### Added
 - Per-tab audio devices: pick the speakers/headphones a tab plays on and the microphone (and camera) it records from, under "Audio devices" in the tab menu, from the tab's speaker/microphone indicator (a small Sound popover with mute) or the command palette. Routing applies live to media elements, Web Audio and WebRTC playback, including iframes; capture still goes through the permission prompt. Choices are restored with the session; an unplugged device falls back to the system default (marked in the tab) and is used again once it returns. Tabs on "System default" pay nothing.
 
@@ -73,7 +75,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Aepzie/vela/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Aepzie/vela/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Aepzie/vela/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Aepzie/vela/releases/tag/v0.1.0
