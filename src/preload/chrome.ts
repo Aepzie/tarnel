@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
+import { AUDIO_IPC, EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -129,6 +129,10 @@ const api: VelaChromeAPI = {
     activate: (id, anchor, kind) => invoke(X.activate, id, anchor, kind ?? 'click'),
     setPinned: (id, pinned) => invoke(X.setPinned, id, pinned),
     openOptions: (id) => invoke(X.options, id),
+  },
+
+  mediaDevices: {
+    set: (tabId, slot, choice) => invoke(AUDIO_IPC.setDevice, tabId, slot, choice),
   },
 };
 

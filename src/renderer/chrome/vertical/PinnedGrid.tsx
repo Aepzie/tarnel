@@ -41,7 +41,7 @@ const PinnedTile = memo(function PinnedTile({ tab, active, reduced }: { tab: Tab
             <span className="absolute -inset-1 animate-spin rounded-full border-[1.5px] border-transparent border-t-space [animation-duration:0.8s]" />
           )}
         </span>
-        {(tab.audible || tab.muted) && (
+        {(tab.audible || tab.muted || tab.micActive) && (
           <span className="absolute top-1 right-1 size-1.5 rounded-full bg-space" aria-hidden="true" />
         )}
       </motion.button>

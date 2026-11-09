@@ -168,6 +168,8 @@ function same(a: VerticalTabRowProps, b: VerticalTabRowProps): boolean {
       x.asleep === y.asleep &&
       x.audible === y.audible &&
       x.muted === y.muted &&
+      x.micActive === y.micActive &&
+      !x.devices === !y.devices &&
       x.pinned === y.pinned &&
       x.groupId === y.groupId &&
       x.spaceId === y.spaceId)

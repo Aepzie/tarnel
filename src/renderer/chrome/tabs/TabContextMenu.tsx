@@ -17,6 +17,7 @@ import {
 import { MENU_ITEM, MENU_SEPARATOR, MENU_SURFACE } from './menu-style';
 import { groupIntoNew } from './groups/group-ui';
 import { SplitMenuItems } from '../split/SplitMenuItems';
+import { AudioDevicesMenu } from '../audio/AudioDevicesMenu';
 import type { TabState } from '@shared/types';
 import {
   ContextMenu,
@@ -150,6 +151,7 @@ export function TabContextMenu({ tab, children }: TabContextMenuProps) {
             Sleep now
           </ContextMenuItem>
           <MoveToSpace tab={tab} />
+          <AudioDevicesMenu tab={tab} />
           <ContextMenuSeparator className={MENU_SEPARATOR} />
           <GroupItems tab={tab} />
           <ContextMenuSeparator className={MENU_SEPARATOR} />
