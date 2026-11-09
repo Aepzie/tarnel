@@ -19,7 +19,7 @@ type ChipKind = 'ready' | 'available' | 'downloading' | 'failed';
 function chipKind(status: UpdateStatus | null): ChipKind | null {
   if (!status?.version) return null;
   if (status.phase === 'ready') return 'ready';
-  if (status.phase === 'available') return 'available';
+  if (status.phase === 'available' || status.phase === 'checking') return 'available';
   if (status.manual && status.phase === 'downloading') return 'downloading';
   if (status.manual && status.phase === 'error') return 'failed';
   return null;
