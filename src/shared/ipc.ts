@@ -21,6 +21,7 @@ import type {
   UICommand,
   UpdateStatus,
 } from './types';
+import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } from './types';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -295,4 +296,45 @@ declare global {
     vela: VelaChromeAPI;
     velaPages: VelaPagesAPI;
   }
+}
+
+/** Extension channels (chrome:* only from the chrome UI, pages:* only from vela:// pages). */
+export const EXTENSION_IPC = {
+  get: 'chrome:extensions-get',
+  activate: 'chrome:extension-activate',
+  setPinned: 'chrome:extension-set-pinned',
+  options: 'chrome:extension-options',
+  changed: 'chrome-event:extensions',
+  list: 'pages:extensions-list',
+  install: 'pages:extension-install',
+  loadUnpacked: 'pages:extension-load-unpacked',
+  update: 'pages:extension-update',
+  reload: 'pages:extension-reload',
+  remove: 'pages:extension-remove',
+  pageOptions: 'pages:extension-options',
+} as const;
+
+export interface VelaChromeAPI {
+  extensions: {
+    get(): Promise<ExtensionsState>;
+    onChange(cb: (state: ExtensionsState) => void): Unsubscribe;
+    /** Click (popup / onClicked) or context menu on an extension action, anchored at `anchor`. */
+    activate(id: string, anchor: ExtensionAnchor, kind?: 'click' | 'contextmenu'): Promise<void>;
+    setPinned(id: string, pinned: boolean): Promise<void>;
+    openOptions(id: string): Promise<void>;
+  };
+}
+
+export interface VelaPagesAPI {
+  extensions: {
+    list(): Promise<ExtensionInfo[]>;
+    /** Chrome Web Store URL or 32-letter extension ID. */
+    install(input: string): Promise<ExtensionInfo>;
+    /** Opens a folder picker; null when cancelled. */
+    loadUnpacked(): Promise<ExtensionInfo | null>;
+    update(id: string, patch: ExtensionPatch): Promise<ExtensionInfo>;
+    reload(id: string): Promise<ExtensionInfo>;
+    remove(id: string): Promise<void>;
+    openOptions(id: string): Promise<void>;
+  };
 }

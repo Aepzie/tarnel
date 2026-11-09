@@ -8,6 +8,7 @@ import { SpaceSwitcher } from '../spaces/SpaceSwitcher';
 import { TabStrip } from '../tabs/TabStrip';
 import { PerfChip } from '../perf/PerfChip';
 import { DownloadsButton } from '../downloads/DownloadsButton';
+import { ExtensionsButton } from '../extensions/ExtensionsButton';
 import { UpdateChip } from '../update/UpdateChip';
 import { NavButtons } from './NavButtons';
 import { CaptionButtons, TrafficLights } from './WindowControls';
@@ -116,6 +117,7 @@ export function TopIsland() {
           </>
         )}
         <div className="no-drag flex shrink-0 items-center gap-1">
+          <ExtensionsButton />
           <UpdateChip />
           <DownloadsButton />
           <PerfChip />

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type VelaPagesAPI } from '../shared/ipc';
+import { EXTENSION_IPC, IPC, type VelaPagesAPI } from '../shared/ipc';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -27,6 +27,15 @@ if (isVelaPage()) {
     currentSpace: () => call(ch.currentSpace),
     history: (query, limit, before) => call(ch.history, query, limit, before),
     deleteHistory: (url) => call(ch.historyDelete, url),
+    extensions: {
+      list: () => call(EXTENSION_IPC.list),
+      install: (input) => call(EXTENSION_IPC.install, input),
+      loadUnpacked: () => call(EXTENSION_IPC.loadUnpacked),
+      update: (id, patch) => call(EXTENSION_IPC.update, id, patch),
+      reload: (id) => call(EXTENSION_IPC.reload, id),
+      remove: (id) => call(EXTENSION_IPC.remove, id),
+      openOptions: (id) => call(EXTENSION_IPC.pageOptions, id),
+    },
     sync: {
       status: () => call(ch.syncStatus),
       pickFolder: () => call(ch.syncPickFolder),

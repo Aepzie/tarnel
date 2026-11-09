@@ -225,6 +225,59 @@ export const DEFAULT_SETTINGS: Settings = {
   updatePrerelease: false,
 };
 
+/** Where an installed extension came from. */
+export type ExtensionSource = 'store' | 'unpacked';
+
+/** 'all' = every non-burner Space, including ones created later; otherwise exactly these Spaces. */
+export type ExtensionSpaces = 'all' | SpaceId[];
+
+export interface ExtensionInfo {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  source: ExtensionSource;
+  enabled: boolean;
+  spaces: ExtensionSpaces;
+  /** Action button shown directly in the top island (otherwise only in the extensions menu). */
+  pinned: boolean;
+  /** Manifest icon as a data: URL. */
+  icon: string | null;
+  hasOptions: boolean;
+  /** Last load failure (e.g. unpacked folder moved); cleared on the next successful load. */
+  error: string | null;
+}
+
+export interface ExtensionPatch {
+  enabled?: boolean;
+  spaces?: ExtensionSpaces;
+  pinned?: boolean;
+}
+
+/** Toolbar action state of one extension for the active tab. */
+export interface ExtensionAction {
+  id: string;
+  title: string;
+  badgeText: string;
+  badgeColor: string | null;
+  /** Current action icon (may differ per tab) as a data: URL. */
+  icon: string | null;
+}
+
+export interface ExtensionsState {
+  extensions: ExtensionInfo[];
+  /** Actions of the extensions running in the active tab's Space. */
+  actions: ExtensionAction[];
+}
+
+/** Rect (CSS px, window-relative) of the button an extension popup hangs from. */
+export interface ExtensionAnchor {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** What end-to-end encrypted sync carries. History is off by default. */
 export interface SyncCategories {
   settings: boolean;

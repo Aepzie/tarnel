@@ -9,6 +9,7 @@ import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSessio
 import * as tabs from './tabs';
 import * as tabGroups from './tab-groups';
 import { getCompletedDownloadPath, getDownloadPath } from './downloads';
+import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openReleasePage, watchUpdates } from './updater';
 import { resolveInput, resolveInputDetailed } from './url';
@@ -359,5 +360,6 @@ export function registerIpc(): void {
     chrome: process.versions.chrome ?? '',
     v8: process.versions.v8 ?? '',
   }));
+  registerExtensionIpc(handleChrome, handlePages);
   registerSyncIpc(handlePages);
 }
