@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -350,35 +349,32 @@ function SpaceRow({ space, active, tabCount, canDelete, subOpen, onSubOpenChange
         </DropdownMenuPrimitive.SubTrigger>
       </div>
 
-      {/* Portaled so it floats beside the row instead of rendering inside the (scrollable) main menu. */}
-      <DropdownMenuPortal>
-        <DropdownMenuSubContent
-          sideOffset={SUB_SIDE_OFFSET}
-          alignOffset={SUB_ALIGN_OFFSET}
-          collisionPadding={8}
-          className={cn(GLASS_SURFACE, 'w-56 rounded-xl p-1.5')}
+      <DropdownMenuSubContent
+        sideOffset={SUB_SIDE_OFFSET}
+        alignOffset={SUB_ALIGN_OFFSET}
+        collisionPadding={8}
+        className={cn(GLASS_SURFACE, 'w-56 rounded-xl p-1.5')}
+      >
+        <DropdownMenuItem className={MENU_ROW} onSelect={onRename}>
+          <Pencil className="size-4" strokeWidth={1.75} />
+          Rename…
+        </DropdownMenuItem>
+        <div className={MENU_LABEL}>Color</div>
+        <SpaceColorRow space={space} />
+        <DropdownMenuItem
+          className={MENU_ROW}
+          onSelect={() => settle(vela().tabs.create({ url: 'vela://settings/#spaces', active: true }))}
         >
-          <DropdownMenuItem className={MENU_ROW} onSelect={onRename}>
-            <Pencil className="size-4" strokeWidth={1.75} />
-            Rename…
-          </DropdownMenuItem>
-          <div className={MENU_LABEL}>Color</div>
-          <SpaceColorRow space={space} />
-          <DropdownMenuItem
-            className={MENU_ROW}
-            onSelect={() => settle(vela().tabs.create({ url: 'vela://settings/#spaces', active: true }))}
-          >
-            <Eraser className="size-4" strokeWidth={1.75} />
-            Clear data…
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="-mx-1.5 my-1.5 bg-border/70" />
-          <DropdownMenuItem className={MENU_ROW} variant="destructive" disabled={!canDelete} onSelect={onDelete}>
-            <Trash2 className="size-4" strokeWidth={1.75} />
-            {canDelete ? 'Delete Space…' : 'Delete Space'}
-            {!canDelete && <span className="ml-auto text-[11px] text-muted-foreground">Last one</span>}
-          </DropdownMenuItem>
-        </DropdownMenuSubContent>
-      </DropdownMenuPortal>
+          <Eraser className="size-4" strokeWidth={1.75} />
+          Clear data…
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="-mx-1.5 my-1.5 bg-border/70" />
+        <DropdownMenuItem className={MENU_ROW} variant="destructive" disabled={!canDelete} onSelect={onDelete}>
+          <Trash2 className="size-4" strokeWidth={1.75} />
+          {canDelete ? 'Delete Space…' : 'Delete Space'}
+          {!canDelete && <span className="ml-auto text-[11px] text-muted-foreground">Last one</span>}
+        </DropdownMenuItem>
+      </DropdownMenuSubContent>
     </DropdownMenuSub>
   );
 }

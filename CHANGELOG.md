@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Per-tab audio devices: pick the speakers/headphones a tab plays on and the microphone (and camera) it records from, under "Audio devices" in the tab menu, from the tab's speaker/microphone indicator (a small Sound popover with mute) or the command palette. Routing applies live to media elements, Web Audio and WebRTC playback, including iframes; capture still goes through the permission prompt. Choices are restored with the session; an unplugged device falls back to the system default (marked in the tab) and is used again once it returns. Tabs on "System default" pay nothing.
 
+### Fixed
+- Submenus in the tab context menu ("Add to group", "Move to Space") never appeared, so a tab could not be added to an existing group or moved to another Space from the menu. All context-menu and dropdown submenus now float beside their menu, stay inside the window (scrolling when the list is long) and work with the keyboard.
+
 ## [0.2.0] - 2026-11-09
 
 ### Added
