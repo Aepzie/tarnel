@@ -1,10 +1,11 @@
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
-import type { PerfStats } from '@shared/types';
+import { useCallback, useEffect, useState } from 'react';
+import type { NewtabHero, PerfStats } from '@shared/types';
 import { ease } from '@/lib/motion';
 import { velaPages } from '@/lib/vela';
 import { Aurora } from './components/Aurora';
-import { Clock } from './components/Clock';
+import { Hero } from './components/hero/Hero';
+import { bootHero, isNewtabHero } from './components/hero/heroes';
 import { SearchBar } from './components/SearchBar';
 import { StatsFooter } from './components/StatsFooter';
 import { TopSites, toSites, type Site } from './components/TopSites';
@@ -13,10 +14,28 @@ import { bootTheme, hasBridge } from './theme';
 export function App() {
   const [sites, setSites] = useState<Site[]>([]);
   const [stats, setStats] = useState<PerfStats | null>(null);
+  const [hero, setHero] = useState<NewtabHero | null>(() => (hasBridge() ? bootHero() : 'clock'));
+
+  const changeHero = useCallback((next: NewtabHero) => {
+    setHero(next);
+    document.documentElement.dataset.hero = next;
+    if (hasBridge()) velaPages().setSettings({ newtabHero: next }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
-    void bootTheme();
+    const adopt = (value: unknown): void => {
+      if (isNewtabHero(value)) setHero(value);
+    };
+    void bootTheme().then((settings) => adopt(settings?.newtabHero));
     if (!hasBridge()) return;
+    const onVisible = (): void => {
+      if (document.hidden) return;
+      velaPages()
+        .getSettings()
+        .then((settings) => adopt(settings.newtabHero))
+        .catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', onVisible);
     velaPages()
       .topSites()
       .then((raw) => setSites(toSites(raw)))
@@ -25,6 +44,7 @@ export function App() {
       .perf()
       .then(setStats)
       .catch(() => undefined);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   return (
@@ -37,7 +57,7 @@ export function App() {
           transition={{ duration: 0.4, ease: ease.out }}
           className="flex flex-col items-center"
         >
-          <Clock />
+          <Hero hero={hero} onChange={changeHero} />
           <div className="mt-9">
             <SearchBar />
           </div>

@@ -19,11 +19,14 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  compact = false,
 }: {
   label: string;
   value: T;
   options: readonly SegmentOption<T>[];
   onChange: (value: T) => void;
+  /** Icon-only segments; the label shows on the active one (and as a tooltip on the rest). */
+  compact?: boolean;
 }) {
   const layoutId = useId();
   return (
@@ -45,6 +48,7 @@ export function Segmented<T extends string>({
             key={option.value}
             value={option.value}
             aria-label={option.label}
+            title={compact ? option.label : undefined}
             className={cn(
               'relative h-7 min-w-0 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150',
               'hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-foreground',
@@ -61,7 +65,7 @@ export function Segmented<T extends string>({
             )}
             <span className="relative z-10 flex items-center gap-1.5">
               {Icon && <Icon className="size-3.5" strokeWidth={1.75} aria-hidden />}
-              {option.label}
+              {(!compact || active) && option.label}
             </span>
           </ToggleGroupItem>
         );

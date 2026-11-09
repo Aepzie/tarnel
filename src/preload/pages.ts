@@ -35,6 +35,7 @@ if (isVelaPage()) {
 interface BootTheme {
   theme: 'dark' | 'light';
   accent: string | null;
+  hero?: string;
 }
 
 /** Applies theme + accent synchronously before first paint so vela:// pages never flash. */
@@ -46,12 +47,13 @@ function applyBootTheme(): void {
     return;
   }
   if (!boot) return;
-  const { theme, accent } = boot;
+  const { theme, accent, hero } = boot;
 
   const apply = (root: HTMLElement): void => {
     root.classList.toggle('light', theme === 'light');
     root.classList.toggle('dark', theme !== 'light');
     root.dataset.theme = theme;
+    if (typeof hero === 'string' && /^[a-z-]{1,24}$/.test(hero)) root.dataset.hero = hero;
     if (accent && /^#[0-9a-f]{3,8}$/i.test(accent)) root.style.setProperty('--accent-space', accent);
   };
 

@@ -98,3 +98,38 @@
 .vt-digit-mask {
   mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
 }
+
+.vt-hero-dot {
+  background: var(--accent-space);
+  box-shadow: 0 0 8px 1px color-mix(in oklab, var(--accent-space) 60%, transparent);
+}
+
+.vt-hero-stars {
+  filter: drop-shadow(0 0 14px color-mix(in oklab, var(--accent-space) 70%, transparent));
+}
+
+.vt-hero-glow {
+  position: absolute;
+  inset: -45%;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, var(--accent-space), transparent);
+  opacity: 0.1;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: vt-breathe 6s ease-in-out infinite alternate;
+}
+
+@keyframes vt-breathe {
+  from { opacity: 0.08; transform: scale(0.9); }
+  to { opacity: 0.2; transform: scale(1.06); }
+}
+
+:root[data-hidden] .vt-hero-glow {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vt-hero-glow {
+    animation: none;
+  }
+}

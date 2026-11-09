@@ -1,5 +1,5 @@
-import { Blend, Layers2, Monitor, Moon, Square, Sun } from 'lucide-react';
-import type { ThemeMode, WindowMaterial } from '@shared/types';
+import { Blend, CalendarDays, CircleDashed, Clock3, Layers2, Monitor, Moon, Sailboat, Square, Sun, Sunrise, Timer } from 'lucide-react';
+import type { NewtabHero, ThemeMode, WindowMaterial } from '@shared/types';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Segmented, type SegmentOption } from '../components/controls';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
@@ -15,6 +15,15 @@ const MATERIALS: readonly SegmentOption<WindowMaterial>[] = [
   { value: 'mica', label: 'Mica', icon: Layers2 },
   { value: 'acrylic', label: 'Acrylic', icon: Blend },
   { value: 'none', label: 'None', icon: Square },
+];
+
+const HEROES: readonly SegmentOption<NewtabHero>[] = [
+  { value: 'clock', label: 'Clock', icon: Clock3 },
+  { value: 'clock-seconds', label: 'Seconds', icon: Timer },
+  { value: 'logo', label: 'Logo', icon: Sailboat },
+  { value: 'date', label: 'Date', icon: CalendarDays },
+  { value: 'greeting', label: 'Greeting', icon: Sunrise },
+  { value: 'minimal', label: 'Minimal', icon: CircleDashed },
 ];
 
 export function Appearance() {
@@ -42,6 +51,15 @@ export function Appearance() {
             value={settings.windowMaterial}
             options={MATERIALS}
             onChange={(windowMaterial) => update({ windowMaterial })}
+          />
+        </Row>
+        <Row title="Start page" description="What sits above the search bar. Click it on a new tab to cycle.">
+          <Segmented
+            label="Start page style"
+            compact
+            value={settings.newtabHero}
+            options={HEROES}
+            onChange={(newtabHero) => update({ newtabHero })}
           />
         </Row>
       </Group>

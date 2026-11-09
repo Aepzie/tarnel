@@ -187,12 +187,12 @@ function registerPagesBootSync(): void {
       event.returnValue = null;
       return;
     }
-    const { theme } = getSettings();
+    const { theme, newtabHero } = getSettings();
     const dark = theme === 'dark' || (theme === 'system' && nativeTheme.shouldUseDarkColors);
     const tabId = tabs.tabIdForWebContents(event.sender.id);
     const spaceId = tabId === null ? null : tabs.getTabSpaceId(tabId);
     const space = spaceId ? getSpace(spaceId) : undefined;
-    event.returnValue = { theme: dark ? 'dark' : 'light', accent: space ? SPACE_HEX[space.color] : null };
+    event.returnValue = { theme: dark ? 'dark' : 'light', accent: space ? SPACE_HEX[space.color] : null, hero: newtabHero };
   });
 }
 
