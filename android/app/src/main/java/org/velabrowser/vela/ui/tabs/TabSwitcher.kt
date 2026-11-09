@@ -86,7 +86,7 @@ import kotlin.math.abs
 
 /** Grid of the active Space's tabs. Swipe a card sideways to close it; predictive back shrinks the sheet. */
 @Composable
-fun TabSwitcher(browser: Browser) {
+fun TabSwitcher(browser: Browser, onPeek: (Boolean) -> Unit = {}) {
     val c = LocalVela.current
     val spaceTabs = browser.tabsIn(browser.activeSpaceId)
     val active = browser.activeTab
@@ -97,11 +97,14 @@ fun TabSwitcher(browser: Browser) {
     }
 
     PredictiveBackHandler { events ->
+        onPeek(true)
         try {
             events.collect { backProgress = it.progress }
             close()
         } catch (_: CancellationException) {
             backProgress = 0f
+        } finally {
+            onPeek(false)
         }
     }
 
