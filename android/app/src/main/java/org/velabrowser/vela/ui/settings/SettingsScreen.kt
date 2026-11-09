@@ -184,7 +184,7 @@ private fun Toggle(title: String, subtitle: String, icon: androidx.compose.ui.gr
 private fun About(browser: Browser) {
     val c = LocalVela.current
     val context = LocalContext.current
-    val webView = remember { WebViewCompat.getCurrentWebViewPackage(context) }
+    val webView = remember { runCatching { WebViewCompat.getCurrentWebViewPackage(context) }.getOrNull() }
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         Row(
             Modifier

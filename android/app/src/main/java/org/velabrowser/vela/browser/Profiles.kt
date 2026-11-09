@@ -18,7 +18,7 @@ import org.velabrowser.vela.core.Space
  */
 @SuppressLint("RequiresFeature") // Every profile call is guarded by [supported].
 object Profiles {
-    val supported: Boolean by lazy { WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE) }
+    val supported: Boolean by lazy { runCatching { WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE) }.getOrDefault(false) }
 
     private val main = Handler(Looper.getMainLooper())
 

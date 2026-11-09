@@ -63,6 +63,7 @@ import org.velabrowser.vela.browser.Browser
 import org.velabrowser.vela.browser.Panel
 import org.velabrowser.vela.core.NewtabHero
 import org.velabrowser.vela.core.TopSite
+import org.velabrowser.vela.core.UrlInput
 import org.velabrowser.vela.ui.components.SiteIcon
 import org.velabrowser.vela.ui.components.SpaceDot
 import org.velabrowser.vela.ui.components.VelaMark
@@ -94,7 +95,9 @@ fun NewTabPage(browser: Browser, modifier: Modifier = Modifier) {
     var sites by remember { mutableStateOf<List<TopSite>?>(null) }
     LaunchedEffect(Unit) {
         val visited = runCatching { browser.history.topSites(8) }.getOrDefault(emptyList())
-        sites = (visited + DefaultSites.filter { d -> visited.none { it.host.removePrefix("www.") == d.host } }).take(8)
+        sites = (visited + DefaultSites)
+            .distinctBy { UrlInput.siteOf(it.host) }
+            .take(8)
     }
 
     BoxWithConstraints(
@@ -104,7 +107,7 @@ fun NewTabPage(browser: Browser, modifier: Modifier = Modifier) {
             .aurora(c.accent, c.dark),
     ) {
         val compact = maxHeight < 520.dp
-        val heroGap = maxHeight * 0.11f
+        val heroGap = maxHeight * 0.15f
         Column(
             Modifier
                 .fillMaxSize()
@@ -330,7 +333,7 @@ private fun SiteTile(browser: Browser, site: TopSite, modifier: Modifier, tile: 
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            site.title.takeIf { it.isNotBlank() && it.length <= 18 } ?: prettyHost(site.host),
+            siteLabel(site),
             style = VelaType.label,
             color = c.textMuted,
             maxLines = 1,
@@ -338,6 +341,14 @@ private fun SiteTile(browser: Browser, site: TopSite, modifier: Modifier, tile: 
             textAlign = TextAlign.Center,
         )
     }
+}
+
+/** "Sailing - Wikipedia" → "Wikipedia"; otherwise a short title, otherwise the site name from the host. */
+private fun siteLabel(site: TopSite): String {
+    val suffix = site.title.split(" - ", " | ", " — ", " · ").last().trim()
+    if (suffix.isNotEmpty() && suffix.length <= 16 && suffix != site.title.trim()) return suffix
+    if (site.title.isNotBlank() && site.title.length <= 16) return site.title.trim()
+    return prettyHost(UrlInput.siteOf(site.host))
 }
 
 private fun prettyHost(host: String): String = host.removePrefix("www.").removePrefix("m.").substringBefore('.').replaceFirstChar { it.titlecase(Locale.getDefault()) }

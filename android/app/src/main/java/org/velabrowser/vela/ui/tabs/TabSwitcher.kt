@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Tune
@@ -279,15 +280,16 @@ private fun TabCard(
                 }
             }
             if (tab.isSleeping) {
-                Text(
+                Icon(
+                    Icons.Rounded.Bedtime,
                     "Sleeping",
-                    style = VelaType.caption,
-                    color = c.textMuted,
+                    tint = c.textMuted,
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
+                        .align(Alignment.BottomEnd)
                         .padding(8.dp)
-                        .background(c.islandSolid.copy(alpha = 0.85f), CircleShape)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                        .size(22.dp)
+                        .background(c.islandSolid.copy(alpha = 0.88f), CircleShape)
+                        .padding(4.dp),
                 )
             }
         }

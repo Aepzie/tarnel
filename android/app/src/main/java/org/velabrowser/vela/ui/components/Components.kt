@@ -160,7 +160,7 @@ fun SiteIcon(host: String?, favicons: FaviconCache, modifier: Modifier = Modifie
         val image = remember(icon) { icon.asImageBitmap() }
         Image(image, null, modifier.size(size).clip(shape))
     } else {
-        val letter = host?.removePrefix("www.")?.firstOrNull()?.uppercaseChar()?.toString() ?: "•"
+        val letter = host?.let { org.velabrowser.vela.core.UrlInput.siteOf(it) }?.firstOrNull()?.uppercaseChar()?.toString() ?: "•"
         Box(
             modifier
                 .size(size)
@@ -168,7 +168,20 @@ fun SiteIcon(host: String?, favicons: FaviconCache, modifier: Modifier = Modifie
                 .border(1.dp, c.accent.copy(alpha = 0.22f), shape),
             contentAlignment = Alignment.Center,
         ) {
-            Text(letter, color = c.accent, fontSize = (size.value * 0.48f).sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                letter,
+                color = c.accent,
+                style = androidx.compose.ui.text.TextStyle(
+                    fontSize = (size.value * 0.5f).sp,
+                    lineHeight = (size.value * 0.5f).sp,
+                    fontWeight = FontWeight.SemiBold,
+                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                    lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                        androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                        androidx.compose.ui.text.style.LineHeightStyle.Trim.Both,
+                    ),
+                ),
+            )
         }
     }
 }

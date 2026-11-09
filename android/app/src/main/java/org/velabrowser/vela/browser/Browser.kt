@@ -225,6 +225,13 @@ class Browser(
         return tab
     }
 
+    /** Makes [tab] the active one without touching WebViews (screenshot tests and previews). */
+    @androidx.annotation.VisibleForTesting
+    internal fun showWithoutLoading(tab: Tab) {
+        activeSpaceId = tab.spaceId
+        activeTabIds[tab.spaceId] = tab.id
+    }
+
     fun select(tab: Tab) {
         val previous = activeTab
         if (previous != null && previous !== tab) {
