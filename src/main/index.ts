@@ -5,6 +5,7 @@ import { attachDownloads } from './downloads';
 import { initFingerprint } from './fingerprint';
 import { initIdentity } from './identity';
 import { initAudioDevices } from './audio-devices';
+import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
@@ -114,6 +115,7 @@ if (!app.requestSingleInstanceLock()) {
     initIdentity();
     initFingerprint();
     initAudioDevices();
+    initAudioMixer();
 
     void initAdblock().catch(() => undefined);
     onSessionCreated((ses) => {
