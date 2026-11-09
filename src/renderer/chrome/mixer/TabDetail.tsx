@@ -16,8 +16,8 @@ import { resetTab, settingsOf, updateTab } from './mixer-store';
 const PRESET_IDS = Object.keys(EQ_PRESETS) as EqPresetId[];
 
 const ROUTING_NOTES: Partial<Record<MixerRouting, string>> = {
-  partial: 'Some audio on this page can only be adjusted in volume.',
-  idle: 'No sound yet. Changes apply as soon as the page plays something.',
+  partial: 'Some audio on this page can only be adjusted in volume',
+  idle: 'No sound yet · changes apply once it plays',
 };
 
 function SectionLabel({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
@@ -68,7 +68,14 @@ export function TabDetail({ tab, settings, routing }: { tab: TabState; settings:
         <Favicon src={tab.favicon} url={tab.url} title={tab.title} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] leading-tight font-semibold tracking-tight text-foreground">{tab.title || hostOf(tab.url)}</span>
-          <span className="block truncate text-[11px] leading-tight text-zinc-500">{hostOf(tab.url)}</span>
+          {note ? (
+            <span role="note" className="flex items-center gap-1 truncate text-[11px] leading-tight text-amber-300/85 light:text-amber-700" title={note}>
+              <InfoIcon className="size-3 shrink-0" strokeWidth={2} />
+              <span className="truncate">{note}</span>
+            </span>
+          ) : (
+            <span className="block truncate text-[11px] leading-tight text-zinc-500">{hostOf(tab.url)}</span>
+          )}
         </span>
         <button
           type="button"
@@ -80,13 +87,6 @@ export function TabDetail({ tab, settings, routing }: { tab: TabState; settings:
           Reset
         </button>
       </div>
-
-      {note && (
-        <div role="note" className="flex items-start gap-2 rounded-lg bg-amber-300/[0.07] px-2.5 py-2 text-[11.5px] leading-snug text-amber-200/85 ring-1 ring-amber-300/15 ring-inset light:bg-amber-500/10 light:text-amber-800 light:ring-amber-600/20">
-          <InfoIcon className="mt-px size-3.5 shrink-0" strokeWidth={1.75} />
-          {note}
-        </div>
-      )}
 
       <div>
         <SectionLabel

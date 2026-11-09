@@ -27,8 +27,9 @@ const SPECTRUM_BINS = 16;
 
 function mockCount(): number {
   try {
-    const raw = Number(window.localStorage.getItem('vela:mixer-mock-tabs'));
-    return Number.isFinite(raw) && raw > 0 ? Math.min(12, Math.round(raw)) : 3;
+    const stored = window.localStorage.getItem('vela:mixer-mock-tabs');
+    const raw = Number(stored);
+    return stored !== null && Number.isFinite(raw) && raw >= 0 ? Math.min(12, Math.round(raw)) : 3;
   } catch {
     return 3;
   }

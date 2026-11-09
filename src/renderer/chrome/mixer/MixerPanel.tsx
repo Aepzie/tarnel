@@ -80,7 +80,7 @@ export function MixerPanel() {
   const selectedState = selected ? mixer.tabs.get(selected.id) : undefined;
 
   return (
-    <div className={cn('flex max-h-[min(700px,calc(100vh-72px))] flex-col', channels.length === 0 && 'w-[340px]')}>
+    <div className={cn('flex max-h-[min(700px,calc(100vh-72px))] flex-col', channels.length === 0 ? 'w-[340px]' : compact && 'w-[min(560px,calc(100vw-16px))]')}>
       <header className="flex h-11 shrink-0 items-center gap-2.5 px-3.5">
         <span className="grid size-6 place-items-center rounded-md bg-space/15 text-space">
           <SlidersVerticalIcon className="size-3.5" strokeWidth={2} />
@@ -110,12 +110,12 @@ export function MixerPanel() {
       {channels.length === 0 || !selected ? (
         <EmptyState />
       ) : (
-        <div className={cn('flex min-h-0 flex-1', compact ? 'flex-col overflow-y-auto overscroll-contain' : 'flex-row')}>
+        <div className={cn('flex min-h-0', compact ? 'flex-1 flex-col overflow-y-auto overscroll-contain [scrollbar-color:color-mix(in_oklab,var(--foreground)_16%,transparent)_transparent] [scrollbar-width:thin]' : 'h-[min(548px,calc(100vh-128px))] flex-row')}>
           <div
             role="list"
             aria-label="Tabs with sound"
             className={cn(
-              'flex shrink-0 gap-1 overflow-x-auto overscroll-contain p-2 [scrollbar-width:thin]',
+              'flex shrink-0 gap-1 overflow-x-auto overscroll-contain p-2 [scrollbar-color:color-mix(in_oklab,var(--foreground)_16%,transparent)_transparent] [scrollbar-width:thin]',
               compact ? 'h-[318px] w-full' : 'max-w-[380px] min-w-[100px]',
             )}
           >
@@ -147,7 +147,7 @@ export function MixerPanel() {
             </AnimatePresence>
           </div>
           <div aria-hidden className={cn('shrink-0 bg-border', compact ? 'mx-3 h-px' : 'my-3 w-px')} />
-          <div className={cn('min-w-0 p-3.5', compact ? 'w-full' : 'w-[460px] overflow-y-auto overscroll-contain [scrollbar-width:thin]')}>
+          <div className={cn('min-w-0 p-3.5', compact ? 'w-full' : 'w-[460px] overflow-y-auto overscroll-contain [scrollbar-color:color-mix(in_oklab,var(--foreground)_16%,transparent)_transparent] [scrollbar-width:thin]')}>
             <TabDetail tab={selected} settings={selectedState?.settings ?? DEFAULT_TAB_AUDIO} routing={selectedState?.routing ?? 'idle'} />
           </div>
         </div>
