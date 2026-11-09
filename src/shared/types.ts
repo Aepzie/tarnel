@@ -112,6 +112,35 @@ export type TabGroupInput = Pick<TabGroup, 'name' | 'color' | 'collapsed'>;
 /** Where the tab list lives: the top island strip, or a floating island on the left. */
 export type TabLayout = 'horizontal' | 'vertical';
 
+/**
+ * Which refresh rate Chromium paces frames to on Windows (see docs/PERFORMANCE.md → Frame rate).
+ * 'match' = the display the window opens on, 'highest' = the fastest connected display,
+ * 'primary' = the primary display (stock Chromium). Applied at launch.
+ */
+export type FrameRateMode = 'match' | 'highest' | 'primary';
+
+export const FRAME_RATE_MODES: readonly FrameRateMode[] = ['match', 'highest', 'primary'];
+
+export interface DisplayRefresh {
+  id: number;
+  label: string;
+  /** Refresh rate in whole Hz (Electron's `displayFrequency`, rounded). */
+  hz: number;
+  primary: boolean;
+  /** The window is (mostly) on this display. */
+  current: boolean;
+}
+
+export interface FrameRateStatus {
+  /** The setting does something on this platform (Windows). Elsewhere Chromium follows each display itself. */
+  supported: boolean;
+  displays: DisplayRefresh[];
+  /** Rate Chromium paces frames to with the switches this run started with. */
+  pacedHz: number | null;
+  /** The setting or the window's display changed since launch in a way that needs a restart. */
+  restartRequired: boolean;
+}
+
 export interface BrowserState {
   tabs: TabState[];
   activeTabId: number | null;
@@ -151,6 +180,8 @@ export interface Settings {
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
   tabLayout: TabLayout;
+  /** Frame pacing on Windows; takes effect at the next launch. */
+  frameRate: FrameRateMode;
   /** Check GitHub releases on startup and every 6 h. */
   updateAutoCheck: boolean;
   /** Download updates in the background (installable builds only). */
@@ -265,6 +296,7 @@ export const DEFAULT_SETTINGS: Settings = {
   windowMaterial: 'mica',
   newtabHero: 'clock',
   tabLayout: 'horizontal',
+  frameRate: 'match',
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,

@@ -9,6 +9,7 @@ import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
+import { initFrameRate } from './perf/frame-rate';
 import { initSleeper, stopSleeper } from './perf/sleeper';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, setPermissionPrompter } from './privacy';
@@ -116,6 +117,7 @@ if (!app.requestSingleInstanceLock()) {
     initAudioDevices();
 
     void initAdblock().catch(() => undefined);
+    initFrameRate();
     onSessionCreated((ses) => {
       registerVelaProtocol(ses);
       attachDownloads(ses);

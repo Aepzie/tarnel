@@ -16,6 +16,8 @@ if (isVelaPage()) {
     setSettings: (patch) => call(ch.setSettings, patch),
     topSites: () => call(ch.topSites),
     perf: () => call(ch.perf),
+    frameRate: () => call(ch.frameRate),
+    relaunch: () => call(ch.relaunch),
     listSpaces: () => call(ch.listSpaces),
     createSpace: (input) => call(ch.createSpace, input),
     updateSpace: (id, patch) => call(ch.updateSpace, id, patch),
