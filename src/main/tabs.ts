@@ -12,6 +12,8 @@ import { getActiveSpaceId, getSpace, getSpaceSession, listSpaces, onSpacesChange
 import { bindGroupModel, clusterGroups, getGroup, groupsInOrder, pruneGroups, restoreGroup, savedGroup, type SavedGroup } from './tab-groups';
 import { NEWTAB_URL, isInternalUrl, isOpenableFromWeb, isSecureUrl, resolveInput } from './url';
 import * as windowLayer from './window';
+import { bindSplitModel, clusterSplits, detachFromSplit, isOnScreen, restoreSplits, savedSplit, splitIdOf, splitOf, splitsInOrder, unitOf, type SavedSplit } from './split';
+import { onPaneFocus, trackPanes, type Pane } from './split-panes';
 
 export interface SavedTab {
   url: string;
@@ -21,6 +23,7 @@ export interface SavedTab {
   pinned: boolean;
   active: boolean;
   group?: SavedGroup;
+  split?: SavedSplit;
 }
 
 export interface CreateTabOpts {
@@ -113,10 +116,10 @@ function tabsInSpace(spaceId: SpaceId): Tab[] {
   return order.map((id) => tabs.get(id)!).filter((t) => t.spaceId === spaceId);
 }
 
-/** Keep pinned tabs first and every group's tabs together, otherwise preserving relative order. */
+/** Keep pinned tabs first, every group's tabs together and split partners adjacent, otherwise preserving relative order. */
 function normalizeOrder(): void {
   const pinnedFirst = [...order.filter((id) => tabs.get(id)?.pinned), ...order.filter((id) => !tabs.get(id)?.pinned)];
-  order = clusterGroups(pinnedFirst, groupOf);
+  order = clusterSplits(clusterGroups(pinnedFirst, groupOf));
 }
 
 function groupOf(id: number): TabGroupId | null {
@@ -227,7 +230,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     if (!current() || details.reason === 'clean-exit') return;
     const url = tab.errorUrl ?? tab.url;
     tab.loading = false;
-    if (tab.id === activeTabId) {
+    if (isOnScreen(tab.id)) {
       tab.errorUrl = url;
       load(wc, errorPageUrl('crashed', details.reason, url));
     } else {
@@ -393,6 +396,7 @@ export function initTabs(win: BaseWindow): void {
   }
   win.on('closed', () => {
     if (windowLayer.isHtmlFullscreen()) windowLayer.setHtmlFullscreen(false);
+    trackPanes([]);
     for (const tab of tabs.values()) destroyView(tab, true);
   });
   // Re-init after a window was recreated (macOS activate): show the active tab again.
@@ -458,9 +462,34 @@ export function activateTab(id: number): void {
   if (getActiveSpaceId() !== tab.spaceId) setActiveSpaceId(tab.spaceId);
   const wc = wake(tab);
   if (Math.abs(wc.getZoomFactor() - tab.zoom) > 0.001) wc.setZoomFactor(tab.zoom);
-  windowLayer.showView(tab.view);
+  showActive();
   if (!isInternalUrl(tab.url)) wc.focus();
   scheduleEmit();
+}
+
+/** Attach the active tab's view, or every pane of its split (partners wake together). */
+function showActive(): void {
+  const tab = activeTabId === null ? undefined : tabs.get(activeTabId);
+  const split = tab ? splitOf(tab.id) : undefined;
+  if (!tab || !split) {
+    trackPanes([]);
+    windowLayer.showView(tab?.view ?? null);
+    return;
+  }
+  const panes: Pane[] = [];
+  for (const id of split.tabIds) {
+    const member = tabs.get(id);
+    if (!member) continue;
+    const wc = wake(member);
+    if (Math.abs(wc.getZoomFactor() - member.zoom) > 0.001) wc.setZoomFactor(member.zoom);
+    if (member.view) panes.push({ tabId: id, view: member.view });
+  }
+  windowLayer.showViews(
+    panes.map((pane) => pane.view),
+    tab.view,
+    { x: split.ratioX, y: split.ratioY },
+  );
+  trackPanes(panes);
 }
 
 function closeTabInternal(id: number, replace: boolean): void {
@@ -473,15 +502,20 @@ function closeTabInternal(id: number, replace: boolean): void {
     closedStack.push({ url, spaceId: tab.spaceId });
     if (closedStack.length > CLOSED_STACK_MAX) closedStack.shift();
   }
+  const wasOnScreen = isOnScreen(id);
+  const split = detachFromSplit(id);
   tabs.delete(id);
   order = order.filter((tid) => tid !== id);
   if (activeBySpace.get(tab.spaceId) === id) activeBySpace.delete(tab.spaceId);
   destroyView(tab, false);
 
+  if (activeTabId !== id && wasOnScreen) showActive();
   if (activeTabId === id) {
     activeTabId = null;
     if (windowLayer.isHtmlFullscreen()) windowLayer.setHtmlFullscreen(false);
-    const neighbor = siblings[index + 1] ?? siblings[index - 1];
+    // Closing a pane hands focus to its split partner, which keeps the remaining panes together.
+    const partner = split?.tabIds.find((tid) => tabs.has(tid));
+    const neighbor = (partner === undefined ? undefined : tabs.get(partner)) ?? siblings[index + 1] ?? siblings[index - 1];
     if (neighbor) activateTab(neighbor.id);
     else if (replace && isEphemeral(tab.spaceId) && listSpaces().length > 1) {
       // Closing the last tab of a burner space discards the whole space.
@@ -611,7 +645,7 @@ function framePids(wc: WebContents): Set<number> {
 
 export function sleepTab(id: number): void {
   const tab = tabs.get(id);
-  if (!tab || !tab.view || id === activeTabId) return;
+  if (!tab || !tab.view || isOnScreen(id)) return;
   tab.freedKB = exclusiveRendererKB(tab);
   destroyView(tab, true);
   scheduleEmit();
@@ -620,6 +654,7 @@ export function sleepTab(id: number): void {
 export function togglePin(id: number): void {
   const tab = tabs.get(id);
   if (!tab) return;
+  if (!tab.pinned && detachFromSplit(id)) showActive();
   tab.pinned = !tab.pinned;
   tab.groupId = null;
   order = order.filter((tid) => tid !== id);
@@ -663,9 +698,12 @@ export function moveToSpace(id: number, spaceId: SpaceId): void {
   const tab = tabs.get(id);
   if (!tab || tab.spaceId === spaceId || !getSpace(spaceId)) return;
   const wasActive = id === activeTabId;
+  const wasOnScreen = isOnScreen(id);
   const hadView = !!tab.view;
   if (activeBySpace.get(tab.spaceId) === id) activeBySpace.delete(tab.spaceId);
+  detachFromSplit(id);
   destroyView(tab, false);
+  if (wasOnScreen && !wasActive) showActive();
   tab.savedHistory = null;
   tab.blockedCount = 0;
   tab.spaceId = spaceId;
@@ -787,6 +825,7 @@ function toState(tab: Tab): TabState {
     zoom: tab.zoom,
     secure: isSecureUrl(tab.url),
     groupId: tab.groupId,
+    splitId: splitIdOf(tab.id),
   };
 }
 
@@ -798,6 +837,7 @@ export function getBrowserState(): BrowserState {
     spaces: listSpaces(),
     activeSpaceId: getActiveSpaceId(),
     groups: groupsInOrder(order, groupOf),
+    splits: splitsInOrder(order),
   };
 }
 
@@ -810,7 +850,7 @@ export function listSleepCandidates(): SleepCandidate[] {
       audible: tab.audible,
       pinned: tab.pinned,
       asleep: !liveWc(tab),
-      active: tab.id === activeTabId,
+      active: isOnScreen(tab.id),
     };
   });
 }
@@ -850,6 +890,7 @@ export function serializeSession(): SavedTab[] {
       pinned: tab.pinned,
       active: activeBySpace.get(tab.spaceId) === tab.id,
       ...(tab.groupId ? { group: savedGroup(tab.groupId) } : {}),
+      ...(splitIdOf(tab.id) ? { split: savedSplit(tab.id) } : {}),
     }));
 }
 
@@ -867,6 +908,7 @@ export function restoreSession(saved: unknown): number {
   const list = Array.isArray(saved) ? saved.filter(isSavedTab) : [];
   const base = Date.now() - list.length;
   let restored = 0;
+  const splitEntries: { tabId: number; saved: unknown }[] = [];
   list.forEach((entry, i) => {
     if (!getSpace(entry.spaceId) || !/^(https?|vela|file):/i.test(entry.url)) return;
     const id = createTab({
@@ -885,8 +927,10 @@ export function restoreSession(saved: unknown): number {
       tab.lastActiveAt = Date.now();
       activeBySpace.set(entry.spaceId, id);
     }
+    if (entry.split) splitEntries.push({ tabId: id, saved: entry.split });
     restored++;
   });
+  restoreSplits(splitEntries);
   activateSpace(getActiveSpaceId());
   return restored;
 }
@@ -895,11 +939,15 @@ bindGroupModel({
   order: () => order,
   tab: (id) => tabs.get(id),
   setGroupId: (id, groupId) => {
-    const tab = tabs.get(id);
-    if (!tab) return;
-    tab.groupId = groupId;
-    if (groupId) tab.pinned = false;
+    // Split partners always share their group.
+    for (const member of unitOf(id)) {
+      const tab = tabs.get(member);
+      if (!tab) continue;
+      tab.groupId = groupId;
+      if (groupId) tab.pinned = false;
+    }
   },
+  unitOf,
   commitOrder: (ids) => {
     order = ids.filter((id) => tabs.has(id));
     normalizeOrder();
@@ -911,4 +959,32 @@ bindGroupModel({
   close: closeTab,
   create: (opts) => createTab({ ...opts, active: true }),
   emit: scheduleEmit,
+});
+
+bindSplitModel({
+  order: () => order,
+  tab: (id) => tabs.get(id),
+  activeTabId: () => activeTabId,
+  adopt: (id, groupId) => {
+    const tab = tabs.get(id);
+    if (!tab) return;
+    tab.pinned = false;
+    tab.groupId = groupId && getGroup(groupId)?.spaceId === tab.spaceId ? groupId : null;
+  },
+  commitOrder: (ids) => {
+    order = ids.filter((id) => tabs.has(id));
+    normalizeOrder();
+    scheduleEmit();
+  },
+  activate: activateTab,
+  refresh: () => {
+    showActive();
+    scheduleEmit();
+  },
+  create: ({ spaceId, afterId }) => createTab({ spaceId, afterId, active: false }),
+  emit: scheduleEmit,
+});
+
+onPaneFocus((id) => {
+  if (id !== activeTabId && isOnScreen(id)) activateTab(id);
 });

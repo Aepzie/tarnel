@@ -24,6 +24,7 @@ import { regenerateFingerprint } from './fingerprint';
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openReleasePage, watchUpdates } from './updater';
 import { resolveInput, resolveInputDetailed } from './url';
 import { registerSyncIpc, remoteTabSuggestions } from './sync/loader';
+import { registerSplitIpc } from './split-ipc';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -327,6 +328,7 @@ export function registerIpc(): void {
   handleChrome(c.updateDownload, () => downloadUpdate());
   handleChrome(c.updateInstall, installUpdate);
   handleChrome(c.updateOpenRelease, openReleasePage);
+  registerSplitIpc(handleChrome);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());

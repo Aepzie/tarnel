@@ -9,7 +9,7 @@ React + Tailwind + shadcn/ui UI ("Floating Islands", see DESIGN.md); every web p
 BaseWindow (frame: false; no webContents of its own — saves a renderer process)
 └─ contentView
    ├─ chromeView   WebContentsView  full window, loads dist/renderer/chrome/index.html   (base layer)
-   └─ tabView(s)   WebContentsView  only the ACTIVE tab is attached, placed at ContentBounds (top layer)
+   └─ tabView(s)   WebContentsView  only the ACTIVE tab (or every pane of its split) is attached, placed at ContentBounds (top layer)
 ```
 
 * The chrome UI reports where the page should go via `vela.ui.setContentBounds(rect)` (it measures a
@@ -96,6 +96,33 @@ cannot do is link two Spaces through it. Changes apply to pages loaded afterward
   page `WebContentsView` bounds) follows it; it publishes the column's left edge as `--chrome-left` for
   the fixed top island.
 
+## Split view
+
+* **Model** (`src/main/split.ts`): a split is `{ id, spaceId, tabIds (2–4, pane order), ratioX, ratioY }`, a per-Space
+  relationship between tabs; `TabState.splitId` / `BrowserState.splits` expose it. The split holding `activeTabId` is
+  on screen and the **active tab is its focused pane**, so omnibox, nav buttons, find, zoom and shortcuts need no
+  split awareness. Invariants: members are unpinned (pinning or moving a tab to another Space takes it out), adjacent
+  in pane order (`clusterSplits` runs after `clusterGroups` in `normalizeOrder()`) and share one group (the
+  `GroupTabModel` gained `unitOf()`; grouping, ungrouping and `placeTab` move a split as one unit). A split with one
+  tab left dissolves; closing the focused pane focuses its partner. Persistence: `SavedTab.split = { id, ratioX, ratioY }`.
+* **Geometry** (`src/shared/split-layout.ts`): `splitGeometry()` turns the viewport rect into pane rects (2 = columns,
+  3 = left + stacked right, 4 = 2×2, 8px gaps, 220px min pane). Main uses it to place the views; the chrome uses the
+  same function to draw pane frames, the accent focus ring and the dividers in the gaps (`chrome/split/SplitPanes.tsx`).
+  A divider drag sends live ratios (`split.resize(…, commit=false)`, views re-placed, no state emit) and commits on release.
+* **Window** (`window.ts`): keeps a list of visible views (`showViews`) instead of one; `restack()` re-adds them (focused
+  last) under the chrome when it is raised, for overlays, chrome crash/reload resets and the transparent-window swap.
+  Moving focus between panes does not re-stack (that would cancel the press). `setPeek()` raises the chrome *without*
+  taking focus.
+* **Pointer** (`split-panes.ts`): only while a split is on screen, `before-mouse-event` on its panes focuses a pane on
+  press and reports when the pointer reaches a pane's top-center hot zone; the chrome then peeks and shows the pane
+  toolbar (swap / close split / close tab) until the pointer leaves.
+* **Entry points**: tab context menu, drag a tab onto the left/right edge of the page (the chrome holds the overlay
+  while a tab is dragged and paints the drop preview), palette, `Ctrl+Shift+D` (`toggleSplit()`: close, or split with
+  the most recently used tab, or with a new tab). Strip and vertical list render a split as one joined unit
+  (`SplitUnit` in `tabs/groups/units.ts`).
+* **Sleeping**: `isOnScreen()` replaces "is active" for the sleeper and crash handling; showing a split wakes all panes.
+* **Cost when unused**: no listeners, no extra views; `clusterSplits` returns early and the chrome renders nothing.
+
 ## Directory ownership
 
 ```
@@ -120,6 +147,7 @@ src/main/extensions/*  Chrome extensions (lazy)       — extensions
 src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loaded)
 src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
+src/main/split*.ts     split view (model, pane pointer, IPC) — core
 src/renderer/chrome/*  top-island UI (React)          — ui
 src/preload/pages.ts   window.velaPages               — pages
 src/renderer/pages/*   newtab, settings, error        — pages

@@ -12,6 +12,8 @@ import { useUnitDrag } from '../tabs/groups/use-unit-drag';
 import { PinnedGrid } from './PinnedGrid';
 import { VerticalGroupHeader } from './VerticalGroupHeader';
 import { VerticalTabRow } from './VerticalTabRow';
+import { VerticalSplitRow } from './VerticalSplitRow';
+import { useSpaceSplits } from '../split/split-state';
 
 async function newTab(): Promise<void> {
   await vela().tabs.create({ active: true });
@@ -69,7 +71,8 @@ export function VerticalTabList({ iconOnly }: { iconOnly: boolean }) {
     return { pinned, rest };
   }, [tabs]);
 
-  const drag = useUnitDrag(rest, groups, activeTabId, activeSpaceId);
+  const splits = useSpaceSplits();
+  const drag = useUnitDrag(rest, groups, splits, activeTabId, activeSpaceId);
 
   useEffect(() => {
     const scroller = scrollRef.current;
@@ -132,6 +135,17 @@ export function VerticalTabList({ iconOnly }: { iconOnly: boolean }) {
                       editing={editingGroup === unit.group.id}
                       onDragStart={drag.onGroupDragStart}
                       onDragEnd={drag.onGroupDragEnd}
+                    />
+                  ) : unit.kind === 'split' ? (
+                    <VerticalSplitRow
+                      key={unit.key}
+                      unit={unit}
+                      activeTabId={activeTabId}
+                      iconOnly={iconOnly}
+                      groupColor={unit.group ? SPACE_HEX[unit.group.color] : undefined}
+                      groupEnd={unit.lastInGroup}
+                      onDragStart={drag.onSplitDragStart}
+                      onDragEnd={drag.onSplitDragEnd}
                     />
                   ) : (
                     <VerticalTabRow

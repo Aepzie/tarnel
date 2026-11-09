@@ -62,6 +62,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Command palette** (`Ctrl+K`) — navigate, search history, switch tabs and run commands from the keyboard.
 - **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
 - **Tab groups and vertical tabs** — named, colored, collapsible groups (drag tabs in and out, reorder groups), and an optional floating vertical tab island (`Ctrl+Shift+,`) that resizes and folds to an icon rail.
+- **Split view** — two tabs side by side (up to four in a 2×2 grid) with a draggable divider; the focused pane drives the address bar, find and zoom. Drag a tab onto the edge of the page, use the tab menu or `Ctrl+Shift+D`. Splits show as one joined tab and come back with the session.
 - **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 - **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
@@ -137,6 +138,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 | `Ctrl+F`                  | Find in page                        |
 | `Ctrl+Shift+S`            | Toggle focus mode (hide toolbar)    |
 | `Ctrl+Shift+,`            | Toggle horizontal / vertical tabs   |
+| `Ctrl+Shift+D`            | Split view on / off                 |
 | `Ctrl+Shift+N`            | New Burner space                    |
 | `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab             |
@@ -193,16 +195,11 @@ Found a vulnerability? Please follow [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-Planned, not yet available:
+Planned:
 
-- [ ] Optional end-to-end encrypted sync
-- [ ] Extension support
-- [x] Optional end-to-end encrypted sync
-- [ ] Vertical tab groups
-- [ ] Split view
-- [x] Per-space fingerprint protection
-- [ ] Auto-update
-- [ ] Per-space fingerprint protection
+- [ ] Signed builds (Windows, macOS)
+- [ ] Extension `declarativeNetRequest` support (uBlock Origin Lite)
+- [ ] Fingerprint protection inside workers
 
 Ideas and discussion are welcome in [issues](https://github.com/Aepzie/vela/issues).
 

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { MENU_ITEM, MENU_SEPARATOR, MENU_SURFACE } from './menu-style';
 import { groupIntoNew } from './groups/group-ui';
+import { SplitMenuItems } from '../split/SplitMenuItems';
 import type { TabState } from '@shared/types';
 import {
   ContextMenu,
@@ -152,6 +153,7 @@ export function TabContextMenu({ tab, children }: TabContextMenuProps) {
           <ContextMenuSeparator className={MENU_SEPARATOR} />
           <GroupItems tab={tab} />
           <ContextMenuSeparator className={MENU_SEPARATOR} />
+          <SplitMenuItems tab={tab} />
           <ContextMenuItem className={ITEM} onSelect={() => void api.close(tab.id)}>
             <XIcon strokeWidth={1.75} />
             Close tab

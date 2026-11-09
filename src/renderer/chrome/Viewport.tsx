@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react';
+import { useBrowserSlice } from '@/hooks/browser';
 import { cn } from '@/lib/utils';
 import { settle } from '@/lib/vela';
+import { SplitLayer } from './split/SplitLayer';
+import { activeSplitOf } from './split/split-state';
+import { setViewportRect } from './viewport-rect';
 
 /**
  * Transparent placeholder where main places the active page view. Its rect (CSS px) is reported
@@ -10,6 +14,8 @@ import { settle } from '@/lib/vela';
  */
 export function Viewport({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  // In a split each pane draws its own frame (see split/SplitPanes.tsx).
+  const split = useBrowserSlice((s) => activeSplitOf(s) !== undefined);
 
   useEffect(() => {
     const el = ref.current;
@@ -37,6 +43,7 @@ export function Viewport({ className }: { className?: string }) {
       frame = 0;
       if (key === last) return;
       last = key;
+      setViewportRect(rect);
       settle(window.vela.ui.setContentBounds(rect));
     };
     const report = (): void => {
@@ -63,7 +70,9 @@ export function Viewport({ className }: { className?: string }) {
     <main
       ref={ref}
       id="viewport"
-      className={cn('relative min-h-0 flex-1 rounded-xl bg-transparent ring-1 ring-island-ring', className)}
-    />
+      className={cn('relative min-h-0 flex-1 rounded-xl bg-transparent', !split && 'ring-1 ring-island-ring', className)}
+    >
+      <SplitLayer />
+    </main>
   );
 }

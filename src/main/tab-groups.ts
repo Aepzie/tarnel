@@ -25,6 +25,8 @@ export interface GroupTabModel {
   tab(id: number): GroupTabView | undefined;
   /** Joining a group unpins the tab. */
   setGroupId(id: number, groupId: TabGroupId | null): void;
+  /** The tab plus its split partners (pane order). A split joins, leaves and moves as one unit. */
+  unitOf(id: number): number[];
   /** Replace the tab order; tabs.ts re-normalizes (pinned first, groups contiguous) and emits. */
   commitOrder(ids: number[]): void;
   activeTabId(): number | null;
@@ -154,9 +156,15 @@ function insertionIndex(ids: readonly number[], beforeTabId: number | null, spac
   return ids.length;
 }
 
+/** `tabIds` widened to whole split units. */
+function withPartners(tabIds: readonly number[]): number[] {
+  const model = tabs();
+  return [...new Set(tabIds.flatMap((id) => model.unitOf(id)))];
+}
+
 function sameSpaceTabs(tabIds: readonly number[], spaceId: SpaceId): number[] {
   const model = tabs();
-  return [...new Set(tabIds)].filter((id) => model.tab(id)?.spaceId === spaceId);
+  return withPartners(tabIds).filter((id) => model.tab(id)?.spaceId === spaceId);
 }
 
 /** Group `tabIds` (all in the first tab's space) into a new group placed where the first of them is. */
@@ -204,7 +212,7 @@ export function removeTabsFromGroups(tabIds: readonly number[]): void {
   const model = tabs();
   let order = [...model.order()];
   let changed = false;
-  for (const id of new Set(tabIds)) {
+  for (const id of withPartners(tabIds)) {
     const groupId = model.tab(id)?.groupId;
     if (!groupId) continue;
     order = order.filter((tabId) => tabId !== id);
@@ -281,16 +289,17 @@ export function moveGroup(groupId: TabGroupId, beforeTabId: number | null): void
   model.commitOrder(rest);
 }
 
-/** Drag & drop of a single tab: position it and set its membership in one step. */
+/** Drag & drop of a single tab (or a split, as one unit): position it and set its membership in one step. */
 export function placeTab(tabId: number, beforeTabId: number | null, groupId: TabGroupId | null): void {
   const model = tabs();
   const tab = model.tab(tabId);
-  if (!tab || beforeTabId === tabId) return;
+  const unit = model.unitOf(tabId);
+  if (!tab || (beforeTabId !== null && unit.includes(beforeTabId))) return;
   const group = groupId ? groups.get(groupId) : undefined;
   if (groupId && group?.spaceId !== tab.spaceId) return;
   model.setGroupId(tabId, group ? group.id : null);
-  const rest = model.order().filter((id) => id !== tabId);
-  rest.splice(insertionIndex(rest, beforeTabId, tab.spaceId), 0, tabId);
+  const rest = model.order().filter((id) => !unit.includes(id));
+  rest.splice(insertionIndex(rest, beforeTabId, tab.spaceId), 0, ...unit);
   model.commitOrder(rest);
 }
 

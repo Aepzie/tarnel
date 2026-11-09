@@ -3,6 +3,7 @@ import { Flame, Focus, History, Monitor, Moon, Plus, RotateCcw, Settings2, Shiel
 import { ChevronsDownUp, ChevronsUpDown, LayersPlus, PanelLeft, PanelTop } from 'lucide-react';
 import type { BrowserState, Settings, ThemeMode } from '@shared/types';
 import { groupActiveTab } from '../tabs/groups/group-ui';
+import { splitCommands } from '../split/split-commands';
 
 export interface PaletteCommand {
   id: string;
@@ -93,6 +94,7 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
     },
   ];
   commands.push(...tabGroupCommands({ settings, state }));
+  commands.push(...splitCommands(state));
   if (activeTabId !== null) {
     commands.push({
       id: 'cmd:zoom-reset',

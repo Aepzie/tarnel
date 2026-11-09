@@ -10,6 +10,7 @@ import type {
   Space,
   SpaceId,
   SpaceInput,
+  SplitId,
   Suggestion,
   TabGroupId,
   TabGroupInput,
@@ -80,6 +81,14 @@ export const IPC = {
     updateDownload: 'chrome:update-download',
     updateInstall: 'chrome:update-install',
     updateOpenRelease: 'chrome:update-open-release',
+    splitCreate: 'chrome:split-create',
+    splitAdd: 'chrome:split-add',
+    splitSeparate: 'chrome:split-separate',
+    splitClose: 'chrome:split-close',
+    splitResize: 'chrome:split-resize',
+    splitSwap: 'chrome:split-swap',
+    splitToggle: 'chrome:split-toggle',
+    splitPeek: 'chrome:split-peek',
   },
   chromeEvents: {
     state: 'chrome-event:state',
@@ -91,6 +100,7 @@ export const IPC = {
     permission: 'chrome-event:permission',
     permissionCancel: 'chrome-event:permission-cancel',
     update: 'chrome-event:update',
+    splitHover: 'chrome-event:split-hover',
   },
   pages: {
     getSettings: 'pages:get-settings',
@@ -250,6 +260,26 @@ export interface VelaChromeAPI {
   };
 
   updates: VelaUpdatesAPI;
+
+  /** Split view (see docs/ARCHITECTURE.md → Split view). The focused pane is the active tab. */
+  split: {
+    /** Show 2–4 tabs of one Space side by side (pane order); returns null when invalid. */
+    create(tabIds: number[], focus?: number): Promise<SplitId | null>;
+    /** Add a tab as a pane at `index` (max 4 panes). */
+    add(splitId: SplitId, tabId: number, index: number): Promise<void>;
+    /** Take one tab out of its split. */
+    separate(tabId: number): Promise<void>;
+    close(splitId: SplitId): Promise<void>;
+    /** Divider drag: live (commit=false) moves the page views only; commit persists. */
+    resize(splitId: SplitId, ratioX: number, ratioY: number, commit: boolean): Promise<void>;
+    swap(splitId: SplitId): Promise<void>;
+    /** Close the split on screen, or split the active tab with the last used one. Returns a newly created tab. */
+    toggle(): Promise<number | null>;
+    /** Raise the chrome over the pages without taking focus (pane toolbar). */
+    peek(open: boolean): Promise<void>;
+    /** The pointer entered (tab id) / left (null) a pane's toolbar hot zone. */
+    onHover(cb: (tabId: number | null) => void): Unsubscribe;
+  };
 
   platform: NodeJS.Platform;
 }
