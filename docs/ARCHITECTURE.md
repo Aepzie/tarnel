@@ -425,3 +425,9 @@ the concepts are. Engine: Android System WebView via `androidx.webkit`. Details:
 `scripts/build.mjs` (esbuild): main → `dist/main/index.js` (cjs, node), preloads → `dist/preload/*.js`
 (cjs, sandboxed: only `electron` import allowed), renderer entries → iife, static files copied.
 `npm run dev` = build + launch, `npm run typecheck` = `tsc --noEmit`.
+
+Brand: `src/shared/brand-mark.ts` holds the logo's path data and app-icon tile; the renderer imports it
+(Settings `VelaMark` / `VelaAppIcon`, new-tab `LogoHero`, vela:// favicons) and `npm run icons`
+(`scripts/icons.mjs`, offscreen Electron) generates `build/icon.svg`, `icon-mono.svg`, the PNG set,
+`icon.ico` and `icon.icns` from it. Unpackaged runs set the window icon from `build/` (`devWindowIcon`
+in `window.ts`); packaged builds take it from the executable.

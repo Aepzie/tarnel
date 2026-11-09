@@ -46,7 +46,7 @@
   box-shadow: 0 0 8px 1px color-mix(in oklab, var(--accent-space) 60%, transparent);
 }
 
-.vt-hero-stars {
+.vt-hero-cap {
   filter: drop-shadow(0 0 14px color-mix(in oklab, var(--accent-space) 70%, transparent));
 }
 
