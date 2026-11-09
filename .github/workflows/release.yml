@@ -16,12 +16,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: windows
+          # One job per slow target so they package in parallel; the release waits for the slowest.
+          - name: windows-setup
             os: windows-latest
-            args: --win nsis portable --x64
-          - name: macos
+            args: --win nsis --x64
+          - name: windows-portable
+            os: windows-latest
+            args: --win portable --x64
+          - name: macos-arm64
             os: macos-latest
-            args: --mac dmg zip --arm64 --x64
+            args: --mac dmg zip --arm64
+            arch: arm64
+          - name: macos-x64
+            os: macos-latest
+            args: --mac dmg zip --x64
+            arch: x64
           - name: linux
             os: ubuntu-latest
             args: --linux AppImage deb --x64
@@ -48,6 +57,12 @@ jobs:
       - name: Package installers
         run: npx electron-builder ${{ matrix.args }} --publish never
 
+      # Each mac job writes a latest-mac.yml listing only its own arch; keep them apart so the
+      # publish job can merge them into one feed instead of one overwriting the other.
+      - name: Name mac update feed by arch
+        if: matrix.arch
+        run: mv release/latest-mac.yml release/latest-mac-${{ matrix.arch }}.yml
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -66,17 +81,28 @@ jobs:
     name: Publish GitHub Release
     needs: package
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
+      # Same shape electron-builder writes for a combined build: arm64 files first, top-level
+      # path/sha512 from x64. yq ships with the Ubuntu runner image.
+      - name: Merge mac update feeds
+        run: |
+          cd artifacts
+          yq eval-all '. as $feed ireduce ({}; . *+ $feed)' latest-mac-arm64.yml latest-mac-x64.yml > latest-mac.yml
+          rm latest-mac-arm64.yml latest-mac-x64.yml
+          test "$(yq '.files | length' latest-mac.yml)" = 4
+          cat latest-mac.yml
+          ls -la
+
       - name: Generate checksums
         run: cd artifacts && sha256sum * > SHA256SUMS.txt
 
       - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Vela ${{ github.ref_name }}

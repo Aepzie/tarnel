@@ -50,6 +50,8 @@ portable:
 
 mac:
   icon: build/icon.png
+  # 'maximum' makes 7-Zip spend ~7 min per arch on the updater zip; the dmg is unaffected.
+  compression: normal
   category: public.app-category.productivity
   hardenedRuntime: true
   gatekeeperAssess: false
