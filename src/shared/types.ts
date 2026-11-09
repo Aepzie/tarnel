@@ -47,13 +47,35 @@ export interface TabState {
   /** Zoom factor, 1 = 100%. */
   zoom: number;
   secure: boolean;
+  /** Tab group this tab belongs to (never set on pinned tabs). Group members are contiguous. */
+  groupId: TabGroupId | null;
 }
+
+export type TabGroupId = string;
+
+/** A named, colored, collapsible run of tabs inside one Space. */
+export interface TabGroup {
+  id: TabGroupId;
+  spaceId: SpaceId;
+  /** May be empty: the group then shows as a bare color dot. */
+  name: string;
+  color: SpaceColor;
+  /** Collapsed groups hide their tabs, except the active one. */
+  collapsed: boolean;
+}
+
+export type TabGroupInput = Pick<TabGroup, 'name' | 'color' | 'collapsed'>;
+
+/** Where the tab list lives: the top island strip, or a floating island on the left. */
+export type TabLayout = 'horizontal' | 'vertical';
 
 export interface BrowserState {
   tabs: TabState[];
   activeTabId: number | null;
   spaces: Space[];
   activeSpaceId: SpaceId;
+  /** Groups of all spaces in display order (by their first tab); only non-empty groups are listed. */
+  groups: TabGroup[];
 }
 
 export type SearchEngine = 'duckduckgo' | 'google' | 'brave' | 'startpage' | 'ecosia';
@@ -74,15 +96,16 @@ export interface Settings {
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
   restoreSession: boolean;
-  /** @deprecated kept for settings-file compatibility; the chrome is a top island now. */
+  /** Vertical tab layout: the tab island is collapsed to icons only. */
   sidebarCollapsed: boolean;
-  /** @deprecated kept for settings-file compatibility. */
+  /** Vertical tab layout: width of the tab island in CSS px. */
   sidebarWidth: number;
   /** Focus mode: the top island hides and reveals on hover at the top edge. */
   autoHideToolbar: boolean;
   windowMaterial: WindowMaterial;
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
+  tabLayout: TabLayout;
 }
 
 export interface Suggestion {
@@ -188,4 +211,5 @@ export const DEFAULT_SETTINGS: Settings = {
   autoHideToolbar: false,
   windowMaterial: 'mica',
   newtabHero: 'clock',
+  tabLayout: 'horizontal',
 };

@@ -11,6 +11,8 @@ import type {
   SpaceId,
   SpaceInput,
   Suggestion,
+  TabGroupId,
+  TabGroupInput,
   TopSite,
   UICommand,
 } from './types';
@@ -57,6 +59,16 @@ export const IPC = {
     downloadOpen: 'chrome:download-open',
     downloadShow: 'chrome:download-show',
     permissionRespond: 'chrome:permission-respond',
+    groupCreate: 'chrome:group-create',
+    groupAddTabs: 'chrome:group-add-tabs',
+    groupRemoveTabs: 'chrome:group-remove-tabs',
+    groupUpdate: 'chrome:group-update',
+    groupUngroup: 'chrome:group-ungroup',
+    groupClose: 'chrome:group-close',
+    groupMove: 'chrome:group-move',
+    groupPlaceTab: 'chrome:group-place-tab',
+    groupNewTab: 'chrome:group-new-tab',
+    groupSetAllCollapsed: 'chrome:group-set-all-collapsed',
   },
   chromeEvents: {
     state: 'chrome-event:state',
@@ -132,6 +144,25 @@ export interface VelaChromeAPI {
     stopFind(id: number): Promise<void>;
     /** delta: +1 / -1 step, 0 = reset to 100%. */
     zoom(id: number, delta: number): Promise<void>;
+  };
+
+  /** Tab groups. Tabs to group must share a Space; pinned tabs are unpinned when grouped. */
+  groups: {
+    create(tabIds: number[], input?: Partial<TabGroupInput>): Promise<TabGroupId>;
+    addTabs(groupId: TabGroupId, tabIds: number[]): Promise<void>;
+    removeTabs(tabIds: number[]): Promise<void>;
+    update(groupId: TabGroupId, patch: Partial<TabGroupInput>): Promise<void>;
+    /** Dissolve the group, keeping its tabs where they are. */
+    ungroup(groupId: TabGroupId): Promise<void>;
+    /** Close every tab of the group. */
+    close(groupId: TabGroupId): Promise<void>;
+    /** Move the whole group before `beforeTabId` (null = end of its space). */
+    move(groupId: TabGroupId, beforeTabId: number | null): Promise<void>;
+    /** Drag & drop: place a tab before `beforeTabId` (null = end) as a member of `groupId` (null = ungrouped). */
+    placeTab(tabId: number, beforeTabId: number | null, groupId: TabGroupId | null): Promise<void>;
+    newTab(groupId: TabGroupId): Promise<number>;
+    /** Collapse or expand every group of the active space. */
+    setAllCollapsed(collapsed: boolean): Promise<void>;
   };
 
   spaces: {

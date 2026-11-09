@@ -1,6 +1,7 @@
 import type { Input, WebContents } from 'electron';
 import { IPC } from '../shared/ipc';
 import { SPACE_COLORS, type UICommand } from '../shared/types';
+import { getSettings, updateSettings } from './settings';
 import { createSpace, getActiveSpaceId, listSpaces } from './spaces';
 import {
   activateSpace,
@@ -100,6 +101,8 @@ function handle(input: Input): boolean {
         return once(newBurnerSpace);
       case 'KeyS':
         return once(() => sendCommand('toggle-sidebar'));
+      case 'Comma':
+        return once(() => updateSettings({ tabLayout: getSettings().tabLayout === 'vertical' ? 'horizontal' : 'vertical' }));
       case 'Equal':
         withActive((id) => zoomTab(id, 1));
         return true;

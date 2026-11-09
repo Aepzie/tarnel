@@ -48,6 +48,19 @@ const api: VelaChromeAPI = {
     zoom: (id, delta) => invoke(C.tabZoom, id, delta),
   },
 
+  groups: {
+    create: (tabIds, input) => invoke(C.groupCreate, tabIds, input ?? {}),
+    addTabs: (groupId, tabIds) => invoke(C.groupAddTabs, groupId, tabIds),
+    removeTabs: (tabIds) => invoke(C.groupRemoveTabs, tabIds),
+    update: (groupId, patch) => invoke(C.groupUpdate, groupId, patch),
+    ungroup: (groupId) => invoke(C.groupUngroup, groupId),
+    close: (groupId) => invoke(C.groupClose, groupId),
+    move: (groupId, beforeTabId) => invoke(C.groupMove, groupId, beforeTabId),
+    placeTab: (tabId, beforeTabId, groupId) => invoke(C.groupPlaceTab, tabId, beforeTabId, groupId),
+    newTab: (groupId) => invoke(C.groupNewTab, groupId),
+    setAllCollapsed: (collapsed) => invoke(C.groupSetAllCollapsed, collapsed),
+  },
+
   spaces: {
     create: (input) => invoke(C.spaceCreate, input),
     update: (id, patch) => invoke(C.spaceUpdate, id, patch),
