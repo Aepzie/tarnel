@@ -245,6 +245,15 @@ class Browser(
         activeTabIds[tab.spaceId] = tab.id
     }
 
+    /** Shows the find island with a given result (screenshot tests). */
+    @androidx.annotation.VisibleForTesting
+    internal fun showFindResult(query: String, index: Int, matches: Int) {
+        findOpen = true
+        findQuery = query
+        findIndex = index
+        findMatches = matches
+    }
+
     fun select(tab: Tab) {
         val previous = activeTab
         if (previous != null && previous !== tab) {

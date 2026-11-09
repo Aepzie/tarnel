@@ -14,7 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (tap the clock to cycle styles), history, settings, downloads, in-app permission prompts and privacy defaults
   (HTTPS-only, third-party cookies blocked, DNT/GPC, Safe Browsing). CI builds, tests and lints it; `v*` tags
   produce a release APK.
+- Android: real ad and tracker blocking with EasyList, EasyPrivacy and Peter Lowe's list (the pure-Kotlin
+  `android/adblock` engine). The lists are downloaded on first run and refreshed every 4 days rather than bundled,
+  compiled off the main thread and kept as a snapshot that later starts load in a fraction of a second; a small
+  built-in list covers the time until then. Settings → Ad blocking shows the filter count, last update and
+  "Update now".
+- Android: find in page (compact island with match count and previous/next), "Desktop site" per tab, drag tabs
+  to reorder in the switcher (long-press), popups and new-tab children return to their opener when closed, and
+  `blob:`/`data:` downloads (saved to Downloads under the link's `download` name).
 ### Changed
+- Android matches the desktop look: the new sail logo (launcher, themed icon, splash, new tab, About; generated
+  from `src/shared/brand-mark.ts`), Geist as the UI font, and the accent follows the active Space with the default
+  Space in desktop blue. Top sites show cached favicons and correct placeholder letters (W for en.wikipedia.org, Y
+  for m.youtube.com). Islands stay above the keyboard, and blocked requests are counted once per URL.
 - New Vela logo: a sail cut by one slanted gap into an accent cap and a white body, like two floating islands. It replaces both the old constellation icon and the different sail glyph Settings → About used, so the taskbar, window, installer, About page, new-tab logo hero and the Settings/History tab favicons now show the same mark. The window icon is also set when running unpackaged (`npm run dev`), so it no longer shows Electron's icon. Windows builds ship a multi-size `.ico` (16–256) and macOS builds a squircle `.icns` with Apple's margin; all of it is generated from one source by `npm run icons`.
 
 ## [0.2.1] - 2026-11-09

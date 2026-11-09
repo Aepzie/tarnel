@@ -417,8 +417,9 @@ the concepts are. Engine: Android System WebView via `androidx.webkit`. Details:
   in app storage; Burner tabs are never persisted.
 * **UI**: a floating bottom island (back/forward, omnibox, tabs, menu) that collapses while reading, plus sheets
   for Spaces, menu, context menu and permission prompts — the desktop "Floating Islands" tokens mapped to Compose.
-* **Blocking**: `ContentBlocker` seam called from `shouldInterceptRequest`; the filter-list engine is the pure-Kotlin
-  `android/adblock` module.
+* **Blocking**: `ContentBlocker` seam called from `shouldInterceptRequest`; the engine is the pure-Kotlin `android/adblock`
+  module. Filter lists are downloaded (not bundled) and kept as a compiled snapshot (`FilterLists`); the
+  built-in host list covers the first run. The logo is generated from `src/shared/brand-mark.ts` (`android/scripts/brand-mark.mjs`).
 
 ## Build
 

@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -97,7 +99,7 @@ class ScreenshotTest {
             downloads = Downloads(activity, scope),
             scope = scope,
         )
-        val work = Space("work", "Work", SpaceColors.all[1])
+        val work = Space("work", "Work", SpaceColors.all[6])
         browser.spaces += listOf(Space.Default, work)
         runBlocking {
             listOf(
@@ -108,6 +110,23 @@ class ScreenshotTest {
                 "https://news.ycombinator.com/" to "Hacker News",
             ).forEach { (url, title) -> repeat(3) { browser.history.record(url, title) } }
         }
+        browser.favicons.put("en.wikipedia.org", fakeIcon(0xFFFFFFFF.toInt(), "W", 0xFF111111.toInt()), persist = false)
+        browser.favicons.put("m.youtube.com", fakeIcon(0xFFFF0033.toInt(), "▶"), persist = false)
+    }
+
+    /** A stand-in favicon: rounded tile with a glyph, like a site's real icon. */
+    private fun fakeIcon(background: Int, glyph: String, foreground: Int = 0xFFFFFFFF.toInt()): Bitmap {
+        val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.color = background
+        canvas.drawRoundRect(RectF(0f, 0f, 64f, 64f), 14f, 14f, paint)
+        paint.color = foreground
+        paint.textSize = 40f
+        paint.isFakeBoldText = true
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText(glyph, 32f, 46f, paint)
+        return bitmap
     }
 
     private fun fakePage(seed: Int, dark: Boolean = false): Bitmap {
@@ -262,6 +281,9 @@ class ScreenshotTest {
         browser.panel = Panel.SETTINGS
         render { BrowserScreen(browser, null) {} }
         shoot("13-settings")
+        compose.onRoot().performTouchInput { swipeUp(durationMillis = 300) }
+        compose.mainClock.advanceTimeBy(1_000)
+        shoot("13b-settings-adblock")
         render(dark = false) { BrowserScreen(browser, null) {} }
         shoot("14-settings-light")
     }
@@ -283,6 +305,33 @@ class ScreenshotTest {
         browser.downloads.items.add(DownloadItem(1, "vela-0.2.1.apk", "application/vnd.android.package-archive", DownloadStatus.RUNNING, 3_400_000, 9_100_000))
         render { BrowserScreen(browser, null) {} }
         shoot("17-download-chip")
+    }
+
+    @Test
+    fun findInPage() {
+        val page = tab("https://en.wikipedia.org/wiki/Vela_(constellation)", "Vela (constellation) - Wikipedia", seed = 3)
+        browser.showWithoutLoading(page)
+        browser.showFindResult("star", 2, 85)
+        val scene: @Composable () -> Unit = {
+            Box(Modifier.fillMaxSize()) {
+                Image(page.thumbnail!!, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
+                BottomIsland(browser, Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp))
+            }
+        }
+        render(content = scene)
+        shoot("20-find-in-page")
+        render(dark = false, content = scene)
+        shoot("21-find-in-page-light")
+    }
+
+    @Test
+    fun menuOnPage() {
+        val page = tab("https://en.wikipedia.org/wiki/Vela_(constellation)", "Vela (constellation) - Wikipedia", seed = 3)
+        page.blocked = 14
+        browser.showWithoutLoading(page)
+        browser.panel = Panel.MENU
+        render { BrowserScreen(browser, null) {} }
+        shootScreen("22-menu-on-page")
     }
 
     @Test

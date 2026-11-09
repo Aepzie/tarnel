@@ -73,10 +73,13 @@ app/src/main/java/org/velabrowser/vela/
     TabChromeClient.kt    progress/title/icon, popups, fullscreen, permissions, file chooser
     VelaWebView.kt        WebView reporting drag direction (hides the island while reading)
     Downloads.kt          DownloadManager + live progress state
+    BlobDownloads.kt      data:/blob: downloads → MediaStore
   adblock/
     ContentBlocker.kt     the blocking seam (interface + RequestKind inference)
-    HostListBlocker.kt    tiny built-in host list used until the real engine is wired in
-    ContentBlockers.kt    factory — the one place to swap engines
+    HostListBlocker.kt    small built-in host list, active until the filter-list engine is loaded
+    ContentBlockers.kt    the built-in blocker
+    EngineContentBlocker.kt  adapter to the :adblock engine (RequestKind → ResourceType)
+    FilterLists.kt        list download, snapshot (de)serialization, 4-day refresh, status for Settings
   ui/                     Compose: theme/, components/, island/, omnibox/, tabs/, newtab/, spaces/,
                           sheets/, history/, settings/, downloads/, page/ and BrowserScreen.kt
 ```
@@ -109,33 +112,56 @@ Space and origin for the session), external apps only after confirmation (saniti
 ## Ad blocking
 
 `ContentBlocker` is called from `shouldInterceptRequest` (WebView IO threads — must be thread-safe and fast);
-a blocked request gets an empty 204. `cosmeticCss(documentUrl)` is injected as a `<style>` at page start.
+a blocked request gets an empty 204 and is counted once per URL for the menu badge. `cosmeticCss(documentUrl)` is
+injected as a `<style>` at page start.
 
-The pure-Kotlin filter-list engine lives in `android/adblock` (`:adblock`, included automatically by
-`settings.gradle.kts` when the folder exists). To wire it in:
+The engine is the pure-Kotlin `android/adblock` module (`implementation(project(":adblock"))`, its JUnit 5 tests run
+with `:app:testDebugUnitTest`). `adblock/EngineContentBlocker.kt` maps `RequestKind` to the engine's `ResourceType`.
 
-1. `app/build.gradle.kts`: `implementation(project(":adblock"))`
-2. add an adapter, e.g. `app/src/main/java/org/velabrowser/vela/adblock/EngineContentBlocker.kt`:
-   ```kotlin
-   class EngineContentBlocker(private val engine: AdblockEngine) : ContentBlocker {
-       override fun shouldBlock(url: String, documentUrl: String?, kind: RequestKind) =
-           engine.shouldBlock(url, documentUrl, kind.toEngineType())
-       override fun cosmeticCss(documentUrl: String) = engine.cosmeticCss(documentUrl)
-   }
-   ```
-   mapping `RequestKind` (DOCUMENT, SUBDOCUMENT, SCRIPT, STYLESHEET, IMAGE, FONT, MEDIA, XHR, OTHER) to the
-   engine's `ResourceType`;
-3. ship the filter lists as assets (e.g. `app/src/main/assets/adblock/*.txt`) and return the engine from
-   `ContentBlockers.create(context)` — it runs once on a background thread at startup:
-   ```kotlin
-   fun create(context: Context): ContentBlocker {
-       val lists = context.assets.list("adblock").orEmpty().map { context.assets.open("adblock/$it") }
-       return EngineContentBlocker(AdblockEngine.load(lists))
-   }
-   ```
+**Lists are not bundled** (the APK stays small). `adblock/FilterLists.kt`:
 
-## App icon
+* first run: the built-in `HostListBlocker` (≈70 ad/tracker hosts) is active immediately; `DefaultLists.urls`
+  (EasyList, EasyPrivacy, Peter Lowe's) are downloaded on any network, validated (captive portals and error pages are
+  rejected), parsed on a background thread and swapped in. The texts go to `filesDir/adblock/lists/`, the compiled
+  engine to `filesDir/adblock/engine.bin` (`serialize()`, ~4.2 MiB).
+* later starts: `deserialize()` the snapshot; on `IllegalArgumentException` (corrupt / other format version) the
+  cached texts are re-parsed and a new snapshot written.
+* refresh: every 4 days, checked at start and whenever the app returns to the foreground (no WorkManager; failed
+  attempts are retried after 30 min). Settings → Ad blocking shows the filter count, last update and "Update now".
 
-The launcher icon (adaptive + themed/monochrome) and the in-app logo all come from one vector,
-`app/src/main/res/drawable/ic_vela_mark.xml` (derived from `build/icon.svg`). Replace its paths to change the
-logo; the background is `drawable/ic_launcher_background.xml`.
+Measured (131.8k filters, 4.19 MiB snapshot):
+
+| | JVM (HotSpot 21, `FilterListsTest`) | Emulator, release build (x86_64, API 37) |
+|---|---|---|
+| parse | 755 ms | 824 ms |
+| deserialize | 75 ms cold, 53 ms warm | 290–500 ms |
+
+`FilterListsTest.snapshotDeserializeTiming` prints the JVM numbers with real lists:
+`./gradlew :app:testDebugUnitTest --tests '*FilterListsTest*' -Pvela.adblockLists=<dir with easylist.txt,
+easyprivacy.txt, peterlowe.txt>`. Debug builds are much slower (≈4–5 s), measure release builds.
+
+## Logo and typography
+
+The logo comes from the desktop's single source, `src/shared/brand-mark.ts` (cap + body paths, accent `#60a5fa`).
+`scripts/brand-mark.mjs` (node, no dependencies) generates:
+
+* `res/drawable/ic_vela_mark.xml` — launcher foreground and splash icon (blue cap, white body; the desktop tile maps
+  onto the visible 72 dp of the adaptive icon),
+* `res/drawable/ic_vela_mono.xml` — themed-icon (monochrome) layer,
+* `res/drawable/ic_launcher_background.xml` — dark tile with the accent glow,
+* `ui/brand/BrandMark.kt` — path data for the Compose `VelaMark` (body in the text color, cap in the Space accent)
+  and `VelaAppIcon`.
+
+After changing `brand-mark.ts` run `./gradlew :app:syncBrandMark` (or `node android/scripts/brand-mark.mjs`);
+`BrandMarkSyncTest` fails while the generated files are out of date.
+
+The UI font is **Geist Variable** (SIL OFL 1.1, `third_party/geist/OFL.txt`), subset to Latin (115 KB) in
+`res/font/geist.ttf`. Like desktop, the accent is the active Space's color; the default Space is blue.
+
+## Browsing features
+
+Find in page (menu → compact island with n/m and previous/next), "Desktop site" per tab (desktop Chrome UA,
+remembered in the session), long-press drag to reorder tabs in the switcher, popups / `window.open` / "Open in new
+tab" children return to their opener when closed, and downloads: `http(s)` through DownloadManager, `data:` and
+`blob:` (read by a page script, posted back over a token-checked `WebMessageListener`) saved to Downloads via
+MediaStore under the link's `download` name.
