@@ -6,6 +6,7 @@ import { activateTab, closeTab, createTab, getActiveTab, getTabWebContents, tabI
 import { isInternalUrl } from '../url';
 import { getMainWindow } from '../window';
 import { staticInfo } from './manifest';
+import { attachDnr, forgetDnrSession, loadDnr, registerDnrPreload, unloadDnr } from './dnr';
 import { getInstalled, runsIn, wantedIn } from './registry';
 
 /**
@@ -33,9 +34,12 @@ interface Internals {
     };
     router: {
       handlers: Map<string, { callback: (event: { extension?: Electron.Extension }, ...args: unknown[]) => unknown }>;
+      handle(name: string, callback: (event: { extension?: Electron.Extension }, ...args: unknown[]) => unknown, options?: object): void;
+      sendEvent(extensionId: string, eventName: string, ...args: unknown[]): void;
     };
   };
   api: {
+    permissions: { permissionMap: Map<string, { permissions: string[]; origins: string[] }> };
     browserAction: {
       getState(): { actions: (ActionDetails & { id: string; tabs: Record<string, ActionDetails | undefined> })[] };
       activateClick(details: { extensionId: string; tabId: number; anchorRect: ExtensionAnchor }): void;
@@ -175,6 +179,8 @@ async function createHost(host: Host): Promise<void> {
   library ??= require('electron-chrome-extensions') as Library;
   const { ElectronChromeExtensions } = library;
   if (host.crx) return;
+  // Before the library: its preload freezes `chrome`, ours adds chrome.declarativeNetRequest.
+  registerDnrPreload(host.session);
   const crx = new ElectronChromeExtensions({
     session: host.session,
     createTab: async (details) => openTab(host.spaceId, details.url, details.active !== false),
@@ -198,6 +204,7 @@ async function createHost(host: Host): Promise<void> {
     removeWindow: () => undefined,
   });
   guardNavigation(crx);
+  wireDnr(host, crx);
   internals(crx).api.browserAction.observers.add({ isDestroyed: () => false, send: changed });
   crx.on('browser-action-popup-created', (popup: { browserWindow?: BrowserWindow }) => {
     const wc = popup.browserWindow?.webContents;
@@ -214,8 +221,29 @@ async function createHost(host: Host): Promise<void> {
   for (const wc of tabContents) if (wc.session === host.session) addTab(host, wc);
 }
 
+/** chrome.declarativeNetRequest: API handlers on the library's router, badge and permission bridge. */
+function wireDnr(host: Host, crx: ElectronChromeExtensions): void {
+  const { router } = internals(crx).ctx;
+  const { permissions } = internals(crx).api;
+  attachDnr(host.session, host.spaceId, router, {
+    setBadgeText(extensionId, tabId, text) {
+      const extension = host.session.extensions.getExtension(extensionId);
+      const setter = router.handlers.get('browserAction.setBadgeText');
+      if (!extension || !setter) return;
+      try {
+        void setter.callback({ extension }, { tabId, text });
+      } catch {
+        /* extension went away */
+      }
+    },
+    grantedOrigins: (extensionId) => permissions.permissionMap.get(extensionId)?.origins ?? [],
+    sendEvent: (extensionId, eventName, ...args) => router.sendEvent(extensionId, eventName, ...args),
+  });
+}
+
 function unload(host: Host, id: string): void {
   host.loaded.delete(id);
+  unloadDnr(host.session, id);
   const popup = host.crx ? internals(host.crx).api.browserAction.popup : undefined;
   if (popup?.extensionId === id) popup.destroy();
   try {
@@ -255,6 +283,7 @@ async function reconcile(host: Host): Promise<void> {
       }
       host.loaded.set(entry.id, entry.path);
       errors.delete(entry.id);
+      await loadDnr(host.session, host.spaceId, extension, { installRank: entry.installedAt, unpacked: entry.source === 'unpacked' }).catch(() => null);
       startWorker(host, extension);
     } catch (error) {
       errors.set(entry.id, messageOf(error));
@@ -290,6 +319,7 @@ export function registerSession(session: Session, spaceId: SpaceId): Promise<voi
 
 export function forgetSession(session: Session): void {
   hosts.delete(session);
+  forgetDnrSession(session);
 }
 
 export function syncAll(): Promise<void> {
