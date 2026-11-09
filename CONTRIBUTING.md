@@ -61,15 +61,20 @@ build/           icons and packaging resources
 
 ## Regenerating icons
 
-The app icon source is [`build/icon.svg`](build/icon.svg). Raster icons are generated with Electron's
-offscreen renderer, so no extra dependencies are required:
+The Vela mark is defined once, in [`src/shared/brand-mark.ts`](src/shared/brand-mark.ts): the glyph's
+path data plus the app-icon tile. The settings page, the new-tab logo hero and the internal-page
+favicons import it directly; every build asset is generated from it with Electron's offscreen
+renderer, so no extra dependencies are required:
 
 ```bash
-npx electron scripts/icons.mjs
+npm run icons
 ```
 
-This writes `build/icon.png` (1024×1024) and `build/icons/{16,32,48,64,128,256,512}.png`. Commit the
-generated PNGs together with any SVG change; CI and release builds use the committed files.
+This writes `build/icon.svg` (full-colour master), `build/icon-mono.svg` (single-colour glyph),
+`build/icon.png` (1024×1024), `build/icons/{16…1024}.png` (Linux), `build/icon.ico` (Windows, 16–256)
+and `build/icon.icns` (macOS squircle with Apple's margin). Output is deterministic. Never edit these
+files by hand; commit them together with any change to `brand-mark.ts`, since CI and release builds
+use the committed files.
 
 ## Commits and pull requests
 
