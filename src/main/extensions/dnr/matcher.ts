@@ -124,10 +124,19 @@ export function evaluateExtension(
   return { winner: final, redirect, allowCeiling, modify, allowAll };
 }
 
+/**
+ * What the header phases need from the request phase, per extension: the applicable modifyHeaders
+ * rules (sorted) and the allow ceiling. Saves re-matching the request in onBeforeSendHeaders and
+ * onHeadersReceived.
+ */
+export type HeaderPlan = Map<string, { modify: CompiledRule[]; allowCeiling: number }>;
+
 export interface RequestEvaluation {
   outcome: BeforeRequestOutcome | null;
   /** extensionId → allowAllRequests priority matched by this (frame) request. */
   allowAll: Map<string, number>;
+  /** Only when asked for (`withPlan`) and some extension has a modifyHeaders rule for the request. */
+  plan: HeaderPlan | null;
 }
 
 /** onBeforeRequest: the action to take (block / redirect / nothing). */
@@ -136,15 +145,21 @@ export function evaluateBeforeRequest(
   request: RequestInfo,
   initiatorUrl: string | null,
   frameAllowance: FrameAllowance = NO_FRAME,
-  keys: RequestKeys = requestKeys(request),
+  withPlan = false,
 ): RequestEvaluation {
+  const keys = requestKeys(request);
   let outcome: BeforeRequestOutcome | null = null;
   let outcomeRank = 0;
   let outcomeInstall = -Infinity;
   const allowAll = new Map<string, number>();
+  let plan: HeaderPlan | null = null;
   for (const extension of extensions) {
     const verdict = evaluateExtension(extension, request, keys, initiatorUrl, frameAllowance(extension.extensionId), 'request');
     if (verdict.allowAll) allowAll.set(extension.extensionId, verdict.allowAll.priority);
+    if (withPlan) {
+      plan ??= new Map();
+      plan.set(extension.extensionId, { modify: sortedModify(verdict), allowCeiling: verdict.allowCeiling });
+    }
     const rule = verdict.winner;
     if (!rule) continue;
     let candidate: BeforeRequestOutcome;
@@ -158,7 +173,7 @@ export function evaluateBeforeRequest(
       outcomeInstall = extension.installRank;
     }
   }
-  return { outcome, allowAll };
+  return { outcome, allowAll, plan };
 }
 
 export interface HeaderEvaluation {
@@ -185,16 +200,29 @@ export function evaluateHeaders(
   initiatorUrl: string | null,
   target: { kind: 'request'; headers: Record<string, string> } | { kind: 'response'; headers: Record<string, string[]> },
   frameAllowance: FrameAllowance = NO_FRAME,
+  plan: HeaderPlan | null = null,
 ): HeaderEvaluation {
-  const keys = requestKeys(request);
+  const keys = plan ? null : requestKeys(request);
   const ordered = [...extensions].sort((a, b) => b.installRank - a.installRank);
   const ops: HeaderOpEntry[] = [];
   const applied: HeaderEvaluation['applied'] = [];
   let block: HeaderEvaluation['block'] = null;
   for (const extension of ordered) {
-    const verdict = evaluateExtension(extension, request, keys, initiatorUrl, frameAllowance(extension.extensionId), target.kind === 'response' ? 'headers' : 'request');
-    if (target.kind === 'response' && verdict.winner?.type === 'block') block ??= { rule: verdict.winner, extension };
-    for (const rule of sortedModify(verdict)) {
+    const planned = plan?.get(extension.extensionId);
+    let rules: CompiledRule[];
+    if (keys) {
+      const verdict = evaluateExtension(extension, request, keys, initiatorUrl, frameAllowance(extension.extensionId), target.kind === 'response' ? 'headers' : 'request');
+      if (target.kind === 'response' && verdict.winner?.type === 'block') block ??= { rule: verdict.winner, extension };
+      rules = sortedModify(verdict);
+    } else {
+      rules = planned?.modify ?? [];
+      if (target.kind === 'response') {
+        const late = headerConditioned(extension, request, initiatorUrl, planned?.allowCeiling ?? frameAllowance(extension.extensionId));
+        if (late.block) block ??= { rule: late.block, extension };
+        if (late.modify.length > 0) rules = [...rules, ...late.modify].sort((a, b) => b.priority - a.priority || a.rulesetRank - b.rulesetRank || a.id - b.id);
+      }
+    }
+    for (const rule of rules) {
       const list = target.kind === 'request' ? rule.action.requestHeaders : rule.action.responseHeaders;
       if (!list) continue;
       applied.push({ rule, extension });
@@ -207,6 +235,22 @@ export function evaluateHeaders(
     else applyResponseHeaderOps(target.headers, ops);
   }
   return { block: null, applied };
+}
+
+/** Rules with a response-header condition, checked against the allow ceiling of the request phase. */
+function headerConditioned(extension: ExtensionRules, request: RequestInfo, initiatorUrl: string | null, allowCeiling: number): { block: CompiledRule | null; modify: CompiledRule[] } {
+  let best: CompiledRule | null = null;
+  const modify: CompiledRule[] = [];
+  for (const index of extension.indexes) {
+    if (index.headerConditioned.length === 0) continue;
+    index.forEachHeaderMatch(request, (rule) => {
+      if (!permitted(rule, extension, request, initiatorUrl) || rule.priority <= allowCeiling) return;
+      if (rule.type === 'modifyHeaders') modify.push(rule);
+      else if (better(rule, best)) best = rule;
+    });
+  }
+  const winner = best as CompiledRule | null;
+  return { block: winner?.type === 'block' ? winner : null, modify };
 }
 
 /** Whether any of the extensions can modify headers at all (skip header phases otherwise). */

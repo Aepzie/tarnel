@@ -5,9 +5,10 @@ import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../../ne
 import { tabIdForWebContents } from '../../tabs';
 import type { JsonStore } from '../../store';
 import { HostAccess } from './host-access';
-import { anyModifyHeaders, evaluateBeforeRequest, evaluateHeaders, type ExtensionRules, type FrameAllowance } from './matcher';
+import { anyModifyHeaders, evaluateBeforeRequest, evaluateHeaders, type ExtensionRules, type FrameAllowance, type HeaderPlan } from './matcher';
 import { dnrStore, type DnrPersisted } from './persist';
 import { createRequestInfo, dnrResourceType } from './request';
+import { RedirectResources } from './resources';
 import { compileRule, isSafeRule, type CompiledRule } from './rule';
 import { buildRuleset, mergeRulesets, Ruleset, type RuleIndex } from './ruleset';
 import { DYNAMIC_RULESET_ID, LIMITS, SESSION_RULESET_ID, type RequestInfo, type Rule, type RulesetResource } from './types';
@@ -44,6 +45,7 @@ const MATCHED_KEEP_MS = 5 * 60_000;
 const MATCHED_MAX = 5000;
 const BADGE_DELAY_MS = 250;
 const FRAME_RECORDS_MAX = 4000;
+const PLANS_MAX = 2048;
 const STATIC_RULE_LIMIT = LIMITS.GUARANTEED_MINIMUM_STATIC_RULES + LIMITS.GLOBAL_STATIC_RULE_POOL;
 
 interface Manifest {
@@ -52,6 +54,7 @@ interface Manifest {
   host_permissions?: unknown[];
   optional_host_permissions?: unknown[];
   declarative_net_request?: { rule_resources?: unknown[] };
+  web_accessible_resources?: unknown;
 }
 
 export class DnrError extends Error {}
@@ -91,8 +94,11 @@ export class ExtensionDnr {
   private enabled: string[] = [];
   private disabledStatic = new Map<string, Set<number>>();
   private dynamic: Ruleset;
+  private dynamicIndex: RuleIndex;
   private sessionRules: Ruleset;
+  private sessionIndex: RuleIndex;
   private staticIndex: RuleIndex = mergeRulesets([]);
+  readonly redirects: RedirectResources;
   rules: ExtensionRules;
   badge = false;
   readonly badgeCounts = new Map<number, number>();
@@ -119,12 +125,15 @@ export class ExtensionDnr {
     this.resources = rulesetResources(manifest);
     this.store = dnrStore(spaceId, id);
     this.dynamic = new Ruleset(DYNAMIC_RULESET_ID, 'dynamic', []);
+    this.dynamicIndex = this.dynamic.index;
     this.sessionRules = new Ruleset(SESSION_RULESET_ID, 'session', []);
+    this.sessionIndex = this.sessionRules.index;
+    this.redirects = new RedirectResources(id, root, manifest);
     this.rules = this.makeRules();
   }
 
   private makeRules(): ExtensionRules {
-    const indexes = [this.sessionRules.index, this.dynamic.index, this.staticIndex].filter((index) => index.size > 0);
+    const indexes = [this.sessionIndex, this.dynamicIndex, this.staticIndex].filter((index) => index.size > 0);
     return {
       extensionId: this.id,
       installRank: this.installRank,
@@ -177,6 +186,7 @@ export class ExtensionDnr {
     this.badge = saved.displayActionCountAsBadgeText === true;
     if (fresh) this.persist({ version, enabledRulesets: null });
     this.dynamic = buildRuleset(DYNAMIC_RULESET_ID, 'dynamic', Array.isArray(saved.dynamicRules) ? saved.dynamicRules : [], true);
+    this.dynamicIndex = this.dynamic.index;
     await this.ensureLoaded(this.enabled);
     this.rebuildStatic();
     this.loadStats = { rulesets: this.enabled.length, rules: this.enabledStaticCount(), ms: Math.round(performance.now() - started) };
@@ -314,9 +324,11 @@ export class ExtensionDnr {
     const next = new Ruleset(rulesetId, kind, all);
     if (kind === 'dynamic') {
       this.dynamic = next;
+      this.dynamicIndex = next.index;
       this.persist({ dynamicRules: all.map((rule) => rule.source!) });
     } else {
       this.sessionRules = next;
+      this.sessionIndex = next.index;
     }
     this.publish();
   }
@@ -383,6 +395,12 @@ function frameNodeId(frame: Electron.WebFrameMain | null | undefined): number | 
 }
 
 type RequestDetails = Electron.OnBeforeRequestListenerDetails | Electron.OnBeforeSendHeadersListenerDetails | Electron.OnHeadersReceivedListenerDetails;
+
+/** The initiator for host-permission checks; opaque (`null`) initiators count as none. */
+function initiatorOf(details: RequestDetails): string | null {
+  const origin = details.initiatorOrigin;
+  return origin && origin !== 'null' ? origin : null;
+}
 
 export class SessionDnr {
   readonly extensions = new Map<string, ExtensionDnr>();
@@ -483,8 +501,9 @@ export class SessionDnr {
     const isFrame = info.type === 'main_frame' || info.type === 'sub_frame';
     if (info.type === 'main_frame' && info.tabId >= 0) this.resetBadges(info.tabId);
     const allowance = this.allowanceFor(details, info.type);
-    const { outcome, allowAll } = evaluateBeforeRequest(this.list, info, details.initiatorOrigin ?? null, allowance);
+    const { outcome, allowAll, plan } = evaluateBeforeRequest(this.list, info, initiatorOf(details), allowance, this.anyModify);
     if (isFrame && this.anyAllowAll) this.recordFrame(details, allowAll, allowance);
+    if (plan) this.rememberPlan(details.id, details.url, plan);
     if (!outcome) return;
     const extension = this.extensions.get(outcome.extension.extensionId);
     if (outcome.rule) {
@@ -494,14 +513,33 @@ export class SessionDnr {
     if (outcome.kind === 'allow') return;
     if (info.tabId >= 0) extension?.incrementBadge(info.tabId, 1);
     if (outcome.kind === 'block') return { cancel: true };
-    return { redirectURL: outcome.url };
+    return { redirectURL: extension ? extension.redirects.target(outcome.url, isFrame) : outcome.url };
+  }
+
+  /** Header plans of in-flight requests (bounded: requests that never reach the header phases age out). */
+  private readonly plans = new Map<number, { url: string; plan: HeaderPlan }>();
+
+  private rememberPlan(id: number, url: string, plan: HeaderPlan): void {
+    this.plans.delete(id);
+    if (this.plans.size >= PLANS_MAX) {
+      const oldest = this.plans.keys().next().value;
+      if (oldest !== undefined) this.plans.delete(oldest);
+    }
+    this.plans.set(id, { url, plan });
+  }
+
+  private planFor(details: RequestDetails, done: boolean): HeaderPlan | null {
+    const entry = this.plans.get(details.id);
+    if (!entry || entry.url !== details.url) return null;
+    if (done) this.plans.delete(details.id);
+    return entry.plan;
   }
 
   private onBeforeSendHeaders(details: Electron.OnBeforeSendHeadersListenerDetails, headers: Record<string, string>): void {
     if (!this.anyModify) return;
     const info = this.requestInfo(details);
     if (!info) return;
-    const result = evaluateHeaders(this.list, info, details.initiatorOrigin ?? null, { kind: 'request', headers }, this.allowanceFor(details, info.type));
+    const result = evaluateHeaders(this.list, info, initiatorOf(details), { kind: 'request', headers }, this.allowanceFor(details, info.type), this.planFor(details, false));
     for (const { rule, extension } of result.applied) this.extensions.get(extension.extensionId)?.recordMatch(rule, info.tabId);
   }
 
@@ -510,7 +548,7 @@ export class SessionDnr {
     const headers = details.responseHeaders ?? {};
     const info = this.requestInfo(details, headers);
     if (!info) return;
-    const result = evaluateHeaders(this.list, info, details.initiatorOrigin ?? null, { kind: 'response', headers }, this.allowanceFor(details, info.type));
+    const result = evaluateHeaders(this.list, info, initiatorOf(details), { kind: 'response', headers }, this.allowanceFor(details, info.type), this.planFor(details, true));
     if (result.block) {
       const extension = this.extensions.get(result.block.extension.extensionId);
       extension?.recordMatch(result.block.rule, info.tabId);

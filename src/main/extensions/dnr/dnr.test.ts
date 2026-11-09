@@ -255,6 +255,30 @@ describe('modifyHeaders', () => {
     assert.deepEqual(response, { 'Content-Security-Policy': ["default-src 'self'", "worker-src 'none'"] });
   });
 
+  it('gives the same result from a request-phase plan', () => {
+    const ext = extension(EXT_A, [
+      { id: 1, priority: 2, action: { type: 'modifyHeaders', responseHeaders: [{ header: 'x-a', operation: 'set', value: '1' }] }, condition: { urlFilter: '||a.com^' } },
+      { id: 2, priority: 3, action: { type: 'modifyHeaders', responseHeaders: [{ header: 'x-a', operation: 'remove' }] }, condition: { urlFilter: '/x', responseHeaders: [{ header: 'x-kill' }] } },
+      block(3, { urlFilter: '/y', responseHeaders: [{ header: 'x-block' }] }, 1),
+      { id: 4, priority: 5, action: { type: 'allow' }, condition: { urlFilter: '/y/allowed' } },
+    ]);
+    const run = (url: string, responseHeaders: Record<string, string[]>) => {
+      const info = request(url, 'script', { responseHeaders });
+      const { plan } = evaluateBeforeRequest([ext], info, null, undefined, true);
+      const planned = { ...responseHeaders };
+      const direct = { ...responseHeaders };
+      const a = evaluateHeaders([ext], info, null, { kind: 'response', headers: planned }, undefined, plan);
+      const b = evaluateHeaders([ext], info, null, { kind: 'response', headers: direct });
+      assert.deepEqual(planned, direct);
+      assert.equal(a.block?.rule.id, b.block?.rule.id);
+      return { headers: planned, block: a.block?.rule.id ?? null };
+    };
+    assert.deepEqual(run('https://a.com/x', {}), { headers: { 'x-a': ['1'] }, block: null });
+    assert.deepEqual(run('https://a.com/x', { 'X-Kill': ['1'] }), { headers: { 'X-Kill': ['1'] }, block: null });
+    assert.deepEqual(run('https://b.com/y', { 'X-Block': ['1'] }).block, 3);
+    assert.deepEqual(run('https://b.com/y/allowed', { 'X-Block': ['1'] }).block, null);
+  });
+
   it('ignores modifyHeaders at or below a matching allow rule', () => {
     const ext = extension(EXT_A, [
       { id: 1, priority: 5, action: { type: 'allow' }, condition: { urlFilter: '||a.com^' } },
