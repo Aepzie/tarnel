@@ -7,7 +7,8 @@ import { shapeMainWorld } from './identity-main-world';
  * (sandboxed) before page scripts and gives web pages the `window.chrome` shape of a Chromium
  * browser. The top frame also reports the client hints to main, in case the chrome UI could not.
  */
-const isWebPage = location.protocol === 'https:' || location.protocol === 'http:';
+/** By origin, not URL: about:srcdoc / about:blank documents inherit their web parent's origin. */
+const isWebPage = /^https?:\/\//.test(self.origin);
 
 if (isWebPage) {
   try {

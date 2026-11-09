@@ -1,6 +1,9 @@
 /** Synchronous IPC asked by the fingerprint preload in every frame before page scripts run. */
 export const FINGERPRINT_CONFIG_CHANNEL = 'vela:fingerprint-config';
 
+/** Same, asked by the service-worker preload (answered on the worker's own ServiceWorkerMain.ipc). */
+export const FINGERPRINT_WORKER_CONFIG_CHANNEL = 'vela:fingerprint-worker-config';
+
 /**
  * What the main world patch needs. Derived in main from the space seed (never sent to pages) and
  * the frame's top-level site, so values are stable per site but differ between Spaces.

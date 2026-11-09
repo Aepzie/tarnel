@@ -53,7 +53,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 
 - **Spaces** — isolated sessions with their own cookies, storage, cache, logins, permissions and optional proxy.
 - **Burner spaces** — live only in memory and are wiped when closed. Open one with `Ctrl+Shift+N`.
-- **Per-space fingerprint protection** — each Space shows sites its own stable, plausible fingerprint (canvas, WebGL, audio, hardware; Strict also screen, devices, client hints), so identities can't be linked across Spaces.
+- **Per-space fingerprint protection** — each Space shows sites its own stable, plausible fingerprint (canvas, WebGL, audio, hardware, consistently in workers too; Strict also screen, devices, client hints), so identities can't be linked across Spaces.
 - **Built-in ad and tracker blocking** — network-level, powered by the [Ghostery adblocker](https://github.com/ghostery/adblocker) engine.
 - **Chrome extensions** — install from the Chrome Web Store (link or ID) or load unpacked; pin action buttons to the toolbar and choose which Spaces each extension runs in.
 - **Tab sleeping** — idle tabs release their renderer process entirely; they reload when you come back.
@@ -65,6 +65,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Split view** — two tabs side by side (up to four in a 2×2 grid) with a draggable divider; the focused pane drives the address bar, find and zoom. Drag a tab onto the edge of the page, use the tab menu or `Ctrl+Shift+D`. Splits show as one joined tab and come back with the session.
 - **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
 - **Per-tab audio devices** — send each tab to its own speakers or headphones and pick its microphone (and camera) from the tab menu or the tab's speaker indicator; restored with the session.
+- **Per-tab audio mixer** (`Ctrl+Shift+M`) — every tab that plays sound gets a channel strip with volume up to 200 %, balance, mute, solo and live meters; plus a 10-band equalizer with presets, bass boost, mono, an "even out volume" compressor and its speaker / microphone, from the mixer button in the toolbar.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 - **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
 - **Android app** — a native Vela for phones with the same Spaces, Burner spaces, sleeping tabs and privacy defaults ([details](#android)).
@@ -142,6 +143,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 | `Ctrl+Shift+,`            | Toggle horizontal / vertical tabs   |
 | `Ctrl+Shift+D`            | Split view on / off                 |
 | `Ctrl+Shift+N`            | New Burner space                    |
+| `Ctrl+Shift+M`            | Audio mixer                         |
 | `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab             |
 | `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Zoom in / out / reset          |
@@ -218,7 +220,6 @@ Planned:
 
 - [ ] Signed builds (Windows, macOS)
 - [ ] Extension `declarativeNetRequest` support (uBlock Origin Lite)
-- [ ] Fingerprint protection inside workers
 
 Ideas and discussion are welcome in [issues](https://github.com/Aepzie/vela/issues).
 

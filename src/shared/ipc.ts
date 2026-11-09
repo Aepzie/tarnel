@@ -25,6 +25,7 @@ import type {
 } from './types';
 import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } from './types';
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
+import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -391,5 +392,20 @@ export interface VelaPagesAPI {
     reload(id: string): Promise<ExtensionInfo>;
     remove(id: string): Promise<void>;
     openOptions(id: string): Promise<void>;
+  };
+}
+
+/** Per-tab audio mixer (desktop chrome only). Channels live in MIXER_IPC (shared/audio-mixer.ts). */
+export interface VelaChromeAPI {
+  mixer: {
+    /** Settings + routing of every tab that has audio settings or is audible. */
+    get(): Promise<MixerTabState[]>;
+    onState(cb: (tabs: MixerTabState[]) => void): Unsubscribe;
+    /** Merge `patch` into the tab's settings; applies live. */
+    set(tabId: number, patch: Partial<TabAudioSettings>): Promise<MixerTabState>;
+    reset(tabId: number): Promise<MixerTabState>;
+    /** Start/stop streaming levels (call with true while the panel is open). */
+    watchLevels(on: boolean): Promise<void>;
+    onLevels(cb: (levels: TabAudioLevel[]) => void): Unsubscribe;
   };
 }
