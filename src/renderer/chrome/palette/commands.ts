@@ -1,6 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import { Flame, Focus, History, Monitor, Moon, Plus, RotateCcw, Settings2, ShieldCheck, Sun } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, LayersPlus, PanelLeft, PanelTop } from 'lucide-react';
 import type { BrowserState, Settings, ThemeMode } from '@shared/types';
+import { groupActiveTab } from '../tabs/groups/group-ui';
 
 export interface PaletteCommand {
   id: string;
@@ -90,6 +92,7 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       run: () => void vela.tabs.create({ url: 'vela://settings' }),
     },
   ];
+  commands.push(...tabGroupCommands({ settings, state }));
   if (activeTabId !== null) {
     commands.push({
       id: 'cmd:zoom-reset',
@@ -97,6 +100,43 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       icon: RotateCcw,
       keywords: 'actual size 100% zoom',
       run: () => void vela.tabs.zoom(activeTabId, 0),
+    });
+  }
+  return commands;
+}
+
+/** Tab layout and tab group commands. */
+function tabGroupCommands({ settings, state }: CommandContext): PaletteCommand[] {
+  const vela = window.vela;
+  const vertical = settings.tabLayout === 'vertical';
+  const groups = state.groups.filter((group) => group.spaceId === state.activeSpaceId);
+  const commands: PaletteCommand[] = [
+    {
+      id: 'cmd:tab-layout',
+      title: vertical ? 'Tab layout: Horizontal' : 'Tab layout: Vertical',
+      icon: vertical ? PanelTop : PanelLeft,
+      keywords: 'vertical horizontal sidebar tabs strip layout toggle',
+      hint: vertical ? 'Vertical' : 'Horizontal',
+      run: () => void vela.settings.set({ tabLayout: vertical ? 'horizontal' : 'vertical' }),
+    },
+  ];
+  if (state.activeTabId !== null) {
+    commands.push({
+      id: 'cmd:new-group',
+      title: 'New tab group',
+      icon: LayersPlus,
+      keywords: 'group tabs add create organize',
+      run: () => groupActiveTab(state.tabs, state.activeTabId),
+    });
+  }
+  if (groups.length > 0) {
+    const allCollapsed = groups.every((group) => group.collapsed);
+    commands.push({
+      id: 'cmd:collapse-groups',
+      title: allCollapsed ? 'Expand all groups' : 'Collapse all groups',
+      icon: allCollapsed ? ChevronsUpDown : ChevronsDownUp,
+      keywords: 'tab groups fold unfold collapse expand',
+      run: () => void vela.groups.setAllCollapsed(!allCollapsed),
     });
   }
   return commands;
