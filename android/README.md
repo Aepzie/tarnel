@@ -101,6 +101,38 @@ six are alive, or on `onTrimMemory(RUNNING_LOW)` they are destroyed and the tab 
 until restart — the back/forward list are kept). Restored tabs start asleep; only the active one loads at launch.
 New tab pages are native Compose and cost no WebView at all.
 
+### Refresh rate and smoothness
+
+90/120/144 Hz phones often keep an app at 60 Hz unless it asks for more: the WebView scrolls in its own compositor,
+so Android's frame-rate heuristics (touch boost, view velocity votes on Android 15+) frequently miss a page scroll,
+and a fling outlives the touch. `browser/RefreshRateController.kt` applies Settings → Display → Refresh rate to the
+window (WebView included); the mode choice is pure (`core/RefreshRate.kt`, unit-tested):
+
+* **Auto** (default): no pinned mode. While the user touches the screen or a page is still scrolling (WebView
+  `onScrollChanged`, which also fires during a fling) Vela asks for the fastest rate and drops the request 1.2 s
+  after the last activity. Android 15+: `View.setRequestedFrameRate(CATEGORY_HIGH)` on the content view and the
+  active WebView (no window update); Android 10–14: a temporary `preferredDisplayModeId`.
+* **High**: pins the fastest mode at the current resolution (`preferredDisplayModeId`) and, on Android 15+, turns
+  off the system's power-saving frame-rate reduction (`Window.setFrameRatePowerSavingsBalanced(false)`).
+* **Standard**: pins the mode closest to 60 Hz and disables the touch boost.
+
+Only modes with the current resolution are considered (switching between them is seamless); single-rate screens are
+never pinned. Settings shows the screen's rates and the current one (e.g. "60 · 90 · 120 Hz · now 120 Hz").
+
+Other smoothness work: a full-screen panel (tab switcher, settings, history) that finished animating in hides the
+page's WebView (kept attached), so it stops drawing underneath every frame of the panel; tab thumbnails are decoded as
+hardware bitmaps and captured ones are uploaded ahead of the first draw (`prepareToDraw`); the island's loading bar
+animates in the draw phase only (no recomposition per frame). Already off the main thread before: filter-list
+parsing and snapshot loading, thumbnail and session IO; the island reacts to drag *direction* changes only, not to
+every scroll pixel.
+
+Measured on the emulator (`Medium_Phone_API_37.0`, single 60 Hz mode, release build, Wikipedia
+"History of the United States", 20 swipes, then 6× open/close the tab switcher; `dumpsys gfxinfo` janky frames,
+fresh app data per run): scrolling 10.8 / 8.2% before, 16.6 / 9.2 / 8.2% after; tab switcher 22.0 / 6.3% before,
+14.9 / 19.0 / 10.9% after — within the emulator's run-to-run noise. Frame time is dominated by the emulator's GPU path (avg ~18 ms in `SwapBuffers`, vs ~3.5 ms
+of app UI-thread work per frame), so the refresh-rate modes and their switching could only be verified by unit tests
+and on the emulator's single 60 Hz mode — not on real 90/120 Hz hardware.
+
 ### Privacy defaults
 
 HTTPS-only (typed and link navigations upgraded, interstitial when a site has no HTTPS, mixed content blocked),
