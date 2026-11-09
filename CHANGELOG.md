@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   live spectrum, presets (Flat, Bass, Vocal, Treble, Loudness, Podcast, Night), bass boost with gain and corner
   frequency, mono, "Even out volume" and the tab's speaker and microphone. The toolbar button shows when something
   is playing.
+- Per-tab audio mixer engine: volume up to 200 %, balance, mono, a 10-band equalizer with presets, bass boost and a gentle compressor for every tab, applied live to media elements, Web Audio and WebRTC playback (iframes included) and restored with the session. Boosts go through a limiter, so they don't clip harshly. Cross-origin media that Web Audio cannot read is never silenced: it only gets the tab volume. Works together with per-tab audio devices. Tabs without mixer settings pay nothing.
 
 ## [0.3.0] - 2026-11-09
 
