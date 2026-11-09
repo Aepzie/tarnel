@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
 ### Added
 - **Per-space fingerprint protection** (Off / Standard / Strict, per Space; new Spaces default to Standard, Burners to Strict).
   Each Space gets a random seed; canvas, WebGL and audio readbacks get subtle noise derived from (seed, site), so a
@@ -65,5 +67,7 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Aepzie/vela/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Aepzie/vela/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Aepzie/vela/releases/tag/v0.1.0
