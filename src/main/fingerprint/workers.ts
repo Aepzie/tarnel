@@ -80,26 +80,55 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
     }
   };
 
+  /**
+   * Resumes a held target once its own auto-attach is set up (so its nested workers are held too).
+   * Out-of-process iframes need that order: a resume sent before the child's setAutoAttach has
+   * answered (it answers once the frame's navigation commits) is lost and the frame stays paused.
+   */
+  const watchAndResume = (child: string): void => {
+    const resume = (): void => send('Runtime.runIfWaitingForDebugger', {}, child);
+    client.sendCommand('Target.setAutoAttach', AUTO_ATTACH, child).then(resume, resume);
+  };
+
   const onAttached = (params: CdpParams, parentSession: string | undefined): void => {
     const child = params.sessionId as string;
     const target = params.targetInfo as TargetInfo;
     if (WORKER_TYPES.has(target.type)) {
-      const config = lookup(wc.session, target.type === 'shared_worker' ? target.url : pageUrl());
+      const config = lookup(wc.session, pageUrl());
       if (config) send('Runtime.evaluate', { expression: patchExpression(config), silent: true }, child);
-      send('Target.setAutoAttach', AUTO_ATTACH, child);
+      watchAndResume(child);
     } else if (target.type === 'iframe' || target.type === 'page') {
-      send('Target.setAutoAttach', AUTO_ATTACH, child);
+      watchAndResume(child);
     } else {
       send('Runtime.runIfWaitingForDebugger', {}, child);
       send('Target.detachFromTarget', { sessionId: child }, parentSession);
-      return;
     }
-    send('Runtime.runIfWaitingForDebugger', {}, child);
+  };
+
+  /**
+   * Every tab of the Space sees the creation; the one that has a document of the worker's origin
+   * (its creator, in practice) claims it, so a third-party shared worker gets the key of the top
+   * site that embeds it (it is partitioned by that site anyway), like its creating frame.
+   */
+  const hostsOrigin = (workerUrl: string): boolean => {
+    let origin: string;
+    try {
+      const url = new URL(workerUrl);
+      origin = url.protocol === 'blob:' ? new URL(url.pathname).origin : url.origin;
+    } catch {
+      return false;
+    }
+    if (origin === 'null') return true;
+    try {
+      return wc.mainFrame.framesInSubtree.some((frame) => frame.origin === origin);
+    } catch {
+      return false;
+    }
   };
 
   const onSharedWorkerCreated = (target: TargetInfo): void => {
     if (target.attached || claimedSharedWorkers.has(target.targetId)) return;
-    if (!browserContextId || target.browserContextId !== browserContextId) return;
+    if (!browserContextId || target.browserContextId !== browserContextId || !hostsOrigin(target.url)) return;
     claimedSharedWorkers.add(target.targetId);
     ownSharedWorkers.add(target.targetId);
     send('Target.attachToTarget', { targetId: target.targetId, flatten: true });
