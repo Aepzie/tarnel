@@ -1,7 +1,7 @@
 import { Columns2Icon, PanelRightIcon, SquareSplitHorizontalIcon } from 'lucide-react';
 import type { TabState } from '@shared/types';
 import { SPLIT_MAX_PANES } from '@shared/split-layout';
-import { ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger } from '@/components/ui/context-menu';
+import { ContextMenuItem, ContextMenuPortal, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger } from '@/components/ui/context-menu';
 import { shallowEqual, useBrowserSlice } from '@/hooks/browser';
 import { settle, vela } from '@/lib/vela';
 import { Favicon } from '../tabs/Favicon';
@@ -57,14 +57,17 @@ export function SplitMenuItems({ tab }: { tab: TabState }) {
             <Columns2Icon strokeWidth={1.75} />
             Open in split view with
           </ContextMenuSubTrigger>
-          <ContextMenuSubContent className={`${MENU_SURFACE} max-w-72 min-w-52`}>
-            {others.map((other) => (
-              <ContextMenuItem key={other.id} className={MENU_ITEM} onSelect={() => settle(vela().split.create([tab.id, other.id], tab.id))}>
-                <Favicon src={other.favicon} url={other.url} title={other.title} asleep={other.asleep} />
-                <span className="truncate">{other.title || other.url || 'New Tab'}</span>
-              </ContextMenuItem>
-            ))}
-          </ContextMenuSubContent>
+          {/* Portaled: inside the scrollable menu a submenu would be clipped. */}
+          <ContextMenuPortal>
+            <ContextMenuSubContent className={`${MENU_SURFACE} max-w-72 min-w-52`}>
+              {others.map((other) => (
+                <ContextMenuItem key={other.id} className={MENU_ITEM} onSelect={() => settle(vela().split.create([tab.id, other.id], tab.id))}>
+                  <Favicon src={other.favicon} url={other.url} title={other.title} asleep={other.asleep} />
+                  <span className="truncate">{other.title || other.url || 'New Tab'}</span>
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuPortal>
         </ContextMenuSub>
       )}
       <ContextMenuSeparator className={MENU_SEPARATOR} />

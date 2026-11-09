@@ -31,6 +31,9 @@ function VerticalSplitRowImpl({ unit, activeTabId, iconOnly, groupColor, groupEn
   const dragged = useRef(false);
   const onScreen = activeTabId !== null && unit.split.tabIds.includes(activeTabId);
   const label = unit.tabs.map((tab) => tab.title || 'New Tab').join(' · ');
+  // With 3–4 panes only one segment keeps its title (the focused one, else the first); the others shrink to favicons.
+  const crowded = unit.tabs.length > 2;
+  const titled = onScreen ? activeTabId : unit.tabs[0]?.id;
 
   return (
     <Reorder.Item
@@ -83,6 +86,7 @@ function VerticalSplitRowImpl({ unit, activeTabId, iconOnly, groupColor, groupEn
           focused={tab.id === activeTabId}
           first={index === 0}
           iconOnly={iconOnly}
+          compact={!iconOnly && crowded && tab.id !== titled}
           grouped={!!groupColor && index === 0}
           reduced={reduced}
         />
@@ -96,11 +100,13 @@ interface SegmentProps {
   focused: boolean;
   first: boolean;
   iconOnly: boolean;
+  /** Favicon-only segment of a crowded (3–4 pane) split. */
+  compact: boolean;
   grouped: boolean;
   reduced: boolean;
 }
 
-function Segment({ tab, focused, first, iconOnly, grouped, reduced }: SegmentProps) {
+function Segment({ tab, focused, first, iconOnly, compact, grouped, reduced }: SegmentProps) {
   const label = tab.title || tab.url || 'New Tab';
 
   const onAuxClick = (event: MouseEvent): void => {
@@ -118,6 +124,7 @@ function Segment({ tab, focused, first, iconOnly, grouped, reduced }: SegmentPro
         tabIndex={focused ? 0 : -1}
         title={iconOnly ? undefined : label}
         data-tab-id={tab.id}
+        style={compact ? { flex: '0 0 auto' } : undefined}
         onPointerDown={(event) => {
           if (event.button === 0 && !focused) settle(vela().tabs.activate(tab.id));
         }}
@@ -136,14 +143,19 @@ function Segment({ tab, focused, first, iconOnly, grouped, reduced }: SegmentPro
         )}
       >
         {focused && <motion.span layoutId="vertical-active-tab" className={ACTIVE_ROW} transition={reduced ? INSTANT : spring.snappy} />}
-        <span className={cn('relative z-10 flex h-full min-w-0 flex-1 items-center gap-2', iconOnly ? 'justify-center' : grouped ? 'pr-1.5 pl-7' : 'pr-1.5 pl-2.5')}>
+        <span
+          className={cn(
+            'relative z-10 flex h-full min-w-0 flex-1 items-center gap-2',
+            iconOnly ? 'justify-center' : compact ? (grouped ? 'w-[52px] justify-end pr-2' : 'w-8 justify-center') : grouped ? 'pr-1.5 pl-7' : 'pr-1.5 pl-2.5',
+          )}
+        >
           <span className="relative inline-flex size-4 shrink-0 items-center justify-center">
             <Favicon src={tab.favicon} url={tab.url} title={tab.title} asleep={tab.asleep} />
             {tab.loading && (
               <span className="absolute -inset-1 animate-spin rounded-full border-[1.5px] border-transparent border-t-space [animation-duration:0.8s]" />
             )}
           </span>
-          {!iconOnly && (
+          {!iconOnly && !compact && (
             <span
               className={cn(
                 'min-w-0 flex-1 overflow-hidden text-[13px] leading-none tracking-tight whitespace-nowrap transition-colors duration-150',
