@@ -99,6 +99,14 @@ const api: VelaChromeAPI = {
     setOverlay: (open) => invoke(C.setOverlay, open),
   },
 
+  updates: {
+    get: () => invoke(C.updateGet),
+    onStatus: (cb) => subscribe(E.update, cb),
+    download: () => invoke(C.updateDownload),
+    install: () => invoke(C.updateInstall),
+    openRelease: () => invoke(C.updateOpenRelease),
+  },
+
   platform: process.platform,
 };
 

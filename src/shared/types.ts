@@ -106,14 +106,22 @@ export interface Settings {
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
   tabLayout: TabLayout;
+  /** Check GitHub releases on startup and every 6 h. */
+  updateAutoCheck: boolean;
+  /** Download updates in the background (installable builds only). */
+  updateAutoDownload: boolean;
+  /** Offer pre-releases (e.g. 0.3.0-beta.1). */
+  updatePrerelease: boolean;
 }
 
 export interface Suggestion {
-  kind: 'url' | 'history' | 'search' | 'tab';
+  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab';
   title: string;
   url: string;
   /** Present when kind === 'tab': switching to an existing tab. */
   tabId?: number;
+  /** Present when kind === 'remote-tab': name of the device the tab is open on. */
+  device?: string;
 }
 
 export interface TopSite {
@@ -212,4 +220,82 @@ export const DEFAULT_SETTINGS: Settings = {
   windowMaterial: 'mica',
   newtabHero: 'clock',
   tabLayout: 'horizontal',
+  updateAutoCheck: true,
+  updateAutoDownload: true,
+  updatePrerelease: false,
 };
+
+/** What end-to-end encrypted sync carries. History is off by default. */
+export interface SyncCategories {
+  settings: boolean;
+  spaces: boolean;
+  tabs: boolean;
+  history: boolean;
+}
+
+export const DEFAULT_SYNC_CATEGORIES: SyncCategories = { settings: true, spaces: true, tabs: true, history: false };
+
+/** User-owned sync storage. Vela never runs a sync server. */
+export type SyncTransportInput =
+  | { kind: 'folder'; path: string }
+  | { kind: 'webdav'; url: string; username: string; password: string };
+
+export interface SyncSetupInput {
+  transport: SyncTransportInput;
+  /** 'create' = first device (new key), 'join' = existing sync data at that location. */
+  mode: 'create' | 'join';
+  /** Passphrase, or the recovery key when joining. */
+  secret: string;
+  categories: SyncCategories;
+}
+
+export interface SyncDevice {
+  id: string;
+  name: string;
+  /** Last time this device published its changes. */
+  lastSeen: number;
+  current: boolean;
+}
+
+export interface SyncStatus {
+  enabled: boolean;
+  /** OS secret storage (DPAPI / Keychain / libsecret) is usable; sync requires it. */
+  secureStorage: boolean;
+  transport: { kind: 'folder' | 'webdav'; label: string } | null;
+  categories: SyncCategories;
+  syncing: boolean;
+  lastSyncAt: number | null;
+  lastError: string | null;
+  devices: SyncDevice[];
+}
+
+/**
+ * How this build can update itself. `install` = electron-updater downloads and installs (NSIS,
+ * AppImage, signed macOS); `notify` = only tells the user and links the release page.
+ */
+export type UpdateMode = 'install' | 'notify' | 'disabled';
+export type UpdateNotifyReason = 'portable' | 'mac-unsigned' | 'linux-package' | 'dev';
+
+export type UpdatePhase = 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'error';
+
+export interface UpdateStatus {
+  mode: UpdateMode;
+  reason?: UpdateNotifyReason;
+  phase: UpdatePhase;
+  currentVersion: string;
+  /** Newer version found (available / downloading / ready). */
+  version?: string;
+  releaseName?: string;
+  /** HTML (GitHub feed) or markdown/plain text (generic feed). Rendered as sanitized text. */
+  releaseNotes?: string;
+  releaseDate?: string;
+  releaseUrl?: string;
+  /** 0..100 while downloading. */
+  percent?: number;
+  bytesPerSecond?: number;
+  /** The download was started by the user (not in the background). */
+  manual?: boolean;
+  error?: string;
+  /** Epoch ms of the last finished check. */
+  checkedAt?: number;
+}

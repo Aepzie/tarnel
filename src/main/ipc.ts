@@ -10,7 +10,9 @@ import * as tabs from './tabs';
 import * as tabGroups from './tab-groups';
 import { getCompletedDownloadPath, getDownloadPath } from './downloads';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
+import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openReleasePage, watchUpdates } from './updater';
 import { resolveInput, resolveInputDetailed } from './url';
+import { registerSyncIpc, remoteTabSuggestions } from './sync/loader';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -161,6 +163,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
     push({ kind: 'tab', title: tab.title || tab.url, url: tab.url, tabId: tab.id });
   }
   for (const entry of suggest(input, 6)) push(entry);
+  for (const entry of remoteTabSuggestions(input, 3)) push(entry);
   return results;
 }
 
@@ -306,6 +309,10 @@ export function registerIpc(): void {
     if (typeof allow !== 'boolean' || typeof remember !== 'boolean') throw new TypeError('Invalid permission response');
     handlePermissionResponse(str(id, MAX_ID, 'permission id'), allow, remember);
   });
+  handleChrome(c.updateGet, getUpdateStatus);
+  handleChrome(c.updateDownload, () => downloadUpdate());
+  handleChrome(c.updateInstall, installUpdate);
+  handleChrome(c.updateOpenRelease, openReleasePage);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
@@ -340,10 +347,17 @@ export function registerIpc(): void {
     const id = tabId === null ? null : tabs.getTabSpaceId(tabId);
     return id ? (getSpace(id) ?? null) : null;
   });
+  handlePages(p.updateGet, getUpdateStatus);
+  handlePages(p.updateWatch, (event) => watchUpdates(event.sender));
+  handlePages(p.updateCheck, () => checkForUpdates());
+  handlePages(p.updateDownload, () => downloadUpdate());
+  handlePages(p.updateInstall, installUpdate);
+  handlePages(p.updateOpenRelease, openReleasePage);
   handlePages(p.version, () => ({
     app: app.getVersion(),
     electron: process.versions.electron ?? '',
     chrome: process.versions.chrome ?? '',
     v8: process.versions.v8 ?? '',
   }));
+  registerSyncIpc(handlePages);
 }

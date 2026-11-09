@@ -1,7 +1,7 @@
 import { memo, useState, type ReactNode } from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { motion, useReducedMotion } from 'motion/react';
-import { AppWindow, Clock, CornerDownLeft, Globe, Search } from 'lucide-react';
+import { AppWindow, Clock, CornerDownLeft, Globe, Laptop, Search } from 'lucide-react';
 import { Kbd } from '@/components/ui/kbd';
 import { ease, spring } from '@/lib/motion';
 import { letterOf } from '@/lib/vela';
@@ -12,7 +12,7 @@ import { displayUrl } from './input';
 export type PaletteRowModel =
   | { type: 'go'; id: string; input: string; kind: 'url' | 'search'; resolved: string | null }
   | { type: 'tab'; id: string; tabId: number; title: string; url: string; favicon: string | null }
-  | { type: 'history'; id: string; title: string; url: string }
+  | { type: 'history'; id: string; title: string; url: string; /** Set for tabs open on another synced device. */ device?: string }
   | { type: 'command'; id: string; command: PaletteCommand };
 
 interface PaletteRowProps {
@@ -37,7 +37,7 @@ function sameRow(a: PaletteRowModel, b: PaletteRowModel): boolean {
     }
     case 'history': {
       const other = b as typeof a;
-      return a.title === other.title && a.url === other.url;
+      return a.title === other.title && a.url === other.url && a.device === other.device;
     }
     case 'command': {
       const other = (b as typeof a).command;
@@ -197,6 +197,11 @@ function RowHints({ row, selected }: { row: PaletteRowModel; selected: boolean }
       <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
         <AppWindow className="size-3" strokeWidth={1.75} />
         Open tab
+      </span>
+    ) : row.type === 'history' && row.device ? (
+      <span className="flex max-w-36 items-center gap-1 text-[11px] text-muted-foreground">
+        <Laptop className="size-3 shrink-0" strokeWidth={1.75} />
+        <span className="truncate">{row.device}</span>
       </span>
     ) : row.type === 'history' ? (
       <Clock className="size-3 text-muted-foreground/60 group-data-[selected=true]/row:hidden" strokeWidth={1.75} />

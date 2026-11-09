@@ -74,6 +74,7 @@ src/main/spaces.ts     spaces + sessions              — data
 src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
+src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loaded)
 src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
 src/renderer/chrome/*  top-island UI (React)          — ui
@@ -190,6 +191,57 @@ export function serializeSession(): SavedTab[]; export function restoreSession()
 // …plus whatever else ipc.ts needs (back/forward/reload/find/zoom/move/duplicate/pin/mute/moveToSpace)
 ```
 
+## Sync (optional, end-to-end encrypted)
+
+Off by default. There is no Vela server: the user picks the storage — a **folder** (OneDrive,
+Dropbox, iCloud Drive, Syncthing, a NAS share) or a **WebDAV** collection (Nextcloud etc.). Vela only
+ever touches `<storage>/vela-sync/{key.json, dev-<id>.vsync}`.
+
+```
+src/main/sync/loader.ts     main bundle: IPC, host adapter, reads userData/sync.json to decide whether to load
+src/main/sync/engine.ts     → dist/main/sync.js (own esbuild entry, require()d only when sync is on)
+src/main/sync/crypto.ts     scrypt KDF, AES-256-GCM blobs, key file, recovery key
+src/main/sync/records.ts    LWW records, hybrid logical clock, merge
+src/main/sync/transport.ts  folder + WebDAV (PROPFIND/GET/PUT/DELETE/MKCOL via fetch)
+```
+
+**Zero cost when off:** the engine is a separate bundle; with sync off main never parses it, registers
+no listeners and starts no timers. `pages:sync-status` answers from the loader without loading it.
+
+**Crypto.** A random 256-bit *data key* encrypts everything. `key.json` (plaintext) holds the scrypt
+parameters (N=2^17, r=8, p=1, random 16-byte salt) and the data key sealed with the passphrase-derived
+key, plus a sealed constant used to verify a recovery key. The *recovery key* is the data key itself
+(base32, 13 groups of 4). Every blob is `"VELASYNC" | version | header JSON | 12-byte random nonce |
+ciphertext | GCM tag`; the header (version, kind, writer device id) is GCM additional data, so it is
+authenticated. A wrong passphrase, wrong key, flipped bit or swapped header fails authentication and
+is reported as such. Payloads are gzipped JSON. KDF parameters read from a remote key file are
+bounded before use. On this device the data key and the WebDAV app password are stored only through
+Electron `safeStorage` (DPAPI / Keychain / libsecret); sync refuses to turn on without it.
+
+**Model.** Records `{k, v, c, d}`: key, value (`null` = tombstone), hybrid logical clock
+(`max(now, last+1)`, advanced by every clock seen), writer device id (tie-break). Per key,
+last-writer-wins. Keys: `s/<setting>` (all settings except device-local `windowMaterial`,
+`sidebar*`), `sp/<space id>` (name, color, proxy — never ephemeral spaces, never cookies/storage),
+`t/<device id>` (that device's open http(s) tabs, max 200), `h/<sha256(url)>` (history, opt-in, newest
+2000). Each device writes **only its own** `dev-<id>.vsync` (all records it authored), so shared folders
+never see write conflicts; everyone reads everyone else's file and merges. A cycle: verify the
+remote key file still matches → capture local changes (diff against last-synced values) → pull and
+merge changed files (skipped by mtime/ETag) → apply adopted records → push own file if dirty.
+Joining pulls before capturing and pairs same-named local spaces with remote ones (id map) so a fresh
+device doesn't duplicate "Personal". Triggers: startup (+3 s), settings/spaces changes (2 s), tab
+changes (30 s), every 5 min, folder file-watch, "Sync now".
+
+**Threat model.** Protects the synced data's confidentiality and integrity against the storage
+provider, anyone with access to the folder / WebDAV account, and network observers. Not hidden from
+them: that Vela sync is used, the number of devices, per-device file sizes and write times, and the
+scrypt parameters. Not protected against: a weak passphrase (offline guessing against `key.json`,
+slowed by scrypt), malware on an unlocked device (it can read the key via `safeStorage` like Vela
+can), or a malicious party who holds the passphrase or recovery key (all devices share one key, so
+any device can write records attributed to any id; there is no per-device signing). A storage
+provider can delete or roll back files (denial of service / replay of an older state of one device's
+file); records carry clocks so a rolled-back file never overwrites newer data that was already merged.
+"Wipe remote" deletes the files but cannot guarantee the provider's version history is purged.
+
 ## vela:// protocol
 
 `vela://<page>/<file>` → `dist/renderer/pages/<page>/<file>` (default `index.html`).
@@ -197,6 +249,28 @@ export function serializeSession(): SavedTab[]; export function restoreSession()
 (`standard`, `secure`, `supportFetchAPI`) before ready, and handled via `session.protocol.handle`
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
 Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`).
+
+## Auto-update (`src/main/updater.ts`)
+
+`electron-updater` against the GitHub releases feed (`publish` in electron-builder.yml → `app-update.yml`).
+The module is `require`d lazily on the first check (esbuild keeps it external), so dev runs
+(`app.isPackaged === false`) and users with checks turned off never load it.
+
+* Schedule: first check 10 s after startup, then every 6 h (`settings.updateAutoCheck`). Failures are silent
+  except for the status line in Settings → About.
+* Mode per build: **install** — NSIS installer, AppImage (`APPIMAGE` set), macOS only when signed with a
+  Developer ID (checked via `codesign`); background download (`updateAutoDownload`), `autoInstallOnAppQuit`, or
+  `quitAndInstall(silent, forceRun)` from the chip after `saveSession()` + `flushAllStores()`.
+  **notify** — Windows portable (`PORTABLE_EXECUTABLE_DIR`), deb, unsigned macOS: no download, the UI links the
+  release page. Unsigned NSIS updates pass because `app-update.yml` carries no `publisherName`, so
+  `verifyUpdateCodeSignature` is skipped; once signing adds a publisher, signatures are enforced.
+* Status (`UpdateStatus`) is pushed to the chrome (`chrome-event:update`) and to vela:// settings pages that
+  subscribed via `pages:update-watch` (dropped once the page navigates away).
+* Release artifacts: `latest.yml` (NSIS only — the portable target writes no update info), `latest-mac.yml`
+  (dmg + zip; Squirrel.Mac installs from the zip), `latest-linux.yml` (AppImage), plus blockmaps for
+  differential downloads.
+* Testing: `VELA_UPDATE_FEED=<http url | local dir>` switches to a generic provider (a local dir is served on
+  127.0.0.1); unpacked dev runs then check in notify mode.
 
 ## Build
 

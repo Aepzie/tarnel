@@ -13,6 +13,7 @@ import { getSettings, onSettingsChanged } from './settings';
 import { attachShortcuts } from './shortcuts';
 import { disposeEphemeralSpaces, getActiveSpaceId, initSpaces, onSessionCreated } from './spaces';
 import { createStore, flushAllStores, type JsonStore } from './store';
+import { initSync, stopSync } from './sync/loader';
 import {
   activateSpace,
   createTab,
@@ -28,6 +29,7 @@ import {
   sleepTab,
   type SavedTab,
 } from './tabs';
+import { initUpdater, stopUpdater } from './updater';
 import { resolveInput } from './url';
 import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, saveBounds, sendToChrome } from './window';
 
@@ -145,6 +147,14 @@ if (!app.requestSingleInstanceLock()) {
       sleepTab,
       getSleepAfterMinutes: () => getSettings().sleepAfterMinutes,
     });
+    initSync();
+    initUpdater({
+      beforeInstall: () => {
+        saveSession();
+        saveBounds();
+        flushAllStores();
+      },
+    });
   });
 
   app.on('activate', () => {
@@ -163,6 +173,8 @@ if (!app.requestSingleInstanceLock()) {
     if (quitState === 'disposing') return;
     quitState = 'disposing';
     stopSleeper();
+    stopSync();
+    stopUpdater();
     // Persist everything first so a slow/failed disposal can never lose state.
     try {
       saveSession();
