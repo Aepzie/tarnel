@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Per-tab audio devices: pick the speakers/headphones a tab plays on and the microphone (and camera) it records from, under "Audio devices" in the tab menu, from the tab's speaker/microphone indicator (a small Sound popover with mute) or the command palette. Routing applies live to media elements, Web Audio and WebRTC playback, including iframes; capture still goes through the permission prompt. Choices are restored with the session; an unplugged device falls back to the system default (marked in the tab) and is used again once it returns. Tabs on "System default" pay nothing.
+
 ## [0.2.0] - 2026-11-09
 
 ### Added

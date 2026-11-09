@@ -1,11 +1,12 @@
 import { memo, useRef, type MouseEvent, type PointerEvent, type Ref } from 'react';
 import { AnimatePresence, Reorder, motion, useReducedMotion, type Transition } from 'motion/react';
-import { CompassIcon, InfoIcon, LockIcon, SearchIcon, ShieldIcon, TriangleAlertIcon, Volume2Icon, VolumeXIcon, XIcon } from 'lucide-react';
+import { CompassIcon, InfoIcon, LockIcon, SearchIcon, ShieldIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
 import type { TabState } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { spring } from '@/lib/motion';
 import { addressSeed, formatCount, settle, vela } from '@/lib/vela';
 import { ui } from '../ui-store';
+import { TabAudioButton } from '../audio/TabAudioButton';
 import { Favicon } from './Favicon';
 import { TabContextMenu } from './TabContextMenu';
 
@@ -111,29 +112,8 @@ function BlockedBadge({ count, reduced }: { count: number; reduced: boolean }) {
   );
 }
 
-export function AudioButton({ tab, className }: { tab: TabState; className?: string }) {
-  if (!tab.audible && !tab.muted) return null;
-  const Icon = tab.muted ? VolumeXIcon : Volume2Icon;
-  return (
-    <button
-      type="button"
-      tabIndex={-1}
-      aria-label={tab.muted ? 'Unmute tab' : 'Mute tab'}
-      className={cn(
-        'no-drag inline-flex size-5 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors duration-150 hover:bg-white/10 hover:text-zinc-100 active:scale-[0.92] light:text-zinc-500 light:hover:bg-black/[0.07] light:hover:text-zinc-900',
-        tab.muted && 'text-zinc-500',
-        className,
-      )}
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        settle(vela().tabs.toggleMute(tab.id));
-      }}
-    >
-      <Icon className="size-3.5" strokeWidth={1.75} />
-    </button>
-  );
-}
+/** Speaker / microphone indicator; opens the tab's sound popover. */
+export const AudioButton = TabAudioButton;
 
 export function OmniboxContent({ tab, reduced, paletteOpen }: { tab: TabState; reduced: boolean; paletteOpen: boolean }) {
   const address = parseAddress(tab);
@@ -372,6 +352,8 @@ function same(a: TabItemProps, b: TabItemProps): boolean {
     x.asleep !== y.asleep ||
     x.audible !== y.audible ||
     x.muted !== y.muted ||
+    x.micActive !== y.micActive ||
+    !x.devices !== !y.devices ||
     x.pinned !== y.pinned ||
     x.spaceId !== y.spaceId
   ) {

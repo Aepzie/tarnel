@@ -123,6 +123,37 @@ cannot do is link two Spaces through it. Changes apply to pages loaded afterward
 * **Sleeping**: `isOnScreen()` replaces "is active" for the sleeper and crash handling; showing a split wakes all panes.
 * **Cost when unused**: no listeners, no extra views; `clusterSplits` returns early and the chrome renders nothing.
 
+## Per-tab audio devices
+
+* **Model** (`src/main/audio-devices/state.ts`): per tab, an optional pick per slot `output | input | camera`, stored as
+  `{ label, ordinal, index }` — device ids are salted per origin (and differ in the chrome), so a device is matched by
+  label (`ordinal` tells identical labels apart; `index` among the real devices of the kind is used when strict
+  fingerprint protection reports generic labels). `TabState.devices` / `micActive`, persisted as `SavedTab.devices`.
+* **Device list**: the chrome (`chrome/audio/device-store.ts`) enumerates in its own trusted file:// view, which gets
+  labels without a prompt. It enumerates only while a menu/popover is open or a tab has a pick (to mark unplugged ones).
+* **Injection** (`src/main/audio-devices/index.ts`): `dist/preload/audio-devices.js` is registered as a frame preload
+  only on the sessions of Spaces that have a routed tab (unregistered when none is left); it asks main synchronously for
+  the route of its tab (null → stop) and runs `src/preload/audio-devices-main-world.ts` in the main world before page
+  scripts. Documents already loaded when the pick changes are routed in place with `WebFrameMain.executeJavaScript` of
+  the same function in every frame (a second call only swaps the route; resetting to default restores `''` sinks).
+* **Output**: media elements get `setSinkId(chosen)` on `play()` / the document `play` event / route change (detached
+  `new Audio()` included), AudioContexts on their first `destination` read. A page that picks a specific sink keeps
+  it; `setSinkId('')` / `'default'` gets the tab's pick. Unknown device (unplugged) → default; `devicechange`
+  re-resolves, so it comes back when replugged. **Input**: `getUserMedia` audio/video constraints without a page-chosen
+  device get `deviceId: { exact }` (retry without on Overconstrained/NotFound/NotReadable); `enumerateDevices` lists
+  the picks first. Capture still goes through the permission prompt; `micActive` is set when it grants audio and
+  cleared on cross-document navigation.
+* **Permissions**: privacy.ts' check handler answers `media` checks with true for frames of a routed tab
+  (`setMediaPermissionHooks`), so device ids/labels are exposed there and non-default sinks are allowed. Chromium
+  additionally requires cross-origin iframes to be delegated `microphone` + `speaker-selection`: the main-world script
+  adds that `allow` before script insertion and re-inserts parser/innerHTML-inserted iframes in the same microtask
+  (before their first commit). Subframes still can't capture (main only prompts for top frames).
+* **Limits**: AudioContexts that read `destination` before a live (non-preload) routing, and cross-origin iframes that
+  were already loaded then, follow after a reload; `about:blank` child realms and legacy `navigator.getUserMedia` are
+  not hooked; live input changes apply to the next capture (running tracks are not swapped). Patched functions report
+  native `toString`, but the routing is observable by a page in a routed tab (e.g. the `allow` attribute).
+* **Cost when unused**: no preload, no listeners in pages, no permission change; the chrome enumerates nothing.
+
 ## Directory ownership
 
 ```
@@ -148,6 +179,7 @@ src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loa
 src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
 src/main/split*.ts     split view (model, pane pointer, IPC) — core
+src/main/audio-devices/*, src/preload/audio-devices*.ts  per-tab audio devices (route, preload, main-world patch) — core
 src/renderer/chrome/*  top-island UI (React)          — ui
 src/preload/pages.ts   window.velaPages               — pages
 src/renderer/pages/*   newtab, settings, error        — pages

@@ -4,6 +4,7 @@ import { ChevronsDownUp, ChevronsUpDown, LayersPlus, PanelLeft, PanelTop } from 
 import type { BrowserState, Settings, ThemeMode } from '@shared/types';
 import { groupActiveTab } from '../tabs/groups/group-ui';
 import { splitCommands } from '../split/split-commands';
+import { audioCommands } from '../audio/audio-commands';
 
 export interface PaletteCommand {
   id: string;
@@ -95,6 +96,7 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
   ];
   commands.push(...tabGroupCommands({ settings, state }));
   commands.push(...splitCommands(state));
+  commands.push(...audioCommands(state));
   if (activeTabId !== null) {
     commands.push({
       id: 'cmd:zoom-reset',

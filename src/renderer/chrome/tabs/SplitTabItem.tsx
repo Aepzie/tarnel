@@ -235,6 +235,8 @@ function sameTab(x: TabState, y: TabState): boolean {
       x.asleep === y.asleep &&
       x.audible === y.audible &&
       x.muted === y.muted &&
+      x.micActive === y.micActive &&
+      !x.devices === !y.devices &&
       x.blockedCount === y.blockedCount &&
       x.secure === y.secure &&
       x.groupId === y.groupId)

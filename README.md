@@ -64,6 +64,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Tab groups and vertical tabs** — named, colored, collapsible groups (drag tabs in and out, reorder groups), and an optional floating vertical tab island (`Ctrl+Shift+,`) that resizes and folds to an icon rail.
 - **Split view** — two tabs side by side (up to four in a 2×2 grid) with a draggable divider; the focused pane drives the address bar, find and zoom. Drag a tab onto the edge of the page, use the tab menu or `Ctrl+Shift+D`. Splits show as one joined tab and come back with the session.
 - **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
+- **Per-tab audio devices** — send each tab to its own speakers or headphones and pick its microphone (and camera) from the tab menu or the tab's speaker indicator; restored with the session.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 - **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
 - **Privacy defaults** — cleaned user agent, permissions denied by default, HTTPS-only upgrades,
