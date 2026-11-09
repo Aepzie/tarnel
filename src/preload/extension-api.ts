@@ -44,9 +44,11 @@ function installDeclarativeNetRequest(call: Invoke, on: Listen, off: Listen): vo
   const PREFIX = /^Error invoking remote method '[^']+': (?:Error: )?/;
   const withLastError = (error: unknown, callback: (...args: unknown[]) => void): void => {
     const message = error instanceof Error ? error.message.replace(PREFIX, '') : String(error);
+    // electron-chrome-extensions replaces chrome.runtime with its own object after this preload ran.
+    const target = ((globalThis as { chrome?: { runtime?: object } }).chrome?.runtime ?? runtime) as { lastError?: unknown };
     let set = false;
     try {
-      Object.defineProperty(runtime, 'lastError', { value: { message }, configurable: true });
+      Object.defineProperty(target, 'lastError', { value: { message }, configurable: true, enumerable: true });
       set = true;
     } catch {
       set = false;
@@ -56,7 +58,7 @@ function installDeclarativeNetRequest(call: Invoke, on: Listen, off: Listen): vo
     } finally {
       if (set) {
         try {
-          delete (runtime as { lastError?: unknown }).lastError;
+          Object.defineProperty(target, 'lastError', { value: undefined, configurable: true, enumerable: true });
         } catch {
           /* leave it */
         }
