@@ -53,7 +53,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 
 - **Spaces** — isolated sessions with their own cookies, storage, cache, logins, permissions and optional proxy.
 - **Burner spaces** — live only in memory and are wiped when closed. Open one with `Ctrl+Shift+N`.
-- **Per-space fingerprint protection** — each Space shows sites its own stable, plausible fingerprint (canvas, WebGL, audio, hardware; Strict also screen, devices, client hints), so identities can't be linked across Spaces.
+- **Per-space fingerprint protection** — each Space shows sites its own stable, plausible fingerprint (canvas, WebGL, audio, hardware, consistently in workers too; Strict also screen, devices, client hints), so identities can't be linked across Spaces.
 - **Built-in ad and tracker blocking** — network-level, powered by the [Ghostery adblocker](https://github.com/ghostery/adblocker) engine.
 - **Chrome extensions** — install from the Chrome Web Store (link or ID) or load unpacked; pin action buttons to the toolbar and choose which Spaces each extension runs in.
 - **Tab sleeping** — idle tabs release their renderer process entirely; they reload when you come back.
@@ -220,7 +220,6 @@ Planned:
 
 - [ ] Signed builds (Windows, macOS)
 - [ ] Extension `declarativeNetRequest` support (uBlock Origin Lite)
-- [ ] Fingerprint protection inside workers
 
 Ideas and discussion are welcome in [issues](https://github.com/Aepzie/vela/issues).
 
