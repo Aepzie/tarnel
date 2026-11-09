@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerE
 import { useReducedMotion } from 'motion/react';
 import { EQ_FREQUENCIES, EQ_GAIN_RANGE, type TabAudioSettings } from '@shared/audio-mixer';
 import { cn } from '@/lib/utils';
-import { useElementSize } from '../split/use-element-size';
+import { useBoxSize } from './use-box-size';
 import { clamp, filtersOf, formatDb, formatHz, freqToUnit, responseDb, sampleFrequencies } from './eq-math';
 import { levelOf, onFrame, themeColors } from './levels';
 
@@ -38,7 +38,7 @@ export function EqGraph({ tabId, settings, onBand, live }: EqGraphProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const handleRefs = useRef<(SVGGElement | null)[]>([]);
-  const size = useElementSize(boxRef);
+  const size = useBoxSize(boxRef);
   const reduce = !!useReducedMotion();
   const [hot, setHot] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
@@ -97,14 +97,14 @@ export function EqGraph({ tabId, settings, onBand, live }: EqGraphProps) {
       const gap = Math.min(3, slot * 0.18);
       context.fillStyle = accent;
       for (let bin = 0; bin < SPECTRUM_BINS; bin++) {
-        const barH = bins[bin]! * plotH * 0.92;
+        const barH = bins[bin]! * plotH * 0.85;
         if (barH < 0.5) continue;
         const x = bin * slot + gap / 2;
-        context.globalAlpha = light ? 0.13 : 0.11;
+        context.globalAlpha = light ? 0.1 : 0.085;
         context.beginPath();
         context.roundRect(x, plotH - barH, slot - gap, barH, [3, 3, 0, 0]);
         context.fill();
-        context.globalAlpha = light ? 0.45 : 0.4;
+        context.globalAlpha = light ? 0.35 : 0.3;
         context.fillRect(x, plotH - barH, slot - gap, 1.25);
       }
       context.globalAlpha = 1;

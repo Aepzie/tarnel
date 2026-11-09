@@ -80,7 +80,7 @@ export function MixerPanel() {
   const selectedState = selected ? mixer.tabs.get(selected.id) : undefined;
 
   return (
-    <div className={cn('flex max-h-[min(640px,calc(100vh-72px))] flex-col', channels.length === 0 && 'w-[340px]')}>
+    <div className={cn('flex max-h-[min(700px,calc(100vh-72px))] flex-col', channels.length === 0 && 'w-[340px]')}>
       <header className="flex h-11 shrink-0 items-center gap-2.5 px-3.5">
         <span className="grid size-6 place-items-center rounded-md bg-space/15 text-space">
           <SlidersVerticalIcon className="size-3.5" strokeWidth={2} />

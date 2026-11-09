@@ -11,7 +11,7 @@ import { Favicon } from '../tabs/Favicon';
 import { BassBoost } from './BassBoost';
 import { DevicePickers } from './DevicePickers';
 import { EqGraph } from './EqGraph';
-import { resetTab, updateTab } from './mixer-store';
+import { resetTab, settingsOf, updateTab } from './mixer-store';
 
 const PRESET_IDS = Object.keys(EQ_PRESETS) as EqPresetId[];
 
@@ -48,7 +48,7 @@ export function TabDetail({ tab, settings, routing }: { tab: TabState; settings:
   const neutral = isNeutralAudio(settings) && settings.preset === 'flat';
 
   const setBand = (index: number, gain: number): void => {
-    const bands = settings.bands.map((current, band) => (band === index ? gain : current));
+    const bands = settingsOf(tab.id).bands.map((current, band) => (band === index ? gain : current));
     updateTab(tab.id, { bands, preset: null, eqEnabled: true });
   };
 
@@ -92,7 +92,7 @@ export function TabDetail({ tab, settings, routing }: { tab: TabState; settings:
         <SectionLabel
           aside={
             <label className="flex cursor-default items-center gap-2 text-[11.5px] text-zinc-400 light:text-zinc-600">
-              {settings.eqEnabled ? 'On' : 'Off'}
+              {settings.eqEnabled ? (settings.preset === null ? 'Custom' : EQ_PRESETS[settings.preset].label) : 'Off'}
               <Switch size="sm" checked={settings.eqEnabled} onCheckedChange={(eqEnabled) => updateTab(tab.id, { eqEnabled })} aria-label="Equalizer" />
             </label>
           }
@@ -129,13 +129,10 @@ export function TabDetail({ tab, settings, routing }: { tab: TabState; settings:
               </button>
             );
           })}
-          {settings.eqEnabled && settings.preset === null && (
-            <span className="flex h-6 items-center rounded-full px-2.5 text-[11.5px] font-medium text-zinc-500 italic">Custom</span>
-          )}
         </div>
       </div>
 
-      <BassBoost tabId={tab.id} bassBoost={settings.bassBoost} onChange={(bassBoost) => updateTab(tab.id, { bassBoost })} />
+      <BassBoost tabId={tab.id} bassBoost={settings.bassBoost} onChange={(patch) => updateTab(tab.id, { bassBoost: { ...settingsOf(tab.id).bassBoost, ...patch } })} />
 
       <div className="flex gap-2">
         <ToggleRow label="Mono" hint="Both ears, same sound" checked={settings.mono} onChange={(mono) => updateTab(tab.id, { mono })} />

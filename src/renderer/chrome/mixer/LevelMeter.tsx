@@ -33,7 +33,7 @@ export function StereoMeter({ tabId, muted, className }: { tabId: number; muted:
         }
         if (mark && painted[index + 2] !== hold) {
           painted[index + 2] = hold;
-          mark.style.transform = `translateY(${((1 - hold) * 100).toFixed(2)}cqh)`;
+          mark.style.transform = `translateY(${((1 - hold) * 100).toFixed(2)}%)`;
           mark.style.opacity = hold > 0.02 ? '1' : '0';
         }
       });
@@ -41,7 +41,7 @@ export function StereoMeter({ tabId, muted, className }: { tabId: number; muted:
   }, [tabId, muted, reduce]);
 
   return (
-    <div aria-hidden className={cn('flex h-full gap-[3px] [container-type:size]', className)}>
+    <div aria-hidden className={cn('flex h-full gap-[3px]', className)}>
       {[0, 1].map((index) => (
         <span key={index} className="relative h-full w-[3px] overflow-hidden rounded-full bg-foreground/[0.07]">
           <span
@@ -57,8 +57,10 @@ export function StereoMeter({ tabId, muted, className }: { tabId: number; muted:
             ref={(node) => {
               holds.current[index] = node;
             }}
-            className="absolute inset-x-0 top-0 h-[2px] rounded-full bg-foreground/70 opacity-0"
-          />
+            className="absolute inset-0 opacity-0"
+          >
+            <span className="absolute inset-x-0 top-0 h-[2px] rounded-full bg-foreground/75" />
+          </span>
         </span>
       ))}
     </div>

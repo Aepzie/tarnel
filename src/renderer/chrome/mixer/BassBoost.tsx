@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
 import type { BassBoost as BassBoostSettings } from '@shared/audio-mixer';
 import { cn } from '@/lib/utils';
-import { useElementSize } from '../split/use-element-size';
+import { useBoxSize } from './use-box-size';
 import { Knob } from './Knob';
 import { bassOf, onFrame, themeColors } from './levels';
 
@@ -23,7 +23,7 @@ const frequencyUnit = (frequency: number): number =>
 function BassWave({ tabId, gain, frequency }: { tabId: number; gain: number; frequency: number }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const size = useElementSize(boxRef);
+  const size = useBoxSize(boxRef);
   const reduce = !!useReducedMotion();
   const params = useRef({ gain, frequency });
   params.current = { gain, frequency };
@@ -112,7 +112,7 @@ function BassWave({ tabId, gain, frequency }: { tabId: number; gain: number; fre
 interface BassBoostProps {
   tabId: number;
   bassBoost: BassBoostSettings;
-  onChange: (bassBoost: BassBoostSettings) => void;
+  onChange: (patch: Partial<BassBoostSettings>) => void;
 }
 
 /** Bass boost: low-shelf gain (0–12 dB) and corner frequency (40–250 Hz), with the live bass wave. */
@@ -139,7 +139,7 @@ export function BassBoost({ tabId, bassBoost, onChange }: BassBoostProps) {
             step={0.5}
             defaultValue={0}
             format={formatGain}
-            onChange={(gain) => onChange({ ...bassBoost, gain })}
+            onChange={(gain) => onChange({ gain })}
           />
         </KnobField>
         <KnobField label="Freq">
@@ -152,7 +152,7 @@ export function BassBoost({ tabId, bassBoost, onChange }: BassBoostProps) {
             log
             defaultValue={90}
             format={formatFrequency}
-            onChange={(frequency) => onChange({ ...bassBoost, frequency })}
+            onChange={(frequency) => onChange({ frequency })}
           />
         </KnobField>
       </div>

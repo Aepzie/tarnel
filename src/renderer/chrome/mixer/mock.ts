@@ -158,8 +158,8 @@ function synthesize(tabId: number, index: number, time: number, settings: TabAud
     const boost = 10 ** (responseDb(filters, binFrequency(bin)) / 20);
     return Math.min(1, Math.max(0, (tilt + body + air + pad + jitter) * Math.sqrt(boost) * Math.min(1.4, settings.volume)));
   });
-  const loudness = Math.min(1, (0.32 + kick * 0.42 + breath * 0.12 + Math.random() * 0.06) * settings.volume);
-  const level = settings.compressor ? 0.42 + (loudness - 0.42) * 0.45 : loudness;
+  const loudness = Math.min(1, (0.07 + kick * 0.52 + breath * 0.07 + hat * 0.06 + Math.random() * 0.04) * settings.volume);
+  const level = settings.compressor ? 0.3 + (loudness - 0.3) * 0.4 : loudness;
   const wobble = 0.06 * Math.sin(time * 3.1 + tabId);
   let left = Math.min(1, level * (1 + wobble) * Math.min(1, 1 - settings.balance));
   let right = Math.min(1, level * (1 - wobble) * Math.min(1, 1 + settings.balance));
