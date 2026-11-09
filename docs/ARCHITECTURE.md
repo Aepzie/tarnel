@@ -75,6 +75,39 @@ queries (`device-width`, resolution), DOM-based font enumeration, timezone/`Intl
 calendars, banking and booking sites), the IP address itself (use a per-Space proxy). Fingerprinting test suites
 (CreepJS) can still detect *that* noise is applied (pixel/audio noise, worker vs. window mismatch); what they
 cannot do is link two Spaces through it. Changes apply to pages loaded afterwards.
+## Browser identity (every Space)
+
+Google's sign-in refuses embedded browsers ("This browser or app may not be secure"). Electron is Chromium's content
+layer without the Chrome browser layer, so stripping `Electron/x` from the UA (`cleanUserAgent`) is not enough: the
+other signals must also look like a stock Chromium browser. Vela does not claim to be Google Chrome. The brand list
+(`"Chromium"` + GREASE) is what Electron already reports, and it is the same in the UA, `Sec-CH-UA` and
+`navigator.userAgentData`. Independent of fingerprint protection (`src/main/identity/*`, `src/preload/identity*.ts`):
+
+* **User-Agent**: `Chrome/<major>.0.0.0` (Chromium's UA reduction); the build number is only available through
+  hints. Set in `app.userAgentFallback` and per session (`privacy.ts`), so workers and popups get it too.
+* **`window.chrome`**: the identity preload (`registerPreloadScript`, type `frame`, every session) runs
+  `shapeMainWorld` in the main world of every http(s) frame: `chrome.app` / `csi()` / `loadTimes()` with Chromium's
+  shape and values from Navigation Timing, functions with native `toString`.
+* **Client hints**: Electron has no client-hints delegate, so its network stack sends no `Sec-CH-UA*` on
+  navigations and ignores `Accept-CH`. The chrome UI preload (and each top frame) sends the real
+  `getHighEntropyValues()` once (`vela:identity-hints`, read in the isolated world); `onBeforeSendHeaders`
+  (`identity/headers.ts`) adds the three low-entropy hints to every request to a potentially trustworthy origin that
+  lacks them, and the high-entropy set only for `accounts.google.<tld>` / `accounts.youtube.com`, which ask for it on
+  every response. `applyFingerprintHeaders` runs afterwards, so Strict reduces them like `getHighEntropyValues()`.
+* **Accept-Language**: the UI locale followed by the OS languages, the list Electron's renderer reports as
+  `navigator.languages` (its network stack sent only the locale).
+* **Passkeys**: Electron has no autofill UI for conditional mediation, so on Windows a page's on-load
+  `credentials.get({ mediation: 'conditional' })` would open the modal Windows Hello dialog. The main-world script
+  reports `isConditionalMediationAvailable()` = false (and `conditionalGet/Create: false` in
+  `getClientCapabilities()`) and keeps conditional WebAuthn requests pending until the page aborts them. Explicit
+  WebAuthn calls are untouched.
+
+A per-host Firefox UA for `accounts.google.com` (used by some Electron apps) was rejected: it does not get past the
+check, because every other signal still says Chromium. **Not covered:** `Notification.permission` is `"denied"`
+instead of `"default"` (Electron's permission check handler only answers true/false), `navigator.webdriver` is
+already false. Same-origin iframes and `about:blank` child realms that Chromium creates without running session
+preloads don't get the `window.chrome` shape.
+
 ## Tab groups & tab layouts
 
 * **Model** (`src/main/tab-groups.ts`): a group is `{ id, spaceId, name, color, collapsed }`; membership
@@ -173,6 +206,7 @@ src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
 src/main/fingerprint/* per-space fingerprint seeds, preload registration, header hints — data
 src/preload/fingerprint*.ts  main-world fingerprint patch (session preload) — data
+src/main/identity/*, src/preload/identity*.ts  Chromium identity: window.chrome shape, client-hint headers (every Space) — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
 src/main/extensions/*  Chrome extensions (lazy)       — extensions
 src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loaded)
@@ -233,9 +267,10 @@ export function clearHistory(): void;
 
 ### `src/main/privacy.ts`
 ```ts
-export function cleanUserAgent(ua: string): string; // strip "Electron/x.y.z" and "vela/x.y.z" tokens
+export function cleanUserAgent(ua: string): string; // strip "Electron/x.y.z" and "vela/x.y.z" tokens, Chrome/<major>.0.0.0
+export function acceptLanguages(): string;   // UI locale + OS languages (matches navigator.languages)
 export function applyPrivacy(session: Electron.Session, space: Space): void;
-// - setUserAgent(cleanUserAgent(session.getUserAgent()))
+// - setUserAgent(cleanUserAgent(session.getUserAgent()), acceptLanguages())
 // - permission request/check handlers: allow fullscreen, clipboard-sanitized-write, pointerLock,
 //   media only when requested by the top frame; deny everything else by default (no prompts in v0.1)
 // - onBeforeSendHeaders: DNT:1 + Sec-GPC:1 when settings.sendDoNotTrack
