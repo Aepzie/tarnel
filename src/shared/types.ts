@@ -92,11 +92,13 @@ export interface Settings {
 }
 
 export interface Suggestion {
-  kind: 'url' | 'history' | 'search' | 'tab';
+  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab';
   title: string;
   url: string;
   /** Present when kind === 'tab': switching to an existing tab. */
   tabId?: number;
+  /** Present when kind === 'remote-tab': name of the device the tab is open on. */
+  device?: string;
 }
 
 export interface TopSite {
@@ -198,6 +200,50 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoDownload: true,
   updatePrerelease: false,
 };
+
+/** What end-to-end encrypted sync carries. History is off by default. */
+export interface SyncCategories {
+  settings: boolean;
+  spaces: boolean;
+  tabs: boolean;
+  history: boolean;
+}
+
+export const DEFAULT_SYNC_CATEGORIES: SyncCategories = { settings: true, spaces: true, tabs: true, history: false };
+
+/** User-owned sync storage. Vela never runs a sync server. */
+export type SyncTransportInput =
+  | { kind: 'folder'; path: string }
+  | { kind: 'webdav'; url: string; username: string; password: string };
+
+export interface SyncSetupInput {
+  transport: SyncTransportInput;
+  /** 'create' = first device (new key), 'join' = existing sync data at that location. */
+  mode: 'create' | 'join';
+  /** Passphrase, or the recovery key when joining. */
+  secret: string;
+  categories: SyncCategories;
+}
+
+export interface SyncDevice {
+  id: string;
+  name: string;
+  /** Last time this device published its changes. */
+  lastSeen: number;
+  current: boolean;
+}
+
+export interface SyncStatus {
+  enabled: boolean;
+  /** OS secret storage (DPAPI / Keychain / libsecret) is usable; sync requires it. */
+  secureStorage: boolean;
+  transport: { kind: 'folder' | 'webdav'; label: string } | null;
+  categories: SyncCategories;
+  syncing: boolean;
+  lastSyncAt: number | null;
+  lastError: string | null;
+  devices: SyncDevice[];
+}
 
 /**
  * How this build can update itself. `install` = electron-updater downloads and installs (NSIS,

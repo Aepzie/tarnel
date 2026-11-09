@@ -59,6 +59,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Preconnect on hover** — hovering a suggestion warms up the connection before you choose it.
 - **Command palette** (`Ctrl+K`) — navigate, search history, switch tabs and run commands from the keyboard.
 - **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
+- **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 - **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
 - **Privacy defaults** — cleaned user agent, permissions denied by default, HTTPS-only upgrades,
@@ -191,7 +192,7 @@ Found a vulnerability? Please follow [SECURITY.md](SECURITY.md).
 Planned, not yet available:
 
 - [ ] Extension support
-- [ ] Optional end-to-end encrypted sync
+- [x] Optional end-to-end encrypted sync
 - [ ] Vertical tab groups
 - [ ] Split view
 - [ ] Per-space fingerprint protection

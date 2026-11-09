@@ -34,6 +34,16 @@ const nodeConfigs = [
     external: ['electron', '@ghostery/*', 'electron-updater'],
   },
   {
+    // Sync engine: a separate bundle, required by main only when sync is turned on.
+    ...shared,
+    entryPoints: [join(src, 'main', 'sync', 'engine.ts')],
+    outfile: join(out, 'main', 'sync.js'),
+    platform: 'node',
+    format: 'cjs',
+    target: 'node20',
+    external: ['electron'],
+  },
+  {
     ...shared,
     entryPoints: [join(src, 'preload', 'chrome.ts'), join(src, 'preload', 'pages.ts')],
     outdir: join(out, 'preload'),

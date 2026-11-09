@@ -171,6 +171,15 @@ export function createSpace(input: SpaceInput): Space {
   return space;
 }
 
+/** Creates a persistent space with a fixed id (a space that arrived through sync). */
+export function importSpace(id: SpaceId, input: Omit<SpaceInput, 'ephemeral'>): Space {
+  if (!/^[\w-]{1,64}$/.test(id) || getSpace(id)) throw new Error(`Invalid space id: ${id}`);
+  const space: Space = { id, name: cleanName(input?.name), color: cleanColor(input?.color), ephemeral: false, proxy: cleanProxy(input?.proxy), createdAt: Date.now() };
+  requireStore().update((f) => ({ ...f, spaces: [...f.spaces, space] }));
+  emitChanged();
+  return space;
+}
+
 export function updateSpace(id: SpaceId, patch: Partial<SpaceInput>): Space {
   const current = getSpace(id);
   if (!current) throw new Error(`Unknown space: ${id}`);

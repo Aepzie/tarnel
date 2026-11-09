@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Optional end-to-end encrypted sync (Settings → Sync), off by default. Syncs settings, Spaces (name, color, proxy), open tabs (shown as "Other devices" in the command palette) and, if enabled, history through a folder you choose or a WebDAV server. Passphrase-derived key (scrypt) + AES-256-GCM, recovery key, no Vela-operated server.
 - Auto-update via GitHub releases: checks 10 s after startup and every 6 hours, downloads in the background and
   installs on restart. An "Update ready · Restart" chip appears in the top island; release notes open from the chip
   or from Settings → About → Updates, which also has "Check now", automatic download and pre-release options.
