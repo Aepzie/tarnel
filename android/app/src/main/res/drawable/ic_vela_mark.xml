@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Vela mark (three connected stars of a sail), derived from build/icon.svg.
+  Single source for the launcher icon (foreground + monochrome) and the in-app logo.
+  To swap the logo, replace the paths in this file only. Drawn on a 108dp adaptive-icon canvas,
+  content kept inside the 66dp safe zone. The SVG's mask gaps around each star are reproduced
+  with trimPathStart/End so the mark also works as a themed (monochrome) icon.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.095"
+        android:scaleY="0.095"
+        android:translateX="3.175"
+        android:translateY="8.4">
+        <path
+            android:pathData="M588,218 Q352,420 300,742"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round"
+            android:trimPathStart="0.1262"
+            android:trimPathEnd="0.8739" />
+        <path
+            android:pathData="M588,218 L652,742"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round"
+            android:trimPathStart="0.146"
+            android:trimPathEnd="0.854" />
+        <path
+            android:pathData="M300,742 Q476,772 652,742"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round"
+            android:trimPathStart="0.2179"
+            android:trimPathEnd="0.7821" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M562,218 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0 M274,742 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0 M626,742 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0" />
+        <path
+            android:fillAlpha="0.5"
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M759,352 a13,13 0 1,0 26,0 a13,13 0 1,0 -26,0" />
+    </group>
+</vector>
