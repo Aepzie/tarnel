@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Chrome extensions: install from the Chrome Web Store by link or ID (with background updates) or load an unpacked folder, enable/disable/remove them in Settings → Extensions, choose the Spaces each one runs in, and pin action buttons (with badges and popups) to the top island. Nothing extension-related loads until an extension is installed.
+
 ## [0.1.1] - 2026-11-09
 
 ### Added

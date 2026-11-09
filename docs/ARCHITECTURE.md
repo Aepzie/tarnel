@@ -53,6 +53,7 @@ src/main/spaces.ts     spaces + sessions              — data
 src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
+src/main/extensions/*  Chrome extensions (lazy)       — extensions
 src/preload/chrome.ts  window.vela                    — ui
 src/renderer/chrome/*  top-island UI (React)          — ui
 src/preload/pages.ts   window.velaPages               — pages
@@ -175,6 +176,36 @@ export function serializeSession(): SavedTab[]; export function restoreSession()
 (`standard`, `secure`, `supportFetchAPI`) before ready, and handled via `session.protocol.handle`
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
 Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`).
+
+## Extensions (`src/main/extensions/*`)
+
+```
+registry.ts  installed list (userData/extensions.json): id, source store|unpacked, path, enabled, spaces 'all'|ids, pinned
+runtime.ts   per-Space host: electron-chrome-extensions instance + session.extensions load/unload, tab wiring, action state
+webstore.ts  CWS download (electron-chrome-web-store) to userData/Extensions/<id>/<ver>_0, Omaha update checks (5 h)
+manifest.ts  name/description (incl. __MSG_*__), icon data URL, options page
+index.ts     initExtensions() wiring + registerExtensionIpc() (registered from ipc.ts with handleChrome/handlePages)
+```
+
+* **Lazy.** Both libraries are `external` in the main bundle and `require`d only when a Space session has an
+  enabled extension to run; with none installed nothing is imported and no session is touched.
+* **Per Space.** An `onSessionCreated` hook loads the extensions that run in that Space into its session
+  (`spaces: 'all'` = every non-Burner Space incl. future ones). `gateSessionReady()` (spaces.ts) delays the
+  Space's first page load until they are loaded (≤ 3 s) so content scripts see the first page. Chromium refuses
+  extensions in in-memory sessions, so **Burner Spaces never run extensions**.
+* **Tabs.** Every tab `webContents` is registered with its session's `ElectronChromeExtensions` (`addTab`,
+  `selectTab` on activation); `chrome.tabs.create/remove/update` map to `tabs.ts`. Sleeping a tab never closes it
+  (the library's `removeTab` callback ignores destroyed webContents).
+* **Toolbar.** Main pushes `ExtensionsState` (`chrome-event:extensions`) — installed list + actions (title, badge,
+  current icon) for the active tab's Space. Clicking an action calls the library's popup (`PopupView`, a child
+  `BrowserWindow`, so it floats above the page without the overlay). `setOverlay` never pulls focus back from
+  another window, otherwise a tooltip would close the popup.
+* **Security.** Extensions may only open/navigate tabs to `http(s)`, `about:blank` or `chrome-extension://`
+  (`chrome.tabs.create/update`, `windows.create`, popup/background `window.open`); `vela://`, `file:` and
+  `data:` are refused, so privileged pages stay unreachable. Extension pages never get `velaPages` (the pages
+  preload only exposes it on `vela:`) and the library's `crx-*` IPC channels are separate from Vela's
+  sender-validated channels. The adblocker keeps `webRequest`, so extensions' `chrome.webRequest` listeners
+  don't fire (Electron limitation).
 
 ## Build
 
