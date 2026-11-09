@@ -236,7 +236,7 @@ export function swapSplit(splitId: SplitId): void {
 
 /**
  * Palette / shortcut: close the split on screen, or split the active tab with the most recently
- * used other tab of its space (a new tab when there is none). Returns the new tab id, if any.
+ * used other unpinned tab of its space (a new tab when there is none). Returns the new tab id, if any.
  */
 export function toggleSplit(): number | null {
   const model = tabs();
@@ -253,7 +253,7 @@ export function toggleSplit(): number | null {
   let best = -Infinity;
   for (const id of model.order()) {
     const tab = model.tab(id);
-    if (id === active || !tab || tab.spaceId !== self.spaceId || tab.lastActiveAt <= best) continue;
+    if (id === active || !tab || tab.pinned || tab.spaceId !== self.spaceId || tab.lastActiveAt <= best) continue;
     partner = id;
     best = tab.lastActiveAt;
   }

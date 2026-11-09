@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { settle } from '@/lib/vela';
 import { SplitLayer } from './split/SplitLayer';
 import { activeSplitOf } from './split/split-state';
+import { setViewportRect } from './viewport-rect';
 
 /**
  * Transparent placeholder where main places the active page view. Its rect (CSS px) is reported
@@ -42,6 +43,7 @@ export function Viewport({ className }: { className?: string }) {
       frame = 0;
       if (key === last) return;
       last = key;
+      setViewportRect(rect);
       settle(window.vela.ui.setContentBounds(rect));
     };
     const report = (): void => {
