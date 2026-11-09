@@ -47,13 +47,35 @@ export interface TabState {
   /** Zoom factor, 1 = 100%. */
   zoom: number;
   secure: boolean;
+  /** Tab group this tab belongs to (never set on pinned tabs). Group members are contiguous. */
+  groupId: TabGroupId | null;
 }
+
+export type TabGroupId = string;
+
+/** A named, colored, collapsible run of tabs inside one Space. */
+export interface TabGroup {
+  id: TabGroupId;
+  spaceId: SpaceId;
+  /** May be empty: the group then shows as a bare color dot. */
+  name: string;
+  color: SpaceColor;
+  /** Collapsed groups hide their tabs, except the active one. */
+  collapsed: boolean;
+}
+
+export type TabGroupInput = Pick<TabGroup, 'name' | 'color' | 'collapsed'>;
+
+/** Where the tab list lives: the top island strip, or a floating island on the left. */
+export type TabLayout = 'horizontal' | 'vertical';
 
 export interface BrowserState {
   tabs: TabState[];
   activeTabId: number | null;
   spaces: Space[];
   activeSpaceId: SpaceId;
+  /** Groups of all spaces in display order (by their first tab); only non-empty groups are listed. */
+  groups: TabGroup[];
 }
 
 export type SearchEngine = 'duckduckgo' | 'google' | 'brave' | 'startpage' | 'ecosia';
@@ -74,23 +96,32 @@ export interface Settings {
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
   restoreSession: boolean;
-  /** @deprecated kept for settings-file compatibility; the chrome is a top island now. */
+  /** Vertical tab layout: the tab island is collapsed to icons only. */
   sidebarCollapsed: boolean;
-  /** @deprecated kept for settings-file compatibility. */
+  /** Vertical tab layout: width of the tab island in CSS px. */
   sidebarWidth: number;
   /** Focus mode: the top island hides and reveals on hover at the top edge. */
   autoHideToolbar: boolean;
   windowMaterial: WindowMaterial;
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
+  tabLayout: TabLayout;
+  /** Check GitHub releases on startup and every 6 h. */
+  updateAutoCheck: boolean;
+  /** Download updates in the background (installable builds only). */
+  updateAutoDownload: boolean;
+  /** Offer pre-releases (e.g. 0.3.0-beta.1). */
+  updatePrerelease: boolean;
 }
 
 export interface Suggestion {
-  kind: 'url' | 'history' | 'search' | 'tab';
+  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab';
   title: string;
   url: string;
   /** Present when kind === 'tab': switching to an existing tab. */
   tabId?: number;
+  /** Present when kind === 'remote-tab': name of the device the tab is open on. */
+  device?: string;
 }
 
 export interface TopSite {
@@ -188,6 +219,10 @@ export const DEFAULT_SETTINGS: Settings = {
   autoHideToolbar: false,
   windowMaterial: 'mica',
   newtabHero: 'clock',
+  tabLayout: 'horizontal',
+  updateAutoCheck: true,
+  updateAutoDownload: true,
+  updatePrerelease: false,
 };
 
 /** Where an installed extension came from. */
@@ -241,4 +276,79 @@ export interface ExtensionAnchor {
   y: number;
   width: number;
   height: number;
+}
+
+/** What end-to-end encrypted sync carries. History is off by default. */
+export interface SyncCategories {
+  settings: boolean;
+  spaces: boolean;
+  tabs: boolean;
+  history: boolean;
+}
+
+export const DEFAULT_SYNC_CATEGORIES: SyncCategories = { settings: true, spaces: true, tabs: true, history: false };
+
+/** User-owned sync storage. Vela never runs a sync server. */
+export type SyncTransportInput =
+  | { kind: 'folder'; path: string }
+  | { kind: 'webdav'; url: string; username: string; password: string };
+
+export interface SyncSetupInput {
+  transport: SyncTransportInput;
+  /** 'create' = first device (new key), 'join' = existing sync data at that location. */
+  mode: 'create' | 'join';
+  /** Passphrase, or the recovery key when joining. */
+  secret: string;
+  categories: SyncCategories;
+}
+
+export interface SyncDevice {
+  id: string;
+  name: string;
+  /** Last time this device published its changes. */
+  lastSeen: number;
+  current: boolean;
+}
+
+export interface SyncStatus {
+  enabled: boolean;
+  /** OS secret storage (DPAPI / Keychain / libsecret) is usable; sync requires it. */
+  secureStorage: boolean;
+  transport: { kind: 'folder' | 'webdav'; label: string } | null;
+  categories: SyncCategories;
+  syncing: boolean;
+  lastSyncAt: number | null;
+  lastError: string | null;
+  devices: SyncDevice[];
+}
+
+/**
+ * How this build can update itself. `install` = electron-updater downloads and installs (NSIS,
+ * AppImage, signed macOS); `notify` = only tells the user and links the release page.
+ */
+export type UpdateMode = 'install' | 'notify' | 'disabled';
+export type UpdateNotifyReason = 'portable' | 'mac-unsigned' | 'linux-package' | 'dev';
+
+export type UpdatePhase = 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'error';
+
+export interface UpdateStatus {
+  mode: UpdateMode;
+  reason?: UpdateNotifyReason;
+  phase: UpdatePhase;
+  currentVersion: string;
+  /** Newer version found (available / downloading / ready). */
+  version?: string;
+  releaseName?: string;
+  /** HTML (GitHub feed) or markdown/plain text (generic feed). Rendered as sanitized text. */
+  releaseNotes?: string;
+  releaseDate?: string;
+  releaseUrl?: string;
+  /** 0..100 while downloading. */
+  percent?: number;
+  bytesPerSecond?: number;
+  /** The download was started by the user (not in the background). */
+  manual?: boolean;
+  error?: string;
+  /** Epoch ms of the last finished check. */
+  checkedAt?: number;
 }

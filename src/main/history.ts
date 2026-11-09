@@ -233,6 +233,35 @@ export function deleteHistoryEntry(url: string): void {
   s.set([...byUrl.values()]);
 }
 
+/** Merges visits from another device (sync): newest title wins, counts and times take the max. */
+export function mergeSyncedHistory(entries: readonly HistoryEntry[]): void {
+  const s = getStore();
+  let changed = false;
+  for (const incoming of entries) {
+    if (!/^https?:\/\//i.test(incoming.url)) continue;
+    const key = stripHash(incoming.url);
+    const existing = byUrl.get(key);
+    if (!existing) {
+      byUrl.set(key, { url: key, title: incoming.title.slice(0, 300), visits: Math.max(1, Math.round(incoming.visits)), lastVisit: incoming.lastVisit });
+      changed = true;
+      continue;
+    }
+    const newer = incoming.lastVisit > existing.lastVisit;
+    if (!newer && incoming.visits <= existing.visits) continue;
+    if (newer && incoming.title && incoming.title !== existing.title) {
+      existing.title = incoming.title.slice(0, 300);
+      fields.delete(existing);
+    }
+    existing.visits = Math.max(existing.visits, Math.round(incoming.visits));
+    existing.lastVisit = Math.max(existing.lastVisit, incoming.lastVisit);
+    changed = true;
+  }
+  if (!changed) return;
+  evictIfNeeded();
+  topSitesCache = null;
+  s.set([...byUrl.values()]);
+}
+
 export function clearHistory(): void {
   const s = getStore();
   byUrl.clear();

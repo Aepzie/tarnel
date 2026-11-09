@@ -1,16 +1,19 @@
 import { app, ipcMain, nativeTheme, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { IPC } from '../shared/ipc';
-import { SPACE_COLORS, type ContentBounds, type Settings, type SpaceColor, type SpaceInput, type Suggestion } from '../shared/types';
+import { SPACE_COLORS, type ContentBounds, type Settings, type SpaceColor, type SpaceInput, type Suggestion, type TabGroupInput } from '../shared/types';
 import { clearHistory, deleteHistoryEntry, listHistory, suggest, topSites } from './history';
 import { getBlockedTotal } from './perf/adblock';
 import { collectPerfStats } from './perf/metrics';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
 import * as tabs from './tabs';
+import * as tabGroups from './tab-groups';
 import { getCompletedDownloadPath, getDownloadPath } from './downloads';
 import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
+import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openReleasePage, watchUpdates } from './updater';
 import { resolveInput, resolveInputDetailed } from './url';
+import { registerSyncIpc, remoteTabSuggestions } from './sync/loader';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -70,6 +73,34 @@ function spacePatch(value: unknown): Partial<SpaceInput> {
     patch.color = color;
   }
   if (raw.proxy !== undefined) patch.proxy = str(raw.proxy, 256, 'proxy');
+  return patch;
+}
+
+function tabIds(value: unknown): number[] {
+  if (!Array.isArray(value) || value.length > 500) throw new TypeError('Invalid tab ids');
+  return value.map((id) => int(id));
+}
+
+function groupId(value: unknown): string {
+  const id = str(value, MAX_ID, 'group id');
+  if (!tabGroups.getGroup(id)) throw new Error(`Unknown group: ${id}`);
+  return id;
+}
+
+function optTabId(value: unknown): number | null {
+  return value === null || value === undefined ? null : int(value);
+}
+
+function groupPatch(value: unknown): Partial<TabGroupInput> {
+  const raw = value === undefined || value === null ? {} : plainObject(value);
+  const patch: Partial<TabGroupInput> = {};
+  if (raw.name !== undefined) patch.name = str(raw.name, 64, 'name');
+  if (raw.color !== undefined) {
+    const color = str(raw.color, 16, 'color') as SpaceColor;
+    if (!SPACE_COLORS.includes(color)) throw new TypeError('Invalid color');
+    patch.color = color;
+  }
+  if (raw.collapsed !== undefined) patch.collapsed = optBool(raw.collapsed);
   return patch;
 }
 
@@ -133,6 +164,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
     push({ kind: 'tab', title: tab.title || tab.url, url: tab.url, tabId: tab.id });
   }
   for (const entry of suggest(input, 6)) push(entry);
+  for (const entry of remoteTabSuggestions(input, 3)) push(entry);
   return results;
 }
 
@@ -232,6 +264,18 @@ export function registerIpc(): void {
   handleChrome(c.tabFind, (id, text, forward) => tabs.findInTab(int(id), str(text, 1000, 'text'), optBool(forward) ?? true));
   handleChrome(c.tabStopFind, (id) => tabs.stopFindInTab(int(id)));
   handleChrome(c.tabZoom, (id, delta) => tabs.zoomTab(int(id), Math.sign(int(delta, 'delta'))));
+  handleChrome(c.groupCreate, (ids, input) => tabGroups.createGroup(tabIds(ids), groupPatch(input)));
+  handleChrome(c.groupAddTabs, (id, ids) => tabGroups.addTabsToGroup(groupId(id), tabIds(ids)));
+  handleChrome(c.groupRemoveTabs, (ids) => tabGroups.removeTabsFromGroups(tabIds(ids)));
+  handleChrome(c.groupUpdate, (id, patch) => tabGroups.updateGroup(groupId(id), groupPatch(patch)));
+  handleChrome(c.groupUngroup, (id) => tabGroups.ungroup(groupId(id)));
+  handleChrome(c.groupClose, (id) => tabGroups.closeGroup(groupId(id)));
+  handleChrome(c.groupMove, (id, before) => tabGroups.moveGroup(groupId(id), optTabId(before)));
+  handleChrome(c.groupPlaceTab, (id, before, group) =>
+    tabGroups.placeTab(int(id), optTabId(before), group === null || group === undefined ? null : groupId(group)),
+  );
+  handleChrome(c.groupNewTab, (id) => tabGroups.newTabInGroup(groupId(id)));
+  handleChrome(c.groupSetAllCollapsed, (collapsed) => tabGroups.setAllGroupsCollapsed(optBool(collapsed) ?? true));
   handleChrome(c.spaceCreate, (input) => createSpace(spaceInput(input)));
   handleChrome(c.spaceUpdate, (id, patch) => updateSpace(spaceId(id), spacePatch(patch)));
   handleChrome(c.spaceRemove, removeSpace);
@@ -266,6 +310,10 @@ export function registerIpc(): void {
     if (typeof allow !== 'boolean' || typeof remember !== 'boolean') throw new TypeError('Invalid permission response');
     handlePermissionResponse(str(id, MAX_ID, 'permission id'), allow, remember);
   });
+  handleChrome(c.updateGet, getUpdateStatus);
+  handleChrome(c.updateDownload, () => downloadUpdate());
+  handleChrome(c.updateInstall, installUpdate);
+  handleChrome(c.updateOpenRelease, openReleasePage);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
@@ -300,6 +348,12 @@ export function registerIpc(): void {
     const id = tabId === null ? null : tabs.getTabSpaceId(tabId);
     return id ? (getSpace(id) ?? null) : null;
   });
+  handlePages(p.updateGet, getUpdateStatus);
+  handlePages(p.updateWatch, (event) => watchUpdates(event.sender));
+  handlePages(p.updateCheck, () => checkForUpdates());
+  handlePages(p.updateDownload, () => downloadUpdate());
+  handlePages(p.updateInstall, installUpdate);
+  handlePages(p.updateOpenRelease, openReleasePage);
   handlePages(p.version, () => ({
     app: app.getVersion(),
     electron: process.versions.electron ?? '',
@@ -307,4 +361,5 @@ export function registerIpc(): void {
     v8: process.versions.v8 ?? '',
   }));
   registerExtensionIpc(handleChrome, handlePages);
+  registerSyncIpc(handlePages);
 }

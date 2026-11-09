@@ -5,6 +5,7 @@ import { rise } from '@/lib/motion';
 import { velaPages, type VelaPagesAPI } from '@/lib/vela';
 import { VelaMark } from '../components/brand';
 import { Group, Row } from '../components/layout';
+import { UpdatesGroup } from '../components/updates';
 import { hasBridge } from '../store';
 
 const REPO_URL = 'https://github.com/Aepzie/vela';
@@ -60,6 +61,8 @@ export function About() {
           ))}
         </ul>
       </motion.header>
+
+      <UpdatesGroup />
 
       <Group>
         <Row title="License" description="Free and open source.">

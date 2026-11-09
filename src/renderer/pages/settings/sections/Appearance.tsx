@@ -1,5 +1,6 @@
 import { Blend, CalendarDays, CircleDashed, Clock3, Layers2, Monitor, Moon, Sailboat, Square, Sun, Sunrise, Timer } from 'lucide-react';
-import type { NewtabHero, ThemeMode, WindowMaterial } from '@shared/types';
+import { PanelLeft, PanelTop } from 'lucide-react';
+import type { NewtabHero, TabLayout, ThemeMode, WindowMaterial } from '@shared/types';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Segmented, type SegmentOption } from '../components/controls';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
@@ -15,6 +16,11 @@ const MATERIALS: readonly SegmentOption<WindowMaterial>[] = [
   { value: 'mica', label: 'Mica', icon: Layers2 },
   { value: 'acrylic', label: 'Acrylic', icon: Blend },
   { value: 'none', label: 'None', icon: Square },
+];
+
+const TAB_LAYOUTS: readonly SegmentOption<TabLayout>[] = [
+  { value: 'horizontal', label: 'Horizontal', icon: PanelTop },
+  { value: 'vertical', label: 'Vertical', icon: PanelLeft },
 ];
 
 const HEROES: readonly SegmentOption<NewtabHero>[] = [
@@ -52,6 +58,22 @@ export function Appearance() {
             options={MATERIALS}
             onChange={(windowMaterial) => update({ windowMaterial })}
           />
+        </Row>
+        <Row
+          title="Tab layout"
+          description={
+            <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              Tabs in the top island, or in a floating island on the left
+              <span aria-hidden>·</span>
+              <KbdGroup>
+                <Kbd>Ctrl</Kbd>
+                <Kbd>Shift</Kbd>
+                <Kbd>,</Kbd>
+              </KbdGroup>
+            </span>
+          }
+        >
+          <Segmented label="Tab layout" value={settings.tabLayout} options={TAB_LAYOUTS} onChange={(tabLayout) => update({ tabLayout })} />
         </Row>
         <Row title="Start page" description="What sits above the search bar. Click it on a new tab to cycle.">
           <Segmented
