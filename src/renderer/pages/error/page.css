@@ -1,0 +1,8 @@
+.ve-glow {
+  background: radial-gradient(closest-side, var(--ve-tone), transparent);
+  opacity: 0.22;
+}
+
+:root.light .ve-glow {
+  opacity: 0.28;
+}

@@ -1,0 +1,92 @@
+# Contributing to Vela
+
+Thanks for your interest in Vela. This document explains how to set up a development environment,
+how the code is organized, and what we look for in a pull request.
+
+By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues go through
+[SECURITY.md](SECURITY.md), never public issues.
+
+## Prerequisites
+
+- **Node.js 20+** (22 LTS recommended) and npm
+- Git
+- Platform build tools are only needed for packaging installers (see [electron-builder docs](https://www.electron.build/))
+
+## Getting started
+
+```bash
+git clone https://github.com/Aepzie/vela.git
+cd vela
+npm install
+npm run dev        # build once and launch Vela
+```
+
+| Script              | What it does                                                    |
+|---------------------|-----------------------------------------------------------------|
+| `npm run dev`       | Build everything and start Electron                             |
+| `npm run watch`     | Rebuild on file changes (run `npm start` in a second terminal)  |
+| `npm start`         | Launch the last build                                           |
+| `npm run typecheck` | Type-check the whole project with `tsc --noEmit`                |
+| `npm run build`     | Development build into `dist/`                                  |
+| `npm run dist`      | Production build + installers for the current OS into `release/`|
+| `npm run dist:dir`  | Production build + unpacked app (fast, for smoke testing)       |
+
+## Project layout
+
+Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first. In short:
+
+```
+src/main/        main process: window, tabs, spaces, IPC, protocol, privacy, perf/*
+src/preload/     contextBridge APIs (window.vela, window.velaPages) — sandboxed, electron import only
+src/renderer/    chrome UI (top island, palette, find bar) and vela:// pages — React/Vite
+src/shared/      types and IPC contracts shared by all processes
+scripts/         build and tooling scripts
+build/           icons and packaging resources
+```
+
+## Guidelines
+
+- **Keep it lean.** The UI is React + Tailwind + shadcn/ui — reuse existing components and the motion
+  presets in `src/renderer/lib/motion.ts`. New dependencies need a justification in the PR (size,
+  maintenance, security). Follow [docs/DESIGN.md](docs/DESIGN.md).
+- **Measure performance claims.** If a change is meant to be faster or lighter, include before/after numbers
+  and how you measured them (see [docs/PERFORMANCE.md](docs/PERFORMANCE.md)).
+- **Never weaken isolation.** Web content runs with `sandbox: true`, `contextIsolation: true` and
+  `nodeIntegration: false`. Every IPC handler must validate its sender. Nothing may share state across
+  Space partitions.
+- **Respect contracts.** Signatures in `src/shared/` and the module contracts in ARCHITECTURE.md are
+  shared between areas; change them deliberately and update the docs in the same PR.
+- **TypeScript strict.** `npm run typecheck` must pass with no errors.
+- **Style.** 2-space indentation, LF line endings (enforced by `.editorconfig` / `.gitattributes`).
+
+## Regenerating icons
+
+The app icon source is [`build/icon.svg`](build/icon.svg). Raster icons are generated with Electron's
+offscreen renderer, so no extra dependencies are required:
+
+```bash
+npx electron scripts/icons.mjs
+```
+
+This writes `build/icon.png` (1024×1024) and `build/icons/{16,32,48,64,128,256,512}.png`. Commit the
+generated PNGs together with any SVG change; CI and release builds use the committed files.
+
+## Commits and pull requests
+
+1. Fork the repository and create a branch from `main` (`fix/find-bar-focus`, `feat/split-view`).
+2. Keep pull requests focused — one logical change each.
+3. Use clear commit messages; [Conventional Commits](https://www.conventionalcommits.org/) style
+   (`feat:`, `fix:`, `perf:`, `docs:`) is appreciated.
+4. Add an entry under **Unreleased** in [CHANGELOG.md](CHANGELOG.md) for user-facing changes.
+5. Make sure CI is green (typecheck + build on Windows, macOS and Linux).
+6. Attach screenshots or short recordings for UI changes.
+
+## Releases
+
+Maintainers tag a version (`git tag v0.2.0 && git push --tags`). The
+[release workflow](.github/workflows/release.yml) builds installers for all platforms and publishes them
+to GitHub Releases.
+
+## License
+
+By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).

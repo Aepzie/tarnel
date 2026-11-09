@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="216 142 640 680" width="64" height="68" fill="currentColor" stroke="currentColor">
+  <title>Vela</title>
+  <defs>
+    <mask id="vela-gaps" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff" stroke="none"/>
+      <circle cx="588" cy="218" r="62" fill="#000" stroke="none"/>
+      <circle cx="300" cy="742" r="62" fill="#000" stroke="none"/>
+      <circle cx="652" cy="742" r="62" fill="#000" stroke="none"/>
+    </mask>
+  </defs>
+  <g mask="url(#vela-gaps)" fill="none" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M588 218 Q 352 420 300 742"/>
+    <path d="M588 218 L 652 742"/>
+    <path d="M300 742 Q 476 772 652 742"/>
+  </g>
+  <g stroke="none">
+    <circle cx="588" cy="218" r="26"/>
+    <circle cx="300" cy="742" r="26"/>
+    <circle cx="652" cy="742" r="26"/>
+    <circle cx="772" cy="352" r="13" fill-opacity="0.5"/>
+  </g>
+</svg>

@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest an idea or improvement for Vela.
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Vela aims to stay fast, quiet and small. Proposals that keep the UI lean and the memory footprint low are the easiest to accept.
+        Please check the [roadmap](https://github.com/Aepzie/vela#roadmap) and existing issues first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How should it work? Keyboard shortcuts, UI placement, settings.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Expected performance / privacy impact
+      options:
+        - None
+        - Minor
+        - Significant (please explain below)
+        - Not sure
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, prior art in other browsers, mockups.
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be willing to help implement this.

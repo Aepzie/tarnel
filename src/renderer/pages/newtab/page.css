@@ -1,0 +1,100 @@
+.vt-aurora {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  z-index: 0;
+}
+
+.vt-blob {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, var(--accent-space), transparent);
+  opacity: 0.09;
+  will-change: transform;
+  backface-visibility: hidden;
+  animation: var(--vt-anim) ease-in-out 1 alternate both;
+}
+
+:root.light .vt-blob {
+  opacity: 0.13;
+}
+
+.vt-blob-a {
+  top: -38vmax;
+  left: -22vmax;
+  --vt-anim: vt-drift-a 20s;
+}
+
+.vt-blob-b {
+  top: -30vmax;
+  right: -30vmax;
+  width: 60vmax;
+  height: 60vmax;
+  opacity: 0.07;
+  --vt-anim: vt-drift-b 20s;
+}
+
+.vt-blob-c {
+  bottom: -46vmax;
+  left: 18vmax;
+  width: 64vmax;
+  height: 64vmax;
+  opacity: 0.06;
+  --vt-anim: vt-drift-c 20s;
+}
+
+:root.light .vt-blob-b,
+:root.light .vt-blob-c {
+  opacity: 0.1;
+}
+
+@keyframes vt-drift-a {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(9vmax, 6vmax, 0) scale(1.08); }
+  100% { transform: translate3d(3vmax, 12vmax, 0) scale(0.96); }
+}
+
+@keyframes vt-drift-b {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-10vmax, 8vmax, 0) scale(0.94); }
+  100% { transform: translate3d(-4vmax, 3vmax, 0) scale(1.06); }
+}
+
+@keyframes vt-drift-c {
+  0% { transform: translate3d(0, 0, 0) scale(1.04); }
+  50% { transform: translate3d(-8vmax, -7vmax, 0) scale(1); }
+  100% { transform: translate3d(6vmax, -3vmax, 0) scale(1.1); }
+}
+
+:root[data-hidden] .vt-blob {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vt-blob {
+    animation: none !important;
+  }
+}
+
+.vt-noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.045;
+  background-size: 180px 180px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+:root.light .vt-noise {
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.vt-digit-mask {
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}

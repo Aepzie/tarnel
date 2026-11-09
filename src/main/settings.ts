@@ -1,0 +1,71 @@
+import { DEFAULT_SETTINGS, type SearchEngine, type Settings, type ThemeMode, type WindowMaterial } from '../shared/types';
+import { createStore, type JsonStore } from './store';
+
+const SEARCH_ENGINES: readonly SearchEngine[] = ['duckduckgo', 'google', 'brave', 'startpage', 'ecosia'];
+const THEMES: readonly ThemeMode[] = ['system', 'dark', 'light'];
+const MATERIALS: readonly WindowMaterial[] = ['mica', 'acrylic', 'none'];
+const BOOLEAN_KEYS = [
+  'adblock',
+  'httpsOnly',
+  'blockThirdPartyCookies',
+  'sendDoNotTrack',
+  'restoreSession',
+  'sidebarCollapsed',
+  'autoHideToolbar',
+] as const satisfies readonly (keyof Settings)[];
+
+const listeners = new Set<(settings: Settings) => void>();
+let store: JsonStore<Settings> | null = null;
+
+function clampInt(value: unknown, min: number, max: number): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/** Returns a fully valid Settings object built from `base` with valid fields of `patch` applied. */
+function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>>): Settings {
+  const next: Settings = { ...base };
+  if (SEARCH_ENGINES.includes(patch.searchEngine as SearchEngine)) next.searchEngine = patch.searchEngine as SearchEngine;
+  if (THEMES.includes(patch.theme as ThemeMode)) next.theme = patch.theme as ThemeMode;
+  if (MATERIALS.includes(patch.windowMaterial as WindowMaterial)) next.windowMaterial = patch.windowMaterial as WindowMaterial;
+  for (const key of BOOLEAN_KEYS) {
+    if (typeof patch[key] === 'boolean') next[key] = patch[key];
+  }
+  next.sleepAfterMinutes = clampInt(patch.sleepAfterMinutes, 0, 240) ?? next.sleepAfterMinutes;
+  next.sidebarWidth = clampInt(patch.sidebarWidth, 180, 420) ?? next.sidebarWidth;
+  return next;
+}
+
+function getStore(): JsonStore<Settings> {
+  if (!store) {
+    store = createStore<Settings>('settings', { ...DEFAULT_SETTINGS });
+    // Repair anything invalid that was persisted (hand-edited file, older versions).
+    const repaired = sanitize(DEFAULT_SETTINGS, store.get());
+    if (JSON.stringify(repaired) !== JSON.stringify(store.get())) store.set(repaired);
+  }
+  return store;
+}
+
+export function getSettings(): Settings {
+  return getStore().get();
+}
+
+export function updateSettings(patch: Partial<Settings>): Settings {
+  const s = getStore();
+  const current = s.get();
+  const next = sanitize(current, (patch ?? {}) as Partial<Record<keyof Settings, unknown>>);
+  if (JSON.stringify(next) === JSON.stringify(current)) return current;
+  s.set(next);
+  for (const cb of listeners) {
+    try {
+      cb(next);
+    } catch {
+      /* a faulty listener must not break others */
+    }
+  }
+  return next;
+}
+
+export function onSettingsChanged(cb: (settings: Settings) => void): void {
+  listeners.add(cb);
+}

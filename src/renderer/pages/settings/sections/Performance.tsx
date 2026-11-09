@@ -1,0 +1,149 @@
+import { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import { Activity, Cpu, Leaf, MemoryStick, Moon, ShieldBan, Zap, type LucideIcon } from 'lucide-react';
+import type { PerfStats } from '@shared/types';
+import { rise } from '@/lib/motion';
+import { formatBytesMB, formatCount, velaPages } from '@/lib/vela';
+import { AnimatedNumber } from '../components/brand';
+import { Segmented, type SegmentOption } from '../components/controls';
+import { Group, Row, SectionHeader } from '../components/layout';
+import { hasBridge, useSettings } from '../store';
+
+const SLEEP_OPTIONS: readonly SegmentOption<string>[] = [
+  { value: '0', label: 'Never' },
+  { value: '5', label: '5 min' },
+  { value: '10', label: '10 min' },
+  { value: '30', label: '30 min' },
+  { value: '60', label: '60 min' },
+];
+
+const POLL_MS = 2000;
+
+/** Polls perf stats every 2s, only while this section is mounted and the document is visible. */
+function usePerfStats(): PerfStats | null {
+  const [stats, setStats] = useState<PerfStats | null>(null);
+
+  useEffect(() => {
+    if (!hasBridge()) return;
+    let alive = true;
+    let inFlight = false;
+    let timer: number | undefined;
+    const listeners = new AbortController();
+
+    const stop = () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = undefined;
+    };
+    const tick = () => {
+      stop();
+      if (!alive || inFlight || document.hidden) return;
+      inFlight = true;
+      velaPages()
+        .perf()
+        .then((next) => alive && setStats(next), () => undefined)
+        .finally(() => {
+          inFlight = false;
+          if (!alive || document.hidden) return;
+          stop();
+          timer = window.setTimeout(tick, POLL_MS);
+        });
+    };
+
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : tick()), {
+      signal: listeners.signal,
+    });
+    tick();
+    return () => {
+      alive = false;
+      stop();
+      listeners.abort();
+    };
+  }, []);
+
+  return stats;
+}
+
+const formatPercent = (n: number): string => `${n.toFixed(1)}%`;
+const formatWhole = (n: number): string => formatCount(Math.round(n));
+
+interface Stat {
+  key: keyof PerfStats;
+  label: string;
+  icon: LucideIcon;
+  format: (n: number) => string;
+}
+
+const STATS: readonly Stat[] = [
+  { key: 'totalMemoryMB', label: 'Memory', icon: MemoryStick, format: formatBytesMB },
+  { key: 'cpuPercent', label: 'CPU', icon: Cpu, format: formatPercent },
+  { key: 'savedMemoryMB', label: 'Saved by sleeping', icon: Leaf, format: formatBytesMB },
+  { key: 'tabsAwake', label: 'Tabs awake', icon: Zap, format: formatWhole },
+  { key: 'tabsAsleep', label: 'Tabs asleep', icon: Moon, format: formatWhole },
+  { key: 'blockedTotal', label: 'Requests blocked', icon: ShieldBan, format: formatWhole },
+];
+
+function LiveDot() {
+  return (
+    <span className="relative inline-flex size-1.5" aria-hidden>
+      <span className="absolute inset-0 motion-safe:animate-ping rounded-full bg-emerald-400/60 [animation-duration:2s]" />
+      <span className="relative size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+    </span>
+  );
+}
+
+export function Performance() {
+  const { settings, update } = useSettings();
+  const stats = usePerfStats();
+
+  return (
+    <>
+      <SectionHeader title="Performance" description="Keep memory low without losing your place." />
+      <Group>
+        <Row title="Sleep inactive tabs" description="Unload background tabs after a period of inactivity.">
+          <Segmented
+            label="Sleep tabs after"
+            value={String(settings.sleepAfterMinutes)}
+            options={SLEEP_OPTIONS}
+            onChange={(value) => update({ sleepAfterMinutes: Number(value) })}
+          />
+        </Row>
+      </Group>
+
+      <motion.section variants={rise} className="mb-8" aria-labelledby="perf-live">
+        <h2 id="perf-live" className="mb-2 flex items-center gap-2 px-1 text-xs font-medium text-muted-foreground">
+          <LiveDot />
+          Live
+          <span className="ml-auto font-normal">Updates every 2s</span>
+        </h2>
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {STATS.map(({ key, label, icon: Icon, format }) => (
+            <div
+              key={key}
+              className="rounded-xl bg-card/50 p-4 ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]"
+            >
+              <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Icon className="size-3.5" strokeWidth={1.75} aria-hidden />
+                {label}
+              </dt>
+              <dd className="mt-2 text-2xl leading-8 font-semibold tracking-tight text-foreground">
+                {stats ? <AnimatedNumber value={stats[key]} format={format} /> : <span className="text-muted-foreground/80">—</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </motion.section>
+
+      <motion.section
+        variants={rise}
+        className="flex gap-3 rounded-xl bg-muted/60 p-4 text-xs leading-5 text-muted-foreground ring-1 ring-border"
+      >
+        <Activity className="mt-0.5 size-4 shrink-0 text-space" strokeWidth={1.75} aria-hidden />
+        <p>
+          <span className="font-medium text-foreground">How tab sleeping works.</span> When a background tab sits
+          unused for the chosen time, Vela releases its page from memory. The tab keeps its spot, title and history;
+          it reloads the moment you switch back. Pinned tabs and tabs playing audio never sleep.
+        </p>
+      </motion.section>
+    </>
+  );
+}

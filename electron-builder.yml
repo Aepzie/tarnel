@@ -1,0 +1,82 @@
+appId: org.velabrowser.vela
+productName: Vela
+copyright: Copyright © 2026 Vela contributors
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**
+  - package.json
+  - "!**/*.map"
+
+asar: true
+compression: maximum
+electronLanguages:
+  - en-US
+  - de
+
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+protocols:
+  - name: Web link
+    schemes:
+      - http
+      - https
+
+fileAssociations:
+  - ext: [html, htm]
+    name: HTML document
+    role: Viewer
+
+win:
+  icon: build/icon.png
+  target:
+    - nsis
+    - portable
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Vela
+  artifactName: ${productName}-${version}-setup-${arch}.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-portable-${arch}.${ext}
+
+mac:
+  icon: build/icon.png
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+
+dmg:
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+
+linux:
+  icon: build/icons
+  category: Network;WebBrowser
+  maintainer: Vela contributors <noreply@github.com>
+  synopsis: Fast. Quiet. Isolated.
+  mimeTypes:
+    - text/html
+    - x-scheme-handler/http
+    - x-scheme-handler/https
+  target:
+    - AppImage
+    - deb
+
+publish:
+  provider: github
+  owner: Aepzie
+  repo: vela
+  releaseType: release

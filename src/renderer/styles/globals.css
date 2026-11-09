@@ -1,0 +1,177 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
+
+@property --accent-space {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #60a5fa;
+}
+
+:root {
+  --accent-space: #60a5fa;
+  --radius: 0.75rem;
+
+  /* shadcn tokens — dark-first */
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.967 0.001 286.375);
+  --card: oklch(0.21 0.006 285.885 / 0.7);
+  --card-foreground: oklch(0.967 0.001 286.375);
+  --popover: oklch(0.19 0.006 285.885 / 0.92);
+  --popover-foreground: oklch(0.967 0.001 286.375);
+  --primary: var(--accent-space);
+  --primary-foreground: oklch(0.141 0.005 285.823);
+  --secondary: oklch(1 0 0 / 0.06);
+  --secondary-foreground: oklch(0.967 0.001 286.375);
+  --muted: oklch(1 0 0 / 0.05);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(1 0 0 / 0.07);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.1);
+  --ring: color-mix(in oklab, var(--accent-space) 60%, transparent);
+
+  /* Vela tokens */
+  --island: oklch(0.2 0.006 285.885 / 0.72);
+  --island-ring: oklch(1 0 0 / 0.08);
+  --island-highlight: oklch(1 0 0 / 0.06);
+  --window: #09090b;
+
+  --space-slate: #94a3b8;
+  --space-blue: #60a5fa;
+  --space-violet: #a78bfa;
+  --space-pink: #f472b6;
+  --space-red: #f87171;
+  --space-orange: #fb923c;
+  --space-green: #4ade80;
+  --space-teal: #2dd4bf;
+
+  color-scheme: dark;
+  transition: --accent-space 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root.light,
+:root[data-theme="light"] {
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.21 0.006 285.885);
+  --card: oklch(1 0 0 / 0.75);
+  --card-foreground: oklch(0.21 0.006 285.885);
+  --popover: oklch(1 0 0 / 0.94);
+  --popover-foreground: oklch(0.21 0.006 285.885);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0 0 0 / 0.05);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0 0 0 / 0.04);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0 0 0 / 0.06);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --border: oklch(0 0 0 / 0.08);
+  --input: oklch(0 0 0 / 0.1);
+  --island: oklch(1 0 0 / 0.72);
+  --island-ring: oklch(0 0 0 / 0.08);
+  --island-highlight: oklch(1 0 0 / 0.7);
+  --window: #f4f4f5;
+  color-scheme: light;
+}
+
+/* Transparent window (material 'none'): nothing behind the glass to blur, so islands need more body
+   to stay legible over arbitrary desktop content. */
+:root[data-material="none"] {
+  --island: oklch(0.2 0.006 285.885 / 0.9);
+}
+:root.light[data-material="none"],
+:root[data-theme="light"][data-material="none"] {
+  --island: oklch(1 0 0 / 0.9);
+}
+
+@theme inline {
+  --font-sans: "Geist Variable", "Segoe UI Variable Text", system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-space: var(--accent-space);
+  --color-island: var(--island);
+  --color-island-ring: var(--island-ring);
+  --color-window: var(--window);
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(250%); }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    @apply font-sans text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--accent-space) 35%, transparent);
+  }
+}
+
+@utility island {
+  background: var(--island);
+  backdrop-filter: blur(28px) saturate(170%);
+  box-shadow:
+    0 0 0 1px var(--island-ring),
+    inset 0 1px 0 var(--island-highlight),
+    0 12px 40px -12px rgb(0 0 0 / 0.55);
+  border-radius: 16px;
+}
+
+@utility drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+@utility no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+:root.light .island {
+  box-shadow:
+    0 0 0 1px var(--island-ring),
+    inset 0 1px 0 var(--island-highlight),
+    0 8px 28px -14px rgb(0 0 0 / 0.2);
+}
