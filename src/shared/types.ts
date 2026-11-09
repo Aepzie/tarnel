@@ -60,6 +60,9 @@ export type SearchEngine = 'duckduckgo' | 'google' | 'brave' | 'startpage' | 'ec
 export type ThemeMode = 'system' | 'dark' | 'light';
 /** Windows 11 backdrop behind the floating islands. Ignored on other platforms. */
 export type WindowMaterial = 'mica' | 'acrylic' | 'none';
+/** Hero shown above the search bar on the new-tab page, in cycle order. */
+export const NEWTAB_HEROES = ['clock', 'clock-seconds', 'logo', 'date', 'greeting', 'minimal'] as const;
+export type NewtabHero = (typeof NEWTAB_HEROES)[number];
 
 export interface Settings {
   searchEngine: SearchEngine;
@@ -78,6 +81,8 @@ export interface Settings {
   /** Focus mode: the top island hides and reveals on hover at the top edge. */
   autoHideToolbar: boolean;
   windowMaterial: WindowMaterial;
+  /** Start-page hero style; shared across all tabs and spaces. */
+  newtabHero: NewtabHero;
 }
 
 export interface Suggestion {
@@ -182,4 +187,5 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarWidth: 240,
   autoHideToolbar: false,
   windowMaterial: 'mica',
+  newtabHero: 'clock',
 };

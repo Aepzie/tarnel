@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, type SearchEngine, type Settings, type ThemeMode, type WindowMaterial } from '../shared/types';
+import { DEFAULT_SETTINGS, NEWTAB_HEROES, type NewtabHero, type SearchEngine, type Settings, type ThemeMode, type WindowMaterial } from '../shared/types';
 import { createStore, type JsonStore } from './store';
 
 const SEARCH_ENGINES: readonly SearchEngine[] = ['duckduckgo', 'google', 'brave', 'startpage', 'ecosia'];
@@ -28,6 +28,7 @@ function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>
   if (SEARCH_ENGINES.includes(patch.searchEngine as SearchEngine)) next.searchEngine = patch.searchEngine as SearchEngine;
   if (THEMES.includes(patch.theme as ThemeMode)) next.theme = patch.theme as ThemeMode;
   if (MATERIALS.includes(patch.windowMaterial as WindowMaterial)) next.windowMaterial = patch.windowMaterial as WindowMaterial;
+  if (NEWTAB_HEROES.includes(patch.newtabHero as NewtabHero)) next.newtabHero = patch.newtabHero as NewtabHero;
   for (const key of BOOLEAN_KEYS) {
     if (typeof patch[key] === 'boolean') next[key] = patch[key];
   }
