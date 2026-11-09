@@ -81,9 +81,10 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
   };
 
   /**
-   * Resumes a held target once its own auto-attach is set up (so its nested workers are held too).
-   * Out-of-process iframes need that order: a resume sent before the child's setAutoAttach has
-   * answered (it answers once the frame's navigation commits) is lost and the frame stays paused.
+   * Resumes a held frame once its own auto-attach is set up (so its workers are held too). A resume
+   * sent before the frame's setAutoAttach has answered (it answers once the frame's navigation
+   * commits) is lost and the out-of-process iframe stays paused. A worker's session handles its
+   * commands in order, so workers are resumed right away (patch, auto-attach, resume).
    */
   const watchAndResume = (child: string): void => {
     const resume = (): void => send('Runtime.runIfWaitingForDebugger', {}, child);
@@ -96,7 +97,8 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
     if (WORKER_TYPES.has(target.type)) {
       const config = lookup(wc.session, pageUrl());
       if (config) send('Runtime.evaluate', { expression: patchExpression(config), silent: true }, child);
-      watchAndResume(child);
+      send('Target.setAutoAttach', AUTO_ATTACH, child);
+      send('Runtime.runIfWaitingForDebugger', {}, child);
     } else if (target.type === 'iframe' || target.type === 'page') {
       watchAndResume(child);
     } else {
