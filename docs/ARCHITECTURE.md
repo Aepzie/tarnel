@@ -35,6 +35,47 @@ Cookies, localStorage, IndexedDB, cache, service workers, permissions and proxy 
 per space. Every tab belongs to exactly one space. Tabs are sandboxed (`sandbox: true`,
 `contextIsolation: true`, `nodeIntegration: false`), site isolation is on.
 
+## Fingerprint protection (per Space)
+
+`space.fingerprint` is `'off' | 'standard' | 'strict'` (new Spaces: standard, Burners: strict). Each Space has a
+random 256-bit seed (`userData/fingerprint.json`; Burner seeds live in memory, so every Burner is a new identity).
+The seed never leaves main.
+
+* **Injection** — `src/main/fingerprint/index.ts` registers `dist/preload/fingerprint.js` with
+  `session.registerPreloadScript({ type: 'frame' })` on protected sessions only (`'off'` = no preload at all).
+  Tab views set `nodeIntegrationInSubFrames: true` (still sandboxed, no Node) so it runs in every frame, cross-origin
+  iframes included. The preload asks main synchronously (`sendSync`, sub-millisecond) for its config, then
+  `contextBridge.executeInMainWorld` runs `src/preload/fingerprint-main-world.ts` in the page's main world before any
+  page script. A new iframe's initial `about:blank` document gets no preload, so DOM insertions that add a frame
+  patch the child realm on the spot (plus `contentWindow` / `contentDocument`).
+* **Determinism** — main derives `key = HMAC(seed, top-level eTLD+1)`: stable per site across reloads and restarts,
+  different per site and per Space; third-party iframes use the top-level site's key. Hardware values derive from
+  the seed only (same machine across all sites of a Space).
+* **Native look** — patched functions keep `name`, `length`, prototype and no `prototype` property;
+  `Function.prototype.toString` returns the native source for them, also across same-origin realms.
+
+| Surface | Standard | Strict |
+|---|---|---|
+| Canvas `toDataURL` / `toBlob` / `getImageData`, `OffscreenCanvas` | low-bit noise on ~1/16 of non-transparent pixels, keyed by absolute position (idempotent; blank canvases unchanged) | same |
+| WebGL `readPixels` | same noise | same |
+| `UNMASKED_RENDERER_WEBGL` | common model of the real GPU vendor, PCI ids stripped | same |
+| `AudioBuffer.getChannelData` / `copyFromChannel`, `AnalyserNode.getFloatFrequencyData` | ±1e-6 relative noise on sparse samples (inaudible) | same |
+| `measureText().width` | ±1.3e-5 relative jitter | same |
+| `hardwareConcurrency`, `deviceMemory` (+ `Device-Memory` hints) | plausible bucket ≤ real | same |
+| Battery API | always charging, level 1 | same |
+| WebRTC IP policy | `default_public_interface_only`; `disable_non_proxied_udp` when the Space has a proxy | `disable_non_proxied_udp` |
+| `screen.*` size, `colorDepth` | real | smallest common resolution ≥ real, depth 24 |
+| UA client hints (JS + `Sec-CH-UA-*` headers) | real | full versions reduced to `N.0.0.0`, model empty |
+| Media device labels | real | generic ("Microphone", "Camera", "Speakers") |
+| `getGamepads()` | real | always empty |
+
+**Not protected:** dedicated/shared/service workers (they see the real `hardwareConcurrency`, WebGL renderer and
+unnoised `OffscreenCanvas`; wrapping workers would break module workers, relative imports and CSP), CSS media
+queries (`device-width`, resolution), DOM-based font enumeration, timezone/`Intl` (left alone: spoofing breaks
+calendars, banking and booking sites), the IP address itself (use a per-Space proxy). Fingerprinting test suites
+(CreepJS) can still detect *that* noise is applied (pixel/audio noise, worker vs. window mismatch); what they
+cannot do is link two Spaces through it. Changes apply to pages loaded afterwards.
+
 ## Directory ownership
 
 ```
@@ -52,6 +93,8 @@ src/main/settings.ts   settings                       — data
 src/main/spaces.ts     spaces + sessions              — data
 src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
+src/main/fingerprint/* per-space fingerprint seeds, preload registration, header hints — data
+src/preload/fingerprint*.ts  main-world fingerprint patch (session preload) — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
 src/preload/chrome.ts  window.vela                    — ui
 src/renderer/chrome/*  top-island UI (React)          — ui

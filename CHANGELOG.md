@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Per-space fingerprint protection** (Off / Standard / Strict, per Space; new Spaces default to Standard, Burners to Strict).
+  Each Space gets a random seed; canvas, WebGL and audio readbacks get subtle noise derived from (seed, site), so a
+  site sees a stable fingerprint across reloads but a different one in every Space. Hardware (cores, memory, GPU model)
+  is generalized, the battery reads as plugged in and WebRTC never leaks local addresses (no UDP outside a proxy in
+  Strict or proxied Spaces). Strict also buckets the screen size and reduces client hints and media-device labels.
+  "New fingerprint" in the Space dialog and Settings → Spaces rotates the seed.
+
 ## [0.1.1] - 2026-11-09
 
 ### Added
