@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { watch as watchDir } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -22,6 +23,8 @@ export interface Transport {
   read(name: string): Promise<Buffer | null>;
   write(name: string, contents: Buffer): Promise<void>;
   remove(name: string): Promise<void>;
+  /** Optional change notifications (folder only); returns an unsubscribe. */
+  watch?(onChange: (name: string) => void): () => void;
 }
 
 function isOurs(name: string): boolean {
@@ -78,6 +81,17 @@ export function folderTransport(root: string): Transport {
     async remove(name) {
       assertOurs(name);
       await fs.rm(path.join(dir, name), { force: true });
+    },
+    watch(onChange) {
+      try {
+        const watcher = watchDir(dir, { persistent: false }, (_event, name) => {
+          if (typeof name === 'string' && isOurs(name)) onChange(name);
+        });
+        watcher.on('error', () => watcher.close());
+        return () => watcher.close();
+      } catch {
+        return () => undefined;
+      }
     },
   };
 }

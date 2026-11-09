@@ -197,6 +197,7 @@ export function createSyncEngine(host: SyncHost): SyncEngine {
   let again = false;
   let lastError: string | null = null;
   let started = false;
+  let unwatch: (() => void) | null = null;
 
   const ownFile = (): string => `dev-${config.deviceId}.vsync`;
 
@@ -473,12 +474,21 @@ export function createSyncEngine(host: SyncHost): SyncEngine {
     periodic = setInterval(() => void syncNow(), PERIOD_MS);
     periodic.unref?.();
     schedule(STARTUP_DELAY_MS);
+    try {
+      unwatch = remote().watch?.((name) => {
+        if (name !== ownFile()) schedule(QUICK_DELAY_MS);
+      }) ?? null;
+    } catch {
+      unwatch = null;
+    }
   }
 
   function stop(): void {
     started = false;
     if (periodic) clearInterval(periodic);
     if (pending) clearTimeout(pending);
+    unwatch?.();
+    unwatch = null;
     periodic = null;
     pending = null;
     pendingAt = Infinity;
