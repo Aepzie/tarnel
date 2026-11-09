@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type { BrowserState, PerfStats, Settings, Space, TabState, UICommand } from '@shared/types';
+import type { BrowserState, PerfStats, Settings, Space, TabGroup, TabState, UICommand } from '@shared/types';
 import { DEFAULT_SETTINGS } from '@shared/types';
 
 /* ------------------------------------------------------------------------------------------------
  * Single IPC subscription for the browser chrome. Components select slices with the hooks below.
  * ---------------------------------------------------------------------------------------------- */
 
-const EMPTY_STATE: BrowserState = { tabs: [], activeTabId: null, spaces: [], activeSpaceId: '' };
+const EMPTY_STATE: BrowserState = { tabs: [], activeTabId: null, spaces: [], activeSpaceId: '', groups: [] };
 
 let browserState: BrowserState = EMPTY_STATE;
 let settingsState: Settings = DEFAULT_SETTINGS;
@@ -109,6 +109,15 @@ export function useActiveSpace(): Space | undefined {
 /** Tabs of the active space, pinned first (main already orders them). Stable while tabs are unchanged. */
 export function useSpaceTabs(): TabState[] {
   return useBrowserSlice((s) => s.tabs.filter((t) => t.spaceId === s.activeSpaceId), shallowEqual);
+}
+
+function sameGroups(a: TabGroup[], b: TabGroup[]): boolean {
+  return a.length === b.length && a.every((group, i) => shallowEqual(group, b[i]));
+}
+
+/** Tab groups of the active space in display order. Stable while no group changed. */
+export function useSpaceGroups(): TabGroup[] {
+  return useBrowserSlice((s) => s.groups.filter((g) => g.spaceId === s.activeSpaceId), sameGroups);
 }
 
 export function useActiveTab(): TabState | undefined {

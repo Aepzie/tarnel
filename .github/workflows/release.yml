@@ -21,7 +21,7 @@ jobs:
             args: --win nsis portable --x64
           - name: macos
             os: macos-latest
-            args: --mac dmg --arm64 --x64
+            args: --mac dmg zip --arm64 --x64
           - name: linux
             os: ubuntu-latest
             args: --linux AppImage deb --x64
@@ -56,6 +56,7 @@ jobs:
           path: |
             release/*.exe
             release/*.dmg
+            release/*.zip
             release/*.AppImage
             release/*.deb
             release/*.blockmap

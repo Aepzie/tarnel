@@ -179,6 +179,15 @@ export function createSpace(input: SpaceInput): Space {
   return space;
 }
 
+/** Creates a persistent space with a fixed id (a space that arrived through sync). */
+export function importSpace(id: SpaceId, input: Omit<SpaceInput, 'ephemeral'>): Space {
+  if (!/^[\w-]{1,64}$/.test(id) || getSpace(id)) throw new Error(`Invalid space id: ${id}`);
+  const space: Space = { id, name: cleanName(input?.name), color: cleanColor(input?.color), ephemeral: false, proxy: cleanProxy(input?.proxy), fingerprint: cleanFingerprint(input?.fingerprint, 'standard'), createdAt: Date.now() };
+  requireStore().update((f) => ({ ...f, spaces: [...f.spaces, space] }));
+  emitChanged();
+  return space;
+}
+
 export function updateSpace(id: SpaceId, patch: Partial<SpaceInput>): Space {
   const current = getSpace(id);
   if (!current) throw new Error(`Unknown space: ${id}`);
@@ -277,6 +286,7 @@ export async function disposeEphemeralSpaces(): Promise<void> {
  */
 export async function whenSessionReady(id: SpaceId): Promise<void> {
   getSpaceSession(id);
+  await readyGates.get(id);
   for (;;) {
     const pending = proxyReady.get(id);
     if (!pending) return;
@@ -292,6 +302,15 @@ export function onSessionRemoved(hook: (session: Session) => void): void {
 function forgetSession(id: SpaceId): void {
   sessions.delete(id);
   proxyReady.delete(id);
+  readyGates.delete(id);
+}
+
+/** Extra work a new session must finish before pages load (e.g. extensions). Must never reject. */
+const readyGates = new Map<SpaceId, Promise<void>>();
+
+/** Delay whenSessionReady() for this Space until `gate` settles. Call from an onSessionCreated hook. */
+export function gateSessionReady(id: SpaceId, gate: Promise<void>): void {
+  readyGates.set(id, gate.catch(() => undefined));
 }
 
 function emitSessionRemoved(ses: Session): void {

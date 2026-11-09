@@ -108,12 +108,16 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
     const historyRows: PaletteRowModel[] = server
       .filter((s) => s.kind === 'history')
       .map((s) => ({ type: 'history', id: `history:${s.url}`, title: s.title, url: s.url }));
+    const remoteRows: PaletteRowModel[] = server
+      .filter((s) => s.kind === 'remote-tab')
+      .map((s) => ({ type: 'history', id: `remote:${s.device ?? ''}:${s.url}`, title: s.title, url: s.url, device: s.device }));
     const commandRows = text.length >= 2 ? rankCommands(commands, text, 40).slice(0, 3).map(toCommandRow) : [];
     return [
       { heading: null, rows: [go] },
       { heading: 'Open tabs', rows: tabRows },
       { heading: 'Commands', rows: commandRows },
       { heading: 'History', rows: historyRows },
+      { heading: 'Other devices', rows: remoteRows },
     ].filter((group) => group.rows.length > 0);
   }, [kind, commands, commandText, query, suggestions, faviconsById, activeTabId]);
 

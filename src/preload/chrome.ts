@@ -1,8 +1,9 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
+import { EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
+const X = EXTENSION_IPC;
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): Unsubscribe {
   const listener = (_event: IpcRendererEvent, payload: T): void => cb(payload);
@@ -48,6 +49,19 @@ const api: VelaChromeAPI = {
     zoom: (id, delta) => invoke(C.tabZoom, id, delta),
   },
 
+  groups: {
+    create: (tabIds, input) => invoke(C.groupCreate, tabIds, input ?? {}),
+    addTabs: (groupId, tabIds) => invoke(C.groupAddTabs, groupId, tabIds),
+    removeTabs: (tabIds) => invoke(C.groupRemoveTabs, tabIds),
+    update: (groupId, patch) => invoke(C.groupUpdate, groupId, patch),
+    ungroup: (groupId) => invoke(C.groupUngroup, groupId),
+    close: (groupId) => invoke(C.groupClose, groupId),
+    move: (groupId, beforeTabId) => invoke(C.groupMove, groupId, beforeTabId),
+    placeTab: (tabId, beforeTabId, groupId) => invoke(C.groupPlaceTab, tabId, beforeTabId, groupId),
+    newTab: (groupId) => invoke(C.groupNewTab, groupId),
+    setAllCollapsed: (collapsed) => invoke(C.groupSetAllCollapsed, collapsed),
+  },
+
   spaces: {
     create: (input) => invoke(C.spaceCreate, input),
     update: (id, patch) => invoke(C.spaceUpdate, id, patch),
@@ -87,7 +101,23 @@ const api: VelaChromeAPI = {
     setOverlay: (open) => invoke(C.setOverlay, open),
   },
 
+  updates: {
+    get: () => invoke(C.updateGet),
+    onStatus: (cb) => subscribe(E.update, cb),
+    download: () => invoke(C.updateDownload),
+    install: () => invoke(C.updateInstall),
+    openRelease: () => invoke(C.updateOpenRelease),
+  },
+
   platform: process.platform,
+
+  extensions: {
+    get: () => invoke(X.get),
+    onChange: (cb) => subscribe(X.changed, cb),
+    activate: (id, anchor, kind) => invoke(X.activate, id, anchor, kind ?? 'click'),
+    setPinned: (id, pinned) => invoke(X.setPinned, id, pinned),
+    openOptions: (id) => invoke(X.options, id),
+  },
 };
 
 contextBridge.exposeInMainWorld('vela', api);

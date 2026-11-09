@@ -1,5 +1,6 @@
-import { contextBridge, ipcRenderer } from 'electron';
-import { IPC, type VelaPagesAPI } from '../shared/ipc';
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import { EXTENSION_IPC, IPC, type VelaPagesAPI } from '../shared/ipc';
+import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
 
@@ -27,6 +28,40 @@ if (isVelaPage()) {
     currentSpace: () => call(ch.currentSpace),
     history: (query, limit, before) => call(ch.history, query, limit, before),
     deleteHistory: (url) => call(ch.historyDelete, url),
+    extensions: {
+      list: () => call(EXTENSION_IPC.list),
+      install: (input) => call(EXTENSION_IPC.install, input),
+      loadUnpacked: () => call(EXTENSION_IPC.loadUnpacked),
+      update: (id, patch) => call(EXTENSION_IPC.update, id, patch),
+      reload: (id) => call(EXTENSION_IPC.reload, id),
+      remove: (id) => call(EXTENSION_IPC.remove, id),
+      openOptions: (id) => call(EXTENSION_IPC.pageOptions, id),
+    },
+    sync: {
+      status: () => call(ch.syncStatus),
+      pickFolder: () => call(ch.syncPickFolder),
+      probe: (transport) => call(ch.syncProbe, transport),
+      enable: (input) => call(ch.syncEnable, input),
+      setCategories: (categories) => call(ch.syncSetCategories, categories),
+      now: () => call(ch.syncNow),
+      recoveryKey: () => call(ch.syncRecoveryKey),
+      disconnect: (wipeRemote) => call(ch.syncDisconnect, wipeRemote),
+    },
+    updates: {
+      get: () => call(ch.updateGet),
+      onStatus: (cb) => {
+        const listener = (_event: IpcRendererEvent, status: UpdateStatus): void => cb(status);
+        ipcRenderer.on(IPC.pagesEvents.update, listener);
+        void call(ch.updateWatch).catch(() => undefined);
+        return () => {
+          ipcRenderer.removeListener(IPC.pagesEvents.update, listener);
+        };
+      },
+      check: () => call(ch.updateCheck),
+      download: () => call(ch.updateDownload),
+      install: () => call(ch.updateInstall),
+      openRelease: () => call(ch.updateOpenRelease),
+    },
   };
 
   contextBridge.exposeInMainWorld('velaPages', api);

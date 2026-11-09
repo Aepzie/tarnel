@@ -2,20 +2,20 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { AnimatePresence, Reorder, motion, useReducedMotion } from 'motion/react';
 import { PlusIcon } from 'lucide-react';
 import type { TabState } from '@shared/types';
-import { useBrowserSlice, useSpaceTabs } from '@/hooks/browser';
+import { useBrowserSlice, useSpaceGroups, useSpaceTabs } from '@/hooks/browser';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { settle, vela } from '@/lib/vela';
+import { SPACE_HEX, settle, vela } from '@/lib/vela';
 import { ui, useChromeUI } from '../ui-store';
 import { TabItem } from './TabItem';
 import { useScrollFade } from './use-scroll-fade';
 import { computeTabWidths } from './tab-widths';
+import { GroupChip, chipWidth } from './groups/GroupChip';
+import { useEditingGroup } from './groups/group-ui';
+import type { TabUnit, Unit } from './groups/units';
+import { useUnitDrag } from './groups/use-unit-drag';
 
-interface DragOrder {
-  pinned: number[];
-  rest: number[];
-}
-
+const CHIP_GAP = 4;
 const noop = (): void => {};
 
 async function newTab(): Promise<void> {
@@ -35,11 +35,14 @@ function applyOrder(ids: number[], byId: Map<number, TabState>): TabState[] {
 }
 
 /**
- * Horizontal tab strip for the active space. Pinned group (icon-only) → separator → tabs → "+".
- * The active tab renders as the omnibox pill and shares `layoutId="omnibox"` with the command palette.
+ * Horizontal tab strip for the active space. Pinned group (icon-only) → separator → tabs and group
+ * chips → "+". The active tab renders as the omnibox pill and shares `layoutId="omnibox"` with the
+ * command palette. Grouped tabs carry an underline in their group's color that starts at the chip.
  */
 export function TabStrip() {
   const tabs = useSpaceTabs();
+  const groups = useSpaceGroups();
+  const editingGroup = useEditingGroup();
   const activeTabId = useBrowserSlice((s) => s.activeTabId);
   const activeSpaceId = useBrowserSlice((s) => s.activeSpaceId);
   const paletteOpen = useChromeUI().palette.open;
@@ -61,60 +64,65 @@ export function TabStrip() {
   }, []);
 
   const [hoveredId, setHoveredId] = useState<number | null>(null);
-  const [dragOrder, setDragOrder] = useState<DragOrder | null>(null);
-  const dragging = useRef(false);
+  const [pinnedOrder, setPinnedOrder] = useState<number[] | null>(null);
+  const pinnedDragging = useRef(false);
 
-  const { pinned, rest } = useMemo(() => {
+  const { pinned, restTabs } = useMemo(() => {
     const byPinned = new Map<number, TabState>();
-    const byRest = new Map<number, TabState>();
-    for (const tab of tabs) (tab.pinned ? byPinned : byRest).set(tab.id, tab);
-    if (!dragOrder) return { pinned: [...byPinned.values()], rest: [...byRest.values()] };
-    return { pinned: applyOrder(dragOrder.pinned, byPinned), rest: applyOrder(dragOrder.rest, byRest) };
-  }, [tabs, dragOrder]);
-
-  useEffect(() => {
-    if (dragging.current && draggedId.current !== null && !tabs.some((t) => t.id === draggedId.current)) {
-      dragging.current = false;
-      draggedId.current = null;
+    const restTabs: TabState[] = [];
+    for (const tab of tabs) {
+      if (tab.pinned) byPinned.set(tab.id, tab);
+      else restTabs.push(tab);
     }
-    if (!dragging.current) setDragOrder(null);
-  }, [tabs]);
+    return { pinned: pinnedOrder ? applyOrder(pinnedOrder, byPinned) : [...byPinned.values()], restTabs };
+  }, [tabs, pinnedOrder]);
+
+  const drag = useUnitDrag(restTabs, groups, activeTabId, activeSpaceId);
+  const units = drag.units;
+  const rest = useMemo(() => units.flatMap((unit) => (unit.kind === 'tab' ? [unit.tab] : [])), [units]);
 
   useEffect(() => {
-    dragging.current = false;
-    draggedId.current = null;
-    setDragOrder(null);
-  }, [activeSpaceId]);
+    if (!pinnedDragging.current) setPinnedOrder(null);
+  }, [tabs, activeSpaceId]);
 
-  const orderRef = useRef({ pinned, rest });
-  orderRef.current = { pinned, rest };
+  const pinnedRef = useRef(pinned);
+  pinnedRef.current = pinned;
 
   const onHover = useCallback((id: number | null) => setHoveredId(id), []);
-  const draggedId = useRef<number | null>(null);
-  const onDragStart = useCallback((id: number) => {
-    dragging.current = true;
-    draggedId.current = id;
-    setHoveredId(null);
-  }, []);
-  const onDragEnd = useCallback((id: number) => {
-    dragging.current = false;
-    draggedId.current = null;
-    const order = orderRef.current;
-    const pinnedIndex = order.pinned.findIndex((t) => t.id === id);
-    const index = pinnedIndex >= 0 ? pinnedIndex : order.pinned.length + order.rest.findIndex((t) => t.id === id);
-    void vela()
-      .tabs.move(id, index)
-      .catch(noop)
-      .finally(() => window.setTimeout(() => !dragging.current && setDragOrder(null), 160));
-  }, []);
-
-  const onReorderPinned = useCallback(
-    (ids: number[]) => setDragOrder({ pinned: ids, rest: orderRef.current.rest.map((t) => t.id) }),
-    [],
+  const { onTabDragStart, onTabDragEnd, onGroupDragStart: foldGroup } = drag;
+  const onDragStart = useCallback(
+    (id: number) => {
+      setHoveredId(null);
+      if (pinnedRef.current.some((t) => t.id === id)) pinnedDragging.current = true;
+      else onTabDragStart(id);
+    },
+    [onTabDragStart],
   );
-  const onReorderRest = useCallback(
-    (ids: number[]) => setDragOrder({ pinned: orderRef.current.pinned.map((t) => t.id), rest: ids }),
-    [],
+  const onDragEnd = useCallback(
+    (id: number) => {
+      const pinnedIndex = pinnedRef.current.findIndex((t) => t.id === id);
+      if (pinnedIndex < 0) {
+        onTabDragEnd(id);
+        return;
+      }
+      void vela()
+        .tabs.move(id, pinnedIndex)
+        .catch(noop)
+        .finally(() =>
+          window.setTimeout(() => {
+            pinnedDragging.current = false;
+            setPinnedOrder(null);
+          }, 160),
+        );
+    },
+    [onTabDragEnd],
+  );
+  const onGroupDragStart = useCallback(
+    (groupId: string) => {
+      setHoveredId(null);
+      foldGroup(groupId);
+    },
+    [foldGroup],
   );
 
   useEffect(() => {
@@ -156,16 +164,21 @@ export function TabStrip() {
     const activeInSpace = tabs.some((t) => t.id === activeTabId);
     const pinnedInactive = pinned.filter((t) => t.id !== activeTabId).length;
     const inactive = rest.filter((t) => t.id !== activeTabId).length;
+    const reserved = units.reduce(
+      (sum, unit) => (unit.kind === 'group' ? sum + chipWidth(unit.group, unit.group.id === editingGroup) + CHIP_GAP : sum),
+      0,
+    );
     return computeTabWidths({
       available,
       pinnedInactive,
       inactive,
       hasActive: activeInSpace,
-      separator: pinned.length > 0 && rest.length > 0,
+      separator: pinned.length > 0 && units.length > 0,
+      reserved,
     });
-  }, [available, tabs, pinned, rest, activeTabId]);
+  }, [available, tabs, pinned, rest, units, activeTabId, editingGroup]);
 
-  const renderItem = (tab: TabState) => (
+  const renderItem = (tab: TabState, unit?: TabUnit) => (
     <TabItem
       width={widths ? (tab.id === activeTabId ? widths.omnibox : widths.pill) : undefined}
       compact={widths?.iconOnly ?? false}
@@ -177,8 +190,26 @@ export function TabStrip() {
       onHover={onHover}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      groupColor={unit?.group ? SPACE_HEX[unit.group.color] : undefined}
+      groupEnd={unit?.lastInGroup ?? false}
     />
   );
+
+  const renderUnit = (unit: Unit, index: number) => {
+    if (unit.kind === 'tab') return renderItem(unit.tab, unit);
+    const next = units[index + 1];
+    return (
+      <GroupChip
+        key={unit.key}
+        group={unit.group}
+        count={unit.count}
+        linked={next?.kind === 'tab' && next.group?.id === unit.group.id}
+        editing={editingGroup === unit.group.id}
+        onDragStart={onGroupDragStart}
+        onDragEnd={drag.onGroupDragEnd}
+      />
+    );
+  };
 
   const layoutTransition = reduced ? { duration: 0 } : spring.snappy;
 
@@ -209,14 +240,14 @@ export function TabStrip() {
             transition={reduced ? { duration: 0 } : spring.soft}
           >
             {pinned.length > 0 && (
-              <Reorder.Group as="div" axis="x" values={pinned.map((t) => t.id)} onReorder={onReorderPinned} className="contents" role="presentation">
+              <Reorder.Group as="div" axis="x" values={pinned.map((t) => t.id)} onReorder={setPinnedOrder} className="contents" role="presentation">
                 <AnimatePresence initial={false} mode="popLayout">
-                  {pinned.map(renderItem)}
+                  {pinned.map((tab) => renderItem(tab))}
                 </AnimatePresence>
               </Reorder.Group>
             )}
             <AnimatePresence initial={false}>
-              {pinned.length > 0 && rest.length > 0 && (
+              {pinned.length > 0 && units.length > 0 && (
                 <motion.span
                   key="pinned-separator"
                   layout="position"
@@ -229,9 +260,9 @@ export function TabStrip() {
                 />
               )}
             </AnimatePresence>
-            <Reorder.Group as="div" axis="x" values={rest.map((t) => t.id)} onReorder={onReorderRest} className="contents" role="presentation">
+            <Reorder.Group as="div" axis="x" values={units.map((unit) => unit.key)} onReorder={drag.onReorder} className="contents" role="presentation">
               <AnimatePresence initial={false} mode="popLayout">
-                {rest.map(renderItem)}
+                {units.map(renderUnit)}
               </AnimatePresence>
             </Reorder.Group>
             <motion.button

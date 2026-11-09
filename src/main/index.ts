@@ -3,6 +3,7 @@ import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
 import { initFingerprint } from './fingerprint';
+import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
@@ -14,6 +15,7 @@ import { getSettings, onSettingsChanged } from './settings';
 import { attachShortcuts } from './shortcuts';
 import { disposeEphemeralSpaces, getActiveSpaceId, initSpaces, onSessionCreated } from './spaces';
 import { createStore, flushAllStores, type JsonStore } from './store';
+import { initSync, stopSync } from './sync/loader';
 import {
   activateSpace,
   createTab,
@@ -29,6 +31,7 @@ import {
   sleepTab,
   type SavedTab,
 } from './tabs';
+import { initUpdater, stopUpdater } from './updater';
 import { resolveInput } from './url';
 import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, saveBounds, sendToChrome } from './window';
 
@@ -114,6 +117,7 @@ if (!app.requestSingleInstanceLock()) {
       attachDownloads(ses);
       enableAdblockForSession(ses);
     });
+    initExtensions();
     onBlocked((wcId) => noteBlocked(wcId));
 
     onTabWebContents((wc, tabId) => {
@@ -147,6 +151,14 @@ if (!app.requestSingleInstanceLock()) {
       sleepTab,
       getSleepAfterMinutes: () => getSettings().sleepAfterMinutes,
     });
+    initSync();
+    initUpdater({
+      beforeInstall: () => {
+        saveSession();
+        saveBounds();
+        flushAllStores();
+      },
+    });
   });
 
   app.on('activate', () => {
@@ -165,6 +177,8 @@ if (!app.requestSingleInstanceLock()) {
     if (quitState === 'disposing') return;
     quitState = 'disposing';
     stopSleeper();
+    stopSync();
+    stopUpdater();
     // Persist everything first so a slow/failed disposal can never lose state.
     try {
       saveSession();

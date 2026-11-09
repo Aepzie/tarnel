@@ -317,8 +317,9 @@ export function setOverlay(open: boolean): void {
   if (!top) return;
   win.contentView.addChildView(top);
   // Keyboard input must follow the visible layer: palette/menus need focus while open,
-  // the page gets it back once the overlay closes.
-  if (!top.webContents.isDestroyed()) top.webContents.focus();
+  // the page gets it back once the overlay closes. Never pull focus back from another window
+  // (an extension popup would close when a tooltip appears).
+  if (!top.webContents.isDestroyed() && win.isFocused()) top.webContents.focus();
 }
 
 export function setHtmlFullscreen(on: boolean): void {

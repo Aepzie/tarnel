@@ -33,6 +33,11 @@ A minimal Chromium-based desktop browser with sandboxed multi-session Spaces.
 Builds are not code-signed yet. On Windows, SmartScreen may show a warning on first launch — click
 **More info → Run anyway**. macOS Gatekeeper may warn as well.
 
+**Updates:** the Windows installer and the Linux AppImage update themselves — new versions download in the
+background and install when you restart Vela (or click **Update ready · Restart** in the toolbar). The portable
+`.exe`, the `.deb` and the (unsigned) macOS build only tell you when a new version is out and link to the
+release page. Configure it in **Settings → About → Updates**.
+
 ---
 
 ## Why Vela
@@ -50,12 +55,16 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Burner spaces** — live only in memory and are wiped when closed. Open one with `Ctrl+Shift+N`.
 - **Per-space fingerprint protection** — each Space shows sites its own stable, plausible fingerprint (canvas, WebGL, audio, hardware; Strict also screen, devices, client hints), so identities can't be linked across Spaces.
 - **Built-in ad and tracker blocking** — network-level, powered by the [Ghostery adblocker](https://github.com/ghostery/adblocker) engine.
+- **Chrome extensions** — install from the Chrome Web Store (link or ID) or load unpacked; pin action buttons to the toolbar and choose which Spaces each extension runs in.
 - **Tab sleeping** — idle tabs release their renderer process entirely; they reload when you come back.
 - **Lazy session restore** — restored tabs stay asleep until you open them.
 - **Preconnect on hover** — hovering a suggestion warms up the connection before you choose it.
 - **Command palette** (`Ctrl+K`) — navigate, search history, switch tabs and run commands from the keyboard.
 - **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
+- **Tab groups and vertical tabs** — named, colored, collapsible groups (drag tabs in and out, reorder groups), and an optional floating vertical tab island (`Ctrl+Shift+,`) that resizes and folds to an icon rail.
+- **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
+- **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
 - **Privacy defaults** — cleaned user agent, permissions denied by default, HTTPS-only upgrades,
   optional Do Not Track / Global Privacy Control and third-party cookie blocking.
 
@@ -127,6 +136,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 | `Ctrl+Shift+T`            | Reopen closed tab                   |
 | `Ctrl+F`                  | Find in page                        |
 | `Ctrl+Shift+S`            | Toggle focus mode (hide toolbar)    |
+| `Ctrl+Shift+,`            | Toggle horizontal / vertical tabs   |
 | `Ctrl+Shift+N`            | New Burner space                    |
 | `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab             |
@@ -185,12 +195,14 @@ Found a vulnerability? Please follow [SECURITY.md](SECURITY.md).
 
 Planned, not yet available:
 
-- [ ] Extension support
 - [ ] Optional end-to-end encrypted sync
+- [ ] Extension support
+- [x] Optional end-to-end encrypted sync
 - [ ] Vertical tab groups
 - [ ] Split view
 - [x] Per-space fingerprint protection
 - [ ] Auto-update
+- [ ] Per-space fingerprint protection
 
 Ideas and discussion are welcome in [issues](https://github.com/Aepzie/vela/issues).
 

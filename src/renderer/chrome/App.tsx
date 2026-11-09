@@ -12,9 +12,11 @@ import { TopIsland } from './island/TopIsland';
 import { FindBar } from './find/FindBar';
 import { CommandPalette } from './palette/CommandPalette';
 import { PermissionPrompt } from './permissions/PermissionPrompt';
+import { VerticalIsland } from './vertical/VerticalIsland';
 
 /**
- * Browser chrome root. Layout: floating top island, optional find strip, page viewport.
+ * Browser chrome root. Layout: floating top island, optional find strip, page viewport; in the
+ * vertical tab layout a floating tab island sits to their left.
  * Everything else (palette, menus, toasts) renders in portals and raises the overlay while open.
  */
 export function App() {
@@ -73,14 +75,17 @@ export function App() {
       <LayoutGroup>
         <div
           className={cn(
-            'flex h-screen w-screen flex-col gap-2 overflow-hidden p-2 transition-colors duration-300 select-none',
+            'flex h-screen w-screen gap-2 overflow-hidden p-2 transition-colors duration-300 select-none',
             // A fully transparent window ('none') must show the desktop untinted around the islands.
             settings.windowMaterial !== 'none' && 'light:bg-[color-mix(in_oklab,var(--window)_90%,transparent)]',
           )}
         >
-          <TopIsland />
-          <FindBar />
-          <Viewport />
+          {settings.tabLayout === 'vertical' && <VerticalIsland />}
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <TopIsland />
+            <FindBar />
+            <Viewport />
+          </div>
         </div>
         <PermissionPrompt />
         <CommandPalette />
