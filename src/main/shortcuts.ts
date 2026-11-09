@@ -108,6 +108,8 @@ function handle(input: Input): boolean {
         return once(() => {
           if (toggleSplit() !== null) sendCommand('command-palette');
         });
+      case 'KeyM':
+        return once(() => sendCommand('audio-mixer'));
       case 'Equal':
         withActive((id) => zoomTab(id, 1));
         return true;
