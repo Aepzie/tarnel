@@ -1,6 +1,7 @@
 import { app, type Session, type WebContents } from 'electron';
 import type { PermissionKind, PermissionRequest, Space } from '../shared/types';
 import { applyFingerprintHeaders } from './fingerprint/headers';
+import { applyIdentityHeaders } from './identity/headers';
 import { getSettings } from './settings';
 
 type Permission = Parameters<NonNullable<Parameters<Session['setPermissionCheckHandler']>[0]>>[1];
@@ -9,7 +10,11 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Strips " Electron/x.y.z" and " <appName>/x.y.z" so sites see a stock Chrome UA. */
+/**
+ * Strips " Electron/x.y.z" and " <appName>/x.y.z" and freezes the Chrome version to "<major>.0.0.0"
+ * (User-Agent reduction: real Chromium browsers never put the build number in the UA, it is only
+ * available through the Sec-CH-UA-Full-Version-List hint), so sites see a stock Chromium UA.
+ */
 export function cleanUserAgent(ua: string): string {
   const names = new Set(['electron', 'vela']);
   try {
@@ -21,8 +26,30 @@ export function cleanUserAgent(ua: string): string {
   const alternatives = [...names].map((n) => escapeRegExp(n).replace(/\\? /g, '[ -]?')).join('|');
   return ua
     .replace(new RegExp(`\\s+(?:${alternatives})\\/\\S+`, 'gi'), '')
+    .replace(/\bChrome\/(\d+)(?:\.\d+)+/, 'Chrome/$1.0.0.0')
     .replace(/\s{2,}/g, ' ')
     .trim();
+}
+
+/**
+ * The Accept-Language list. Electron's renderer reports navigator.languages as the UI locale
+ * followed by the OS languages ("de", "de-DE"), but its network stack sends only the UI locale
+ * ("de"); in Chromium both come from the same list. Returns that list so the header matches.
+ */
+export function acceptLanguages(): string {
+  const tags: string[] = [];
+  try {
+    tags.push(app.getLocale(), ...app.getPreferredSystemLanguages());
+  } catch {
+    /* app not ready (tests) */
+  }
+  const languages: string[] = [];
+  for (const tag of tags) {
+    const clean = tag.replace(/_/g, '-').trim();
+    if (!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/i.test(clean)) continue;
+    if (!languages.some((known) => known.toLowerCase() === clean.toLowerCase())) languages.push(clean);
+  }
+  return languages.join(',');
 }
 
 let globalUaApplied = false;
@@ -255,7 +282,9 @@ export function applyPrivacy(session: Session, space: Space): void {
   if (configured.has(session)) return;
   configured.add(session);
 
-  session.setUserAgent(cleanUserAgent(session.getUserAgent()));
+  const languages = acceptLanguages();
+  if (languages) session.setUserAgent(cleanUserAgent(session.getUserAgent()), languages);
+  else session.setUserAgent(cleanUserAgent(session.getUserAgent()));
   session.setSpellCheckerEnabled(false);
 
   session.setPermissionRequestHandler((webContents, permission, callback, details) => {
@@ -294,6 +323,7 @@ export function applyPrivacy(session: Session, space: Space): void {
       headers['DNT'] = '1';
       headers['Sec-GPC'] = '1';
     }
+    applyIdentityHeaders(details.url, headers);
     applyFingerprintHeaders(session, headers);
     if (settings.blockThirdPartyCookies && details.resourceType !== 'mainFrame') {
       const requestSite = siteOf(details.url);

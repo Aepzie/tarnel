@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import { AUDIO_IPC, EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
+import { reportIdentityHints } from './identity-hints';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -137,3 +138,4 @@ const api: VelaChromeAPI = {
 };
 
 contextBridge.exposeInMainWorld('vela', api);
+reportIdentityHints();
