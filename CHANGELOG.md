@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Settings → Performance → **Frame rate** (Windows): *Match display* (default), *Highest* or *Primary display*, with
+  the detected displays and their refresh rates, the frame rate the page actually gets, and "Restart to apply".
+  Frame caps and an "unlimited" mode are not offered: Chromium has no clean on-screen cap, and uncapping measured
+  slower (~59 fps).
+- Android: Settings → Display → **Refresh rate**: *Auto* (the system decides, Vela asks for the fastest rate while
+  you scroll, fling or something animates), *High* (always the fastest mode, e.g. 120 Hz) or *Standard* (60 Hz,
+  saves battery), showing the rates the screen supports and the current one.
 - **Audio mixer** (`Ctrl+Shift+M`, the mixer button in the toolbar or "Audio mixer" in the palette): a channel
   strip per tab with sound (volume 0–200 % with a 100 % detent, balance, mute, solo, live stereo meters with peak
   hold, jump to tab) and, for the selected tab, a 10-band equalizer drawn as its real frequency response over the
@@ -23,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   worker takes about 2–3 ms longer in protected Spaces; Spaces with protection off are untouched.
 
 ### Fixed
+- Vela no longer runs at the primary monitor's refresh rate on a faster second display (Windows): with a 144 Hz
+  laptop panel next to a 75 Hz primary monitor it drew at 75 fps, now at 144 fps.
+- Android: smoother tab switcher, settings and history: the page underneath stops drawing once the panel covers it,
+  tab thumbnails are decoded as hardware bitmaps, and the loading bar no longer recomposes the island on every frame.
 - `window.chrome` (`app`, `csi`, `loadTimes`) was missing in same-origin child frames that are not loaded from the
   network (a new iframe's `about:blank`, `srcdoc`, `document.write`), a classic embedded-browser check.
 

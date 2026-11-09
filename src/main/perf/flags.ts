@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import { frameRateFeatures } from './frame-rate';
 
 /**
  * Chromium command-line tuning. Must run before `app` emits 'ready'.
@@ -58,6 +59,7 @@ export function applyChromiumFlags(): void {
 
   // Merge rather than overwrite: Chromium only honours the last --enable-features / --disable-features,
   // so clobbering a value set elsewhere (or by the user on the command line) would silently drop it.
-  mergeList('enable-features', ENABLE_FEATURES);
+  // Frame pacing on mixed-refresh Windows setups (Settings → Performance → Frame rate, see frame-rate.ts).
+  mergeList('enable-features', [...ENABLE_FEATURES, ...frameRateFeatures()]);
   mergeList('disable-features', DISABLE_FEATURES);
 }

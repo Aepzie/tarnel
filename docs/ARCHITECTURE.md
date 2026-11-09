@@ -403,6 +403,14 @@ sub-resource requests) instead.
 export function applyChromiumFlags(): void; // called before app 'ready'
 ```
 
+### `src/main/perf/frame-rate.ts`
+```ts
+export function frameRateFeatures(): string[];       // before 'ready': ['UseCompositorClockVSyncInterval'] when settings.frameRate + saved display layout + saved window bounds call for it (Windows)
+export function initFrameRate(): void;               // after 'ready': save the display layout (userData/displays.json) for the next launch, kept current on display changes
+export function getFrameRateStatus(): FrameRateStatus; // displays + Hz, rate Chromium paces to, restartRequired (velaPages.frameRate)
+export function relaunchApp(): void;                 // velaPages.relaunch
+```
+
 ### `src/main/perf/adblock.ts`
 ```ts
 export function initAdblock(): Promise<void>;                 // load engine (cached serialized in userData, refresh in background ≥24h)

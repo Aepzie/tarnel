@@ -93,6 +93,11 @@ function restack(target: BaseWindow): void {
   if ((overlayOpen || peekOpen) && chromeView) target.contentView.addChildView(chromeView);
 }
 
+/** Bounds the window will open with at the next launch (null = default placement). Safe before app 'ready'. */
+export function savedWindowBounds(): Rectangle | null {
+  return getStore().get().bounds;
+}
+
 /** Persist window bounds/maximized state (also called on quit before stores are flushed). */
 export function saveBounds(): void {
   if (!win || win.isDestroyed() || win.isFullScreen()) return;

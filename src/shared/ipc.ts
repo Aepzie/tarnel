@@ -3,6 +3,7 @@ import type {
   ContentBounds,
   DownloadState,
   FindResult,
+  FrameRateStatus,
   HistoryEntry,
   PerfStats,
   PermissionRequest,
@@ -135,6 +136,8 @@ export const IPC = {
     updateDownload: 'pages:update-download',
     updateInstall: 'pages:update-install',
     updateOpenRelease: 'pages:update-open-release',
+    frameRate: 'pages:frame-rate',
+    relaunch: 'pages:relaunch',
   },
   pagesEvents: {
     update: 'pages-event:update',
@@ -292,6 +295,10 @@ export interface VelaPagesAPI {
   setSettings(patch: Partial<Settings>): Promise<Settings>;
   topSites(): Promise<TopSite[]>;
   perf(): Promise<PerfStats>;
+  /** Displays, their refresh rates and what Vela paces frames to (Settings → Performance). */
+  frameRate(): Promise<FrameRateStatus>;
+  /** Restart Vela (applies launch-time settings such as the frame rate). */
+  relaunch(): Promise<void>;
   listSpaces(): Promise<Space[]>;
   createSpace(input: SpaceInput): Promise<Space>;
   updateSpace(id: SpaceId, patch: Partial<SpaceInput>): Promise<Space>;

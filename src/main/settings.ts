@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, NEWTAB_HEROES, type NewtabHero, type SearchEngine, type Settings, type TabLayout, type ThemeMode, type WindowMaterial } from '../shared/types';
+import { DEFAULT_SETTINGS, FRAME_RATE_MODES, NEWTAB_HEROES, type FrameRateMode, type NewtabHero, type SearchEngine, type Settings, type TabLayout, type ThemeMode, type WindowMaterial } from '../shared/types';
 import { createStore, type JsonStore } from './store';
 
 const SEARCH_ENGINES: readonly SearchEngine[] = ['duckduckgo', 'google', 'brave', 'startpage', 'ecosia'];
@@ -34,6 +34,7 @@ function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>
   if (MATERIALS.includes(patch.windowMaterial as WindowMaterial)) next.windowMaterial = patch.windowMaterial as WindowMaterial;
   if (NEWTAB_HEROES.includes(patch.newtabHero as NewtabHero)) next.newtabHero = patch.newtabHero as NewtabHero;
   if (TAB_LAYOUTS.includes(patch.tabLayout as TabLayout)) next.tabLayout = patch.tabLayout as TabLayout;
+  if (FRAME_RATE_MODES.includes(patch.frameRate as FrameRateMode)) next.frameRate = patch.frameRate as FrameRateMode;
   for (const key of BOOLEAN_KEYS) {
     if (typeof patch[key] === 'boolean') next[key] = patch[key];
   }

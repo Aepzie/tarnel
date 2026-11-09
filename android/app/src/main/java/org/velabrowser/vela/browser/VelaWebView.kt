@@ -15,6 +15,9 @@ class VelaWebView(context: Context, val tabId: String) : WebView(context) {
     var onDragDirection: ((down: Boolean) -> Unit)? = null
     var onReachedTop: (() -> Unit)? = null
 
+    /** Every scroll step of the page, including a fling after the finger lifted. Must stay cheap. */
+    var onScrollActivity: (() -> Unit)? = null
+
     private val threshold = 28f * resources.displayMetrics.density
     private var lastX = 0f
     private var lastY = 0f
@@ -51,6 +54,7 @@ class VelaWebView(context: Context, val tabId: String) : WebView(context) {
 
     override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
         super.onScrollChanged(l, t, oldl, oldt)
+        onScrollActivity?.invoke()
         if (t == 0 && oldt > 0) onReachedTop?.invoke()
     }
 }

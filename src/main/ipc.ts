@@ -12,6 +12,7 @@ import {
 } from '../shared/types';
 import { clearHistory, deleteHistoryEntry, listHistory, suggest, topSites } from './history';
 import { getBlockedTotal } from './perf/adblock';
+import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
@@ -339,6 +340,8 @@ export function registerIpc(): void {
   handlePages(p.setSettings, (_e, patch) => updateSettings(settingsPatch(patch)));
   handlePages(p.topSites, () => topSites(8));
   handlePages(p.perf, perfStats);
+  handlePages(p.frameRate, () => getFrameRateStatus());
+  handlePages(p.relaunch, () => relaunchApp());
   handlePages(p.listSpaces, () => listSpaces());
   handlePages(p.createSpace, (_e, input) => createSpace(spaceInput(input)));
   handlePages(p.updateSpace, (_e, id, patch) => updateSpace(spaceId(id), spacePatch(patch)));

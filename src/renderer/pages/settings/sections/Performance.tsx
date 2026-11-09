@@ -6,6 +6,7 @@ import { rise } from '@/lib/motion';
 import { formatBytesMB, formatCount, velaPages } from '@/lib/vela';
 import { AnimatedNumber } from '../components/brand';
 import { Segmented, type SegmentOption } from '../components/controls';
+import { FrameRateGroup } from '../components/frame-rate';
 import { Group, Row, SectionHeader } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 
@@ -108,6 +109,8 @@ export function Performance() {
           />
         </Row>
       </Group>
+
+      <FrameRateGroup />
 
       <motion.section variants={rise} className="mb-8" aria-labelledby="perf-live">
         <h2 id="perf-live" className="mb-2 flex items-center gap-2 px-1 text-xs font-medium text-muted-foreground">
