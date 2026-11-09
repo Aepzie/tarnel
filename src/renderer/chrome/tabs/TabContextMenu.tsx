@@ -2,6 +2,9 @@ import { useState, type ReactNode } from 'react';
 import {
   CopyIcon,
   FolderInputIcon,
+  LayersIcon,
+  LayersMinusIcon,
+  LayersPlusIcon,
   MoonIcon,
   PinIcon,
   PinOffIcon,
@@ -11,6 +14,8 @@ import {
   XIcon,
   XSquareIcon,
 } from 'lucide-react';
+import { MENU_ITEM, MENU_SEPARATOR, MENU_SURFACE } from './menu-style';
+import { groupIntoNew } from './groups/group-ui';
 import type { TabState } from '@shared/types';
 import {
   ContextMenu,
@@ -27,9 +32,8 @@ import { getBrowserStateSnapshot, useBrowserSlice } from '@/hooks/browser';
 import { useOverlayPresence } from '@/hooks/overlay';
 import { SPACE_HEX, settle, vela } from '@/lib/vela';
 
-const SURFACE =
-  'min-w-56 rounded-xl border-0 bg-popover p-1 backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-white/10 light:ring-black/10 shadow-[0_16px_48px_-12px_rgb(0_0_0/0.6),inset_0_1px_0_rgb(255_255_255/0.06)]';
-const ITEM = 'h-8 gap-2.5 rounded-lg px-2 text-[13px] [&_svg:not([class*=size-])]:size-[15px]';
+const SURFACE = MENU_SURFACE;
+const ITEM = MENU_ITEM;
 
 function modKey(): string {
   return window.vela?.platform === 'darwin' ? '⌘' : 'Ctrl';
@@ -61,6 +65,42 @@ function MoveToSpace({ tab }: { tab: TabState }) {
         ))}
       </ContextMenuSubContent>
     </ContextMenuSub>
+  );
+}
+
+/** "Add to new group" plus, when the space has other groups, an "Add to group ›" submenu. */
+function GroupItems({ tab }: { tab: TabState }) {
+  const groups = useBrowserSlice((s) => s.groups);
+  const others = groups.filter((group) => group.spaceId === tab.spaceId && group.id !== tab.groupId);
+  return (
+    <>
+      <ContextMenuItem className={ITEM} onSelect={() => settle(groupIntoNew([tab.id]))}>
+        <LayersPlusIcon strokeWidth={1.75} />
+        Add to new group
+      </ContextMenuItem>
+      {others.length > 0 && (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className={`${ITEM} [&>svg:last-child]:size-3.5`}>
+            <LayersIcon strokeWidth={1.75} />
+            Add to group
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className={`${SURFACE} min-w-44`}>
+            {others.map((group) => (
+              <ContextMenuItem key={group.id} className={ITEM} onSelect={() => settle(vela().groups.addTabs(group.id, [tab.id]))}>
+                <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: SPACE_HEX[group.color] }} />
+                <span className={group.name ? 'truncate' : 'truncate text-muted-foreground'}>{group.name || 'Unnamed group'}</span>
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      )}
+      {tab.groupId && (
+        <ContextMenuItem className={ITEM} onSelect={() => settle(vela().groups.removeTabs([tab.id]))}>
+          <LayersMinusIcon strokeWidth={1.75} />
+          Remove from group
+        </ContextMenuItem>
+      )}
+    </>
   );
 }
 
@@ -109,7 +149,9 @@ export function TabContextMenu({ tab, children }: TabContextMenuProps) {
             Sleep now
           </ContextMenuItem>
           <MoveToSpace tab={tab} />
-          <ContextMenuSeparator className="mx-1 my-1 bg-white/[0.06] light:bg-black/[0.06]" />
+          <ContextMenuSeparator className={MENU_SEPARATOR} />
+          <GroupItems tab={tab} />
+          <ContextMenuSeparator className={MENU_SEPARATOR} />
           <ContextMenuItem className={ITEM} onSelect={() => void api.close(tab.id)}>
             <XIcon strokeWidth={1.75} />
             Close tab

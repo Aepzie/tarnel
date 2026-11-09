@@ -36,6 +36,8 @@ export interface GroupTabModel {
 }
 
 const NAME_MAX = 64;
+/** New groups take the first color of this order not yet used in their space (slate, the quietest, last). */
+const COLOR_ORDER: readonly SpaceColor[] = ['blue', 'violet', 'pink', 'orange', 'green', 'teal', 'red', 'slate'];
 const groups = new Map<TabGroupId, TabGroup>();
 let model: GroupTabModel | null = null;
 
@@ -124,9 +126,9 @@ export function restoreGroup(spaceId: SpaceId, saved: unknown): TabGroupId | nul
 function nextColor(spaceId: SpaceId): SpaceColor {
   const used = new Map<SpaceColor, number>();
   for (const group of groups.values()) if (group.spaceId === spaceId) used.set(group.color, (used.get(group.color) ?? 0) + 1);
-  let best: SpaceColor = SPACE_COLORS[0]!;
+  let best: SpaceColor = COLOR_ORDER[0]!;
   let bestCount = Infinity;
-  for (const color of SPACE_COLORS) {
+  for (const color of COLOR_ORDER) {
     const count = used.get(color) ?? 0;
     if (count < bestCount) {
       best = color;

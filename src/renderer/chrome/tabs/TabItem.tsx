@@ -20,6 +20,13 @@ export const OMNI_MAX = 520;
 
 const INSTANT: Transition = { duration: 0 };
 
+/** Omnibox pill fill + space-tinted glow (also used by the vertical layout's standalone omnibox). */
+export const OMNIBOX_SURFACE = cn(
+  'absolute inset-0 bg-white/[0.06] ring-1 ring-white/10 transition-colors duration-150 hover:bg-white/[0.08]',
+  'light:bg-black/[0.04] light:ring-black/[0.07] light:hover:bg-black/[0.06]',
+  'shadow-[0_0_0_1px_color-mix(in_oklab,var(--accent-space)_35%,transparent),0_8px_24px_-8px_color-mix(in_oklab,var(--accent-space)_40%,transparent),inset_0_1px_0_rgb(255_255_255/0.06)]',
+);
+
 export interface TabItemProps {
   tab: TabState;
   active: boolean;
@@ -33,6 +40,10 @@ export interface TabItemProps {
   width?: number;
   /** Strip is crowded: inactive pills collapse to favicon only. */
   compact?: boolean;
+  /** Hex color of the tab's group: drawn as an underline that links the group's tabs. */
+  groupColor?: string;
+  /** Last visible tab of its group: the underline stops at the tab's edge. */
+  groupEnd?: boolean;
   ref?: Ref<HTMLDivElement>;
 }
 
@@ -100,7 +111,7 @@ function BlockedBadge({ count, reduced }: { count: number; reduced: boolean }) {
   );
 }
 
-function AudioButton({ tab, className }: { tab: TabState; className?: string }) {
+export function AudioButton({ tab, className }: { tab: TabState; className?: string }) {
   if (!tab.audible && !tab.muted) return null;
   const Icon = tab.muted ? VolumeXIcon : Volume2Icon;
   return (
@@ -124,7 +135,7 @@ function AudioButton({ tab, className }: { tab: TabState; className?: string }) 
   );
 }
 
-function OmniboxContent({ tab, reduced, paletteOpen }: { tab: TabState; reduced: boolean; paletteOpen: boolean }) {
+export function OmniboxContent({ tab, reduced, paletteOpen }: { tab: TabState; reduced: boolean; paletteOpen: boolean }) {
   const address = parseAddress(tab);
   return (
     <motion.span
@@ -150,7 +161,7 @@ function OmniboxContent({ tab, reduced, paletteOpen }: { tab: TabState; reduced:
   );
 }
 
-function LoadingBar({ show, reduced }: { show: boolean; reduced: boolean }) {
+export function LoadingBar({ show, reduced }: { show: boolean; reduced: boolean }) {
   return (
     <AnimatePresence>
       {show && (
@@ -171,8 +182,22 @@ function LoadingBar({ show, reduced }: { show: boolean; reduced: boolean }) {
   );
 }
 
+/** Group membership line under a tab; bridges the 4px gap to the next tab unless it ends the group. */
+function GroupUnderline({ color, end, reduced }: { color: string; end: boolean; reduced: boolean }) {
+  return (
+    <motion.span
+      aria-hidden="true"
+      className={cn('pointer-events-none absolute -bottom-[3px] left-0 h-[2px]', end ? 'right-1 rounded-r-full' : '-right-1')}
+      style={{ backgroundColor: color, transformOrigin: 'left' }}
+      initial={reduced ? false : { scaleX: 0, opacity: 0 }}
+      animate={{ scaleX: 1, opacity: 0.75 }}
+      transition={reduced ? INSTANT : spring.snappy}
+    />
+  );
+}
+
 /** One tab: an inactive pill, or — when active — the omnibox. Memoized on the fields it renders. */
-function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, onDragEnd, width, compact = false, ref }: TabItemProps) {
+function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, onDragEnd, width, compact = false, groupColor, groupEnd = false, ref }: TabItemProps) {
   const reduced = !!useReducedMotion();
   const dragged = useRef(false);
   const iconOnly = !active && (tab.pinned || compact);
@@ -255,6 +280,7 @@ function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, 
           sized ? 'shrink-0' : active ? 'grow' : 'shrink',
         )}
       >
+        {groupColor && <GroupUnderline color={groupColor} end={groupEnd} reduced={reduced} />}
         {active ? (
           <>
             {paletteOpen ? (
@@ -264,11 +290,7 @@ function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, 
                 layoutId="omnibox"
                 transition={reduced ? INSTANT : spring.snappy}
                 style={{ borderRadius: 10 }}
-                className={cn(
-                  'absolute inset-0 bg-white/[0.06] ring-1 ring-white/10 transition-colors duration-150 hover:bg-white/[0.08]',
-                  'light:bg-black/[0.04] light:ring-black/[0.07] light:hover:bg-black/[0.06]',
-                  'shadow-[0_0_0_1px_color-mix(in_oklab,var(--accent-space)_35%,transparent),0_8px_24px_-8px_color-mix(in_oklab,var(--accent-space)_40%,transparent),inset_0_1px_0_rgb(255_255_255/0.06)]',
-                )}
+                className={OMNIBOX_SURFACE}
               />
             )}
             <OmniboxContent tab={tab} reduced={reduced} paletteOpen={paletteOpen} />
@@ -337,6 +359,7 @@ function same(a: TabItemProps, b: TabItemProps): boolean {
   if (a.active !== b.active || a.hovered !== b.hovered || a.onHover !== b.onHover) return false;
   if (a.onDragStart !== b.onDragStart || a.onDragEnd !== b.onDragEnd || a.ref !== b.ref) return false;
   if (a.width !== b.width || a.compact !== b.compact) return false;
+  if (a.groupColor !== b.groupColor || a.groupEnd !== b.groupEnd) return false;
   if (a.active && a.paletteOpen !== b.paletteOpen) return false;
   const x = a.tab;
   const y = b.tab;
