@@ -12,9 +12,26 @@ A minimal Chromium-based desktop browser with sandboxed multi-session Spaces.
 [![Release](https://img.shields.io/github/v/release/Aepzie/vela?include_prereleases&style=flat-square)](https://github.com/Aepzie/vela/releases)
 [![License: MIT](https://img.shields.io/github/license/Aepzie/vela?style=flat-square)](LICENSE)
 
-[Install](#install) · [Features](#features) · [Shortcuts](#keyboard-shortcuts) · [Architecture](docs/ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
+[Download](#download) · [Features](#features) · [Screenshots](#screenshots) · [Shortcuts](#keyboard-shortcuts) · [Architecture](docs/ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
+
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="Vela new tab page with clock, search bar and top sites, dark theme" width="100%">
+</p>
+
+## Download
+
+**[Download the latest release](https://github.com/Aepzie/vela/releases/latest)**
+
+| Platform | File |
+|----------|------|
+| Windows (installer) | [`Vela-0.1.0-setup-x64.exe`](https://github.com/Aepzie/vela/releases/latest) |
+| Windows (portable) | [`Vela-0.1.0-portable-x64.exe`](https://github.com/Aepzie/vela/releases/latest) — no install, runs from a USB stick |
+| macOS / Linux | `.dmg`, `.AppImage` and `.deb` builds are produced by CI and attached to the [same release page](https://github.com/Aepzie/vela/releases/latest) |
+
+Builds are not code-signed yet. On Windows, SmartScreen may show a warning on first launch — click
+**More info → Run anyway**. macOS Gatekeeper may warn as well.
 
 ---
 
@@ -62,6 +79,27 @@ flowchart LR
 | Regular    | `persist:space-<id>` | on disk        | survives restarts                     |
 | Burner     | `space-<id>`         | in memory only | wiped when the space is closed or Vela quits |
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/browsing.png" alt="Browsing GitHub in Vela"><br><sub><b>Floating island toolbar</b> — tabs, address bar and the blocked-tracker badge in one row.</sub></td>
+    <td width="50%"><img src="docs/screenshots/palette.png" alt="Command palette with the query git"><br><sub><b>Command palette</b> (<code>Ctrl+K</code>) — open tabs, history and search from one box.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/spaces.png" alt="Space switcher with Personal, Work and Burner"><br><sub><b>Spaces</b> — switch between isolated sessions, or open a Burner that forgets everything.</sub></td>
+    <td width="50%"><img src="docs/screenshots/settings.png" alt="Spaces settings page"><br><sub><b>Per-Space settings</b> — color, optional proxy, clear data.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/logo.png" alt="New tab page with the Vela logo hero"><br><sub><b>New tab styles</b> — clock, logo, date, greeting or minimal.</sub></td>
+    <td width="50%"><img src="docs/screenshots/light.png" alt="New tab page in light theme"><br><sub><b>Light theme</b> — or follow the system setting.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/history.png" alt="History page"><br><sub><b>History</b> — searchable, grouped by day.</sub></td>
+    <td width="50%"></td>
+  </tr>
+</table>
+
 ## Performance
 
 Vela uses the same Chromium engine as Chrome (via Electron), so **JavaScript and rendering benchmarks
@@ -99,15 +137,13 @@ On macOS, use `Cmd` in place of `Ctrl`.
 
 ### Download
 
-Prebuilt installers are published on the [Releases page](https://github.com/Aepzie/vela/releases):
+See [Download](#download) above, or browse all versions on the [Releases page](https://github.com/Aepzie/vela/releases):
 
 | Platform | Formats                                  |
 |----------|------------------------------------------|
 | Windows  | `setup.exe` (NSIS installer), portable `.exe` |
 | macOS    | `.dmg` for Apple Silicon (arm64) and Intel (x64) |
 | Linux    | `.AppImage`, `.deb`                      |
-
-Early builds are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper may warn on first launch.
 
 ### Build from source
 
