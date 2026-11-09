@@ -24,6 +24,12 @@ the OS; the tab reloads when you click it.
 - **Memory pressure:** when free system RAM drops below 10%, the 2 least-recently-used eligible tabs
   (idle ≥ 60 s) are slept on each 30 s tick until pressure clears, regardless of the timeout.
 - The 30 s timer is `unref()`'d and does O(tabs) work — it costs nothing measurable.
+- Verified: after `sleepTab` the tab's renderer process *and* its out-of-process-iframe renderers
+  exit (PIDs gone within a second); the main process keeps no `WebContents` for it
+  (`webContents.getAllWebContents()` lists only the UI and awake tabs).
+
+What sleeping cannot give back is memory held by shared Chromium services the pages used — see
+[Memory: measured](#memory-measured).
 
 ### 3. Content blocking at the network layer
 `src/main/perf/adblock.ts` runs the Ghostery engine (EasyList, EasyPrivacy and related lists) on
@@ -80,16 +86,63 @@ honours the last occurrence of each.
 | `disable-renderer-backgrounding`, `disable-background-timer-throttling`, `disable-backgrounding-occluded-windows` | Background tabs would burn CPU and battery. |
 | Forcing `BackForwardCache` | Instant back/forward is valuable, but forcing it under Electron's navigation model is not well-trodden; we'd rather miss a speedup than break history. Revisit when upstream Electron enables it. |
 | `process-per-site`, disabling site isolation | Saves memory by weakening Spectre isolation. Not a trade we make. |
-| Disabling the spare renderer | Saves ~20 MB but slows every new navigation. |
+| Disabling the spare renderer | Saves ~20 MB but slows every new navigation. (No spare renderer shows up in Vela's process list today; measured, nothing to win.) |
+| `disable-features=MediaDevicesSystemMonitorCaching` | Tried to let the video-capture service exit after YouTube's device enumeration. Measured: the process stays anyway. |
+| `force-gpu-mem-discardable-limit-mb` | Tried to shrink GPU memory kept after tabs sleep. Measured: no meaningful change. |
 | `js-flags` (V8 tuning) | V8 defaults are tuned on far more workloads than we can test. No clear win. |
 
 ## Measuring it in-app
 
-`collectPerfStats()` (`src/main/perf/metrics.ts`) sums `workingSetSize` and CPU over *all* processes
-(browser, GPU, utility, renderers) — the same scope as the OS task manager — and estimates memory
-saved by sleeping tabs as `tabsAsleep × average renderer working set` (80 MB fallback). The chrome
-UI's renderer is included in that average, which slightly under-states savings; we prefer to
-under-claim.
+`collectPerfStats()` (`src/main/perf/metrics.ts`) sums **private memory** (`privateBytes` from
+`app.getAppMetrics()`; working set on macOS, where it is not reported) and CPU over *all* processes:
+browser, GPU, utility and renderers.
+
+It used to sum `workingSetSize`. That counts every page shared between processes (Chromium and
+system DLLs, shared memory) once *per process*, so with ~10 processes it over-reported by hundreds
+of MB: a fresh window showed ~790 MB while the processes really owned ~330 MB, and five slept tabs
+showed ~1.25 GB for ~600 MB. That inflated number is what users saw in the perf chip.
+
+"Saved by sleeping" is now measured, not guessed: right before a tab sleeps, Vela records the private
+memory of the renderer processes only that tab used (its page process plus out-of-process iframes;
+processes shared with another awake tab count as 0). Tabs restored asleep at launch were never
+measured; they are estimated from the average awake web-page renderer (the UI renderer excluded,
+80 MB fallback).
+
+## Memory: measured
+
+Windows 11, Electron 45 (Chromium 156), isolated profile with the ad-block engine cached, window
+1280×820. Sites: github.com, youtube.com, en.wikipedia.org (article), reddit.com, MDN JavaScript.
+Each opened as the active tab 2.5 s apart; then the new-tab page activated and all five slept with
+`vela.tabs.sleep`. Columns are sums over every Vela process: **Private** = private commit (what Vela
+now displays), **Private WS** = private working set (Task Manager "Memory" column), **WS** = working
+set (what Vela used to display). MB.
+
+| Scenario | Before: Private | Before: WS (shown in app) | After: Private (shown in app) | After: Private WS | After: WS |
+|---|---|---|---|---|---|
+| (a) fresh start, new tab only | 334 | 787 | **312** | 161 | 482 |
+| (b) + 5 sites awake | 1419 | 2551 | 1360 | 920 | 2191 |
+| (c) 5 sites asleep, +10 s | 640 | 1252 | 593 | 329 | 950 |
+| (d) 5 sites asleep, +60 s | 601 | 1250 | **593** | 328 | 947 |
+
+Processes: 6 → **5** at start (no idle renderer for the window itself, see below).
+
+What changed:
+- **The window is a `BaseWindow`, not a `BrowserWindow`.** All UI lives in WebContentsViews; the
+  BrowserWindow's own never-loaded webContents still kept a renderer process alive (14 MB private,
+  ~100 MB working set). Removing it also trimmed ~40 MB of working set from the browser process.
+- **The displayed number is private memory**, and "saved" is measured per tab (see above).
+
+What sleeping five heavy tabs still leaves behind (state (d) vs (a), private):
+| Process | (a) | (d) | Why |
+|---|---|---|---|
+| GPU | 130 | 306 | Allocations made while rasterizing / decoding for the heavy pages (driver heaps, Skia and shader caches) are kept by the GPU process after the renderers exit. A control run with five trivial pages (example.com etc.) returns to +20 MB, so this scales with page content. Chrome behaves the same; there is no supported API to make the GPU process trim. |
+| Video capture service | – | 75 (14 resident) | Started by YouTube's `enumerateDevices()`; Chromium keeps it for the session. |
+| Audio service | – | 6 | Started by the first page that plays/prepares audio. |
+| Browser + network | 100 | 111 | Caches, history, small growth. |
+| Renderers (UI + new tab) | 83 | 95 | Unchanged apart from normal UI activity. |
+
+Every web-page renderer is gone after sleeping. The browser's main-process JS heap is small
+(~8 MB used, ~11 MB external incl. the ad-block engine), so there is nothing large to trim there.
 
 ## Benchmarking honestly
 

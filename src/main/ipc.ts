@@ -137,7 +137,14 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
 
 function perfStats() {
   const counts = tabs.countTabs();
-  return collectPerfStats({ tabsAwake: counts.awake, tabsAsleep: counts.asleep, blockedTotal: getBlockedTotal() });
+  const chromePid = getChromeView()?.webContents.getOSProcessId();
+  return collectPerfStats({
+    tabsAwake: counts.awake,
+    tabsAsleep: counts.asleep,
+    blockedTotal: getBlockedTotal(),
+    sleptRendererKB: counts.freedKB,
+    uiRendererPids: chromePid ? [chromePid] : [],
+  });
 }
 
 function preconnect(rawUrl: unknown): void {

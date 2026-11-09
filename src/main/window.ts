@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsView, screen, type Rectangle } from 'electron';
+import { BaseWindow, WebContentsView, screen, type Rectangle } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
 import type { ContentBounds, WindowMaterial } from '../shared/types';
@@ -12,7 +12,7 @@ interface WindowFile {
 
 const TAB_RADIUS = 12;
 
-let win: BrowserWindow | null = null;
+let win: BaseWindow | null = null;
 let chromeView: WebContentsView | null = null;
 let activeView: WebContentsView | null = null;
 let contentBounds: ContentBounds = { x: 0, y: 0, width: 0, height: 0 };
@@ -86,7 +86,7 @@ function supportsMaterial(): boolean {
   return build >= 22621;
 }
 
-type WindowLook = Pick<Electron.BrowserWindowConstructorOptions, 'backgroundColor' | 'backgroundMaterial' | 'transparent'>;
+type WindowLook = Pick<Electron.BaseWindowConstructorOptions, 'backgroundColor' | 'backgroundMaterial' | 'transparent'>;
 
 const OPAQUE_BG = '#09090b';
 const CLEAR_BG = '#00000000';
@@ -111,10 +111,14 @@ function own<T extends (...args: never[]) => void>(fn: T): T {
   return fn;
 }
 
-function buildWindow(material: WindowMaterial, bounds: Rectangle | null): BrowserWindow {
+/**
+ * A BaseWindow, not a BrowserWindow: every pixel is drawn by our WebContentsViews, and a
+ * BrowserWindow's own (never loaded) webContents still costs a whole renderer process.
+ */
+function buildWindow(material: WindowMaterial, bounds: Rectangle | null): BaseWindow {
   const look = windowLook(material);
   windowTransparent = look.transparent === true;
-  return new BrowserWindow({
+  return new BaseWindow({
     ...(bounds ?? { width: 1280, height: 820 }),
     minWidth: 640,
     minHeight: 400,
@@ -123,12 +127,11 @@ function buildWindow(material: WindowMaterial, bounds: Rectangle | null): Browse
     resizable: true,
     ...look,
     title: 'Vela',
-    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
   });
 }
 
 /** Per-window event wiring (layout, persistence, maximized/fullscreen state). */
-function wireWindow(current: BrowserWindow): void {
+function wireWindow(current: BaseWindow): void {
   ownListeners.clear();
   current.on('resize', own(layout));
   current.on('resized', own(saveBounds));
@@ -163,7 +166,7 @@ function wireWindow(current: BrowserWindow): void {
 }
 
 /** Re-add views in layer order: chrome base, active tab on top, chrome again when overlaid. */
-function attachViews(target: BrowserWindow): void {
+function attachViews(target: BaseWindow): void {
   if (chromeView) target.contentView.addChildView(chromeView);
   if (activeView) target.contentView.addChildView(activeView);
   if (overlayOpen && chromeView) target.contentView.addChildView(chromeView);
@@ -225,7 +228,7 @@ export function applyWindowMaterial(material: WindowMaterial): void {
   if (supportsMaterial()) win.setBackgroundMaterial(look.backgroundMaterial ?? 'none');
 }
 
-export function createMainWindow(): BrowserWindow {
+export function createMainWindow(): BaseWindow {
   const saved = getStore().get();
   const bounds = saved.bounds && boundsVisible(saved.bounds) ? saved.bounds : null;
   win = buildWindow(getSettings().windowMaterial, bounds);
@@ -270,14 +273,13 @@ export function createMainWindow(): BrowserWindow {
     if (saved.maximized) current.maximize();
     current.show();
   };
-  current.once('ready-to-show', show);
   chromeWc.once('did-finish-load', show);
   setTimeout(show, 3000);
   void chromeWc.loadFile(join(__dirname, '..', 'renderer', 'chrome', 'index.html')).catch(() => undefined);
   return current;
 }
 
-export function getMainWindow(): BrowserWindow | null {
+export function getMainWindow(): BaseWindow | null {
   return win && !win.isDestroyed() ? win : null;
 }
 

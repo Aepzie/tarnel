@@ -1,4 +1,4 @@
-import { BrowserWindow, app, protocol, session as electronSession } from 'electron';
+import { app, type BaseWindow, protocol, session as electronSession } from 'electron';
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
@@ -67,7 +67,7 @@ function urlsFromArgv(argv: string[]): string[] {
     .filter((url): url is string => !!url);
 }
 
-function openWindow(): BrowserWindow {
+function openWindow(): BaseWindow {
   const win = createMainWindow();
   const chromeWc = getChromeView()?.webContents;
   if (chromeWc) {
