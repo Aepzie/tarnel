@@ -176,6 +176,28 @@ export function serializeSession(): SavedTab[]; export function restoreSession()
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
 Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`).
 
+## Auto-update (`src/main/updater.ts`)
+
+`electron-updater` against the GitHub releases feed (`publish` in electron-builder.yml → `app-update.yml`).
+The module is `require`d lazily on the first check (esbuild keeps it external), so dev runs
+(`app.isPackaged === false`) and users with checks turned off never load it.
+
+* Schedule: first check 10 s after startup, then every 6 h (`settings.updateAutoCheck`). Failures are silent
+  except for the status line in Settings → About.
+* Mode per build: **install** — NSIS installer, AppImage (`APPIMAGE` set), macOS only when signed with a
+  Developer ID (checked via `codesign`); background download (`updateAutoDownload`), `autoInstallOnAppQuit`, or
+  `quitAndInstall(silent, forceRun)` from the chip after `saveSession()` + `flushAllStores()`.
+  **notify** — Windows portable (`PORTABLE_EXECUTABLE_DIR`), deb, unsigned macOS: no download, the UI links the
+  release page. Unsigned NSIS updates pass because `app-update.yml` carries no `publisherName`, so
+  `verifyUpdateCodeSignature` is skipped; once signing adds a publisher, signatures are enforced.
+* Status (`UpdateStatus`) is pushed to the chrome (`chrome-event:update`) and to vela:// settings pages that
+  subscribed via `pages:update-watch` (dropped once the page navigates away).
+* Release artifacts: `latest.yml` (NSIS only — the portable target writes no update info), `latest-mac.yml`
+  (dmg + zip; Squirrel.Mac installs from the zip), `latest-linux.yml` (AppImage), plus blockmaps for
+  differential downloads.
+* Testing: `VELA_UPDATE_FEED=<http url | local dir>` switches to a generic provider (a local dir is served on
+  127.0.0.1); unpacked dev runs then check in notify mode.
+
 ## Build
 
 `scripts/build.mjs` (esbuild): main → `dist/main/index.js` (cjs, node), preloads → `dist/preload/*.js`

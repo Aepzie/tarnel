@@ -31,7 +31,7 @@ const nodeConfigs = [
     platform: 'node',
     format: 'cjs',
     target: 'node20',
-    external: ['electron', '@ghostery/*'],
+    external: ['electron', '@ghostery/*', 'electron-updater'],
   },
   {
     ...shared,
