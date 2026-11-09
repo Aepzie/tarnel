@@ -275,15 +275,8 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
     connect(left, merger, 0, 0);
     connect(right, merger, 0, 1);
     const bass = new BiquadFilterNode(context, { type: 'lowshelf', frequency: 90, gain: 0 });
-    const bands = EQ.map(
-      (frequency, i) =>
-        new BiquadFilterNode(context, {
-          type: i === 0 ? 'lowshelf' : i === EQ.length - 1 ? 'highshelf' : 'peaking',
-          frequency,
-          Q: 1.41,
-          gain: 0,
-        }),
-    );
+    // Octave-wide peaking bands (Q 1.41); the mixer panel draws its response curve with the same filters.
+    const bands = EQ.map((frequency) => new BiquadFilterNode(context, { type: 'peaking', frequency, Q: 1.41, gain: 0 }));
     // Gentle: evens out loud ads / quiet dialogue without pumping.
     const compressor = new DynamicsCompressorNode(context, { threshold: -24, knee: 24, ratio: 3, attack: 0.006, release: 0.25 });
     const volume = new GainNode(context);
