@@ -209,6 +209,8 @@ src/preload/fingerprint*.ts  main-world fingerprint patch (session preload) — 
 src/main/identity/*, src/preload/identity*.ts  Chromium identity: window.chrome shape, client-hint headers (every Space) — data
 src/main/perf/*        flags, adblock, sleeper, metrics — perf
 src/main/extensions/*  Chrome extensions (lazy)       — extensions
+src/main/extensions/dnr/*, src/preload/extension-api.ts  declarativeNetRequest engine + extension-context API — extensions
+src/main/net/*         webRequest dispatcher (one listener per event, ordered stages), registrable domain — core
 src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loaded)
 src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
@@ -277,12 +279,11 @@ export function applyPrivacy(session: Electron.Session, space: Space): void;
 // - https-only: onBeforeRequest upgrade http:// main-frame navigations to https:// (except localhost/127.0.0.1/LAN)
 // - third-party cookie blocking via onHeadersReceived stripping Set-Cookie on third-party sub-resources when enabled
 ```
-NOTE: `webRequest` allows only ONE listener per event per session. Ghostery adblock uses
-`onBeforeRequest` + `onHeadersReceived`. Therefore privacy.ts must NOT use `onBeforeRequest` or
-`onHeadersReceived`. https-only upgrade is done in tabs.ts (`will-navigate`/URL resolution) and
-privacy.ts exposes `export function upgradeToHttps(url: string): string`. Third-party cookie
-blocking uses `session.cookies` + `onBeforeSendHeaders` (strip `Cookie` header on third-party
-sub-resource requests) instead.
+NOTE: `webRequest` allows only ONE listener per event per session, so nothing calls
+`session.webRequest.*` directly: privacy.ts registers its header work as a stage of the shared
+dispatcher (see [Network pipeline](#network-pipeline-srcmainnet)). https-only upgrade is done in tabs.ts
+(`will-navigate`/URL resolution) and privacy.ts exposes `export function upgradeToHttps(url: string): string`.
+Third-party cookie blocking strips the `Cookie` header on third-party sub-resource requests in that stage.
 
 ### `src/main/perf/flags.ts`
 ```ts
@@ -380,6 +381,25 @@ provider can delete or roll back files (denial of service / replay of an older s
 file); records carry clocks so a rolled-back file never overwrites newer data that was already merged.
 "Wipe remote" deletes the files but cannot guarantee the provider's version history is purged.
 
+## Network pipeline (`src/main/net/*`)
+
+Electron keeps exactly one listener per `webRequest` event per session (a second registration silently
+replaces the first). `net/dispatcher.ts` owns that listener and runs ordered, synchronous **stages**
+(`addWebRequestStage(session, event, name, order, fn)`); a stage name is unique per event and session.
+
+| Event | Stages (in order) | Composition |
+|---|---|---|
+| `onBeforeRequest` (`<all_urls>`) | Ghostery `adblock` (100), extension `dnr` (200) | first cancel / redirect wins, later stages are skipped |
+| `onBeforeSendHeaders` (all) | `privacy` (100: DNT/GPC, client hints, fingerprint header reduction, third-party `Cookie` stripping), `dnr` (200) | each stage edits the same header object; a cancel stops |
+| `onHeadersReceived` (`<all_urls>`) | Ghostery `adblock` (100: CSP injection), `dnr` (200) | each stage sees the previous stage's headers; changed headers are returned once |
+
+The Electron listener of an event exists only while the event has stages: with Ghostery off and no extension
+using declarativeNetRequest, no `onBeforeRequest` / `onHeadersReceived` hook is installed at all. A throwing
+stage is skipped (fail open). Ghostery keeps its own library code path: `perf/adblock.ts` hands
+`enableBlockingInSession` a session facade whose `webRequest.onBeforeRequest/onHeadersReceived` register
+dispatcher stages, so its blocking, redirects, CSP injection and stats are unchanged. `net/domain.ts` holds the
+registrable-domain heuristic shared by privacy, fingerprinting and DNR (pure, unit-testable).
+
 ## vela:// protocol
 
 `vela://<page>/<file>` → `dist/renderer/pages/<page>/<file>` (default `index.html`).
@@ -415,8 +435,82 @@ index.ts     initExtensions() wiring + registerExtensionIpc() (registered from i
   (`chrome.tabs.create/update`, `windows.create`, popup/background `window.open`); `vela://`, `file:` and
   `data:` are refused, so privileged pages stay unreachable. Extension pages never get `velaPages` (the pages
   preload only exposes it on `vela:`) and the library's `crx-*` IPC channels are separate from Vela's
-  sender-validated channels. The adblocker keeps `webRequest`, so extensions' `chrome.webRequest` listeners
-  don't fire (Electron limitation).
+  sender-validated channels. The dispatcher owns `session.webRequest`, so extensions' blocking
+  `chrome.webRequest` listeners don't fire (Electron limitation); MV3 blockers use declarativeNetRequest below.
+* **`browser` namespace.** Chromium also exposes the extension API as `browser`, a separate object from `chrome`
+  that the library never completes (`browser.commands`, `browser.tabs.query`, … were missing). The extension-API
+  preload (`src/preload/extension-api.ts`) points `browser` at `chrome` in extension pages and service workers.
+
+### declarativeNetRequest (`src/main/extensions/dnr/*`)
+
+Electron 45 compiles in the `chrome.declarativeNetRequest` bindings but nothing behind them evaluates rules, so
+MV3 blockers (uBlock Origin Lite) used to load and block nothing. Vela implements the API itself.
+
+```
+types.ts       public rule model, Chrome limits            rule.ts       validation (Chrome's errors) + compilation
+pattern.ts     urlFilter / RE2 regexFilter → matchers, keys domains.ts    domain lists (suffix match)
+ruleset.ts     key index (RuleIndex), merge of rulesets      matcher.ts    precedence within / across extensions
+redirect.ts    url / extensionPath / transform / regexSubst  headers.ts    modifyHeaders conflict rules
+request.ts     Electron details → RequestInfo               host-access.ts host permissions (match patterns)
+resources.ts   redirect targets (data: for use_dynamic_url)  persist.ts    userData/dnr/<space>/<extension>.json
+engine.ts      per-session state, dispatcher stages, badge   api.ts        chrome.declarativeNetRequest handlers
+```
+
+* **API surface.** The extension-API preload (registered before the library's, whose preload freezes `chrome`)
+  replaces the methods of the native `chrome.declarativeNetRequest` object in place (it stays extensible: uBO
+  Lite adds helpers to it). Calls go over the library's `crx-msg` channel to handlers registered on its router
+  (`api.ts`), events over `crx-add-listener`. Implemented: `updateDynamicRules`/`getDynamicRules` (persisted),
+  `updateSessionRules`/`getSessionRules` (memory), `updateEnabledRulesets`/`getEnabledRulesets`,
+  `getAvailableStaticRuleCount`, `updateStaticRules`/`getDisabledRuleIds`, `isRegexSupported`,
+  `setExtensionActionOptions` (`displayActionCountAsBadgeText`, `tabUpdate`), `getMatchedRules`
+  (`declarativeNetRequestFeedback` or `activeTab`), `testMatchOutcome` and `onRuleMatchedDebug` (unpacked +
+  feedback). Promise and callback forms; errors reject / set `runtime.lastError` with Chrome's wording.
+* **Permissions.** `declarativeNetRequest`: block / allow / allowAllRequests / upgradeScheme everywhere,
+  redirect and modifyHeaders only with host access to the request URL and its initiator.
+  `declarativeNetRequestWithHostAccess`: every action needs host access. Host access = manifest
+  `host_permissions` (+ MV2 URL permissions) + origins granted through `chrome.permissions.request`.
+* **Matching.** Conditions: `urlFilter` (`||`, `|`, `^`, `*`, case-insensitive by default), `regexFilter` (RE2
+  translated to a JS RegExp; look-around, backreferences, `\C`, `\p` and counted repeats > 1000 are rejected as
+  Chrome's RE2 would), `isUrlFilterCaseSensitive`, `initiatorDomains` / `requestDomains` (+ excluded, subdomains
+  included), `domainType` (registrable domain of request vs initiator), `resourceTypes` / `excludedResourceTypes`
+  (default: everything but `main_frame`), `requestMethods`, session-only `tabIds` (`-1` = not a tab), and
+  `responseHeaders` / `excludedResponseHeaders` (evaluated in `onHeadersReceived`). Electron types map to DNR
+  types (`xhr` → `xmlhttprequest`, `cspReport` → `csp_report`, …; Electron has no `webtransport`/`webbundle`).
+  Requests initiated by extensions or by the browser itself (no tab, no initiator) are not matched.
+* **Precedence (Chrome's).** Per extension: highest priority; ties: allow > allowAllRequests > block >
+  upgradeScheme > redirect, then session > dynamic > static. Across extensions: block > redirect/upgrade >
+  allow, ties to the most recently installed extension. `allowAllRequests` matched by a frame navigation is
+  recorded per `frameTreeNodeId` and acts as an allow of that priority for the frame, its sub-resources and its
+  child frames. modifyHeaders rules above the extension's allow ceiling apply, newest extension and highest
+  priority first; per header the first set/remove wins, appends accumulate (same-extension append after set).
+* **Index.** Each rule is filed under one key, chosen at compile time: the host of a `||host^`/`||host/` filter,
+  else its `requestDomains`, else its rarest bounded token (a `[a-z0-9%]` run pinned on both sides by a
+  separator, so it must appear as a whole URL token; common tokens like `com`, `js`, `https` are avoided), else
+  its `initiatorDomains`, else a short generic list. All enabled static rulesets of an extension are merged into
+  one index, so a request costs one map lookup per key per extension (host suffixes, URL tokens, initiator
+  suffixes). urlFilters without anchors/wildcards are substring tests; others compile to a RegExp lazily on
+  first use, behind a literal pre-check. Tokens are dropped after indexing.
+* **Lifecycle.** `runtime.ts` loads an extension's DNR state right after Chromium loaded it: enabled rulesets
+  (persisted; reset to the manifest flags when the version changes, as Chrome does on update) are read and
+  compiled with event-loop yields between rulesets, inside the Space's first-load gate, so the first page is
+  already filtered. The engine adds its dispatcher stages to a session only while an extension with a DNR
+  permission is loaded there. Removing an extension deletes its `userData/dnr/*/<id>.json`.
+* **Redirects.** `extensionPath` targets listed in `web_accessible_resources` with `use_dynamic_url: true`
+  (uBO Lite's surrogate scripts) are served as `data:` URLs for sub-resources: Electron has no per-session
+  dynamic extension URL and blocks the static one. Frames keep the `chrome-extension://` URL.
+* **Badge.** With `displayActionCountAsBadgeText`, block / redirect / upgrade actions per tab are shown as the
+  action's badge text (through the library's `browserAction.setBadgeText`, coalesced every 250 ms) and reset on
+  each top-level navigation.
+* **Ghostery + DNR.** Both run: Ghostery's stage first (its stats and perf-chip counter stay its own), then
+  the extensions'. A request either blocks stays blocked. Users of uBO Lite may turn Ghostery off in Settings.
+* **Cost.** uBO Lite's default rulesets (~19–21k rules) compile in ~0.15–0.45 s at Space startup (inside the
+  first-load gate), take ~27 MB of V8 heap and cost ~6–10 µs per request (node benchmark on the real rulesets;
+  all 56 rulesets / 70k rules: ~25 µs). The header phases reuse the request phase's matches.
+* **Not implemented / differences.** No global static-rule pool shared between extensions (each extension may
+  enable up to Chrome's 30k guaranteed + 300k pool), no `topDomains` condition, no `getMatchedRules` quota
+  throttling, static regex rules beyond Chrome's 1000 per ruleset are not dropped, `onRuleMatchedDebug` reports
+  `frameId: -1`, and `activeTab` is treated as granted for `getMatchedRules`.
+
 ## Auto-update (`src/main/updater.ts`)
 
 `electron-updater` against the GitHub releases feed (`publish` in electron-builder.yml → `app-update.yml`).

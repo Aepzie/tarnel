@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Extensions: `chrome.declarativeNetRequest`. Static rulesets (enable / disable, individual static rules), dynamic
+  rules (kept across restarts, per Space) and session rules; block, allow, allowAllRequests, upgradeScheme,
+  redirect (URL, extension resource, URL transform, regex substitution) and modifyHeaders with Chrome's priority
+  and precedence rules; rule-count badges, `getMatchedRules`, `isRegexSupported` and `testMatchOutcome`.
+  uBlock Origin Lite now blocks ads and trackers, including its filtering modes and per-site exceptions. Rules
+  are indexed per extension (uBO Lite's ~20k default rules compile in about 0.2–0.4 s at startup; matching
+  costs a few microseconds per request).
+
+### Changed
+- All `webRequest` hooks of a Space (built-in blocker, privacy headers, extension rules) now run through one
+  ordered pipeline per session, since Electron allows a single listener per event. Behavior is unchanged.
+
+### Fixed
+- Extensions that use the `browser` namespace (e.g. uBlock Origin Lite) crashed at startup because
+  `browser.commands` and other APIs were missing; `browser` now refers to the complete `chrome` object.
+
 ## [0.3.0] - 2026-11-09
 
 ### Added
