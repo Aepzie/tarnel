@@ -42,7 +42,7 @@ export function App() {
           <div aria-hidden="true" className="ve-glow pointer-events-none absolute -inset-10 rounded-full" />
           <motion.div
             animate={reduced ? undefined : { y: [0, -5, 0] }}
-            transition={reduced ? undefined : { duration: 4.2, ease: 'easeInOut', repeat: Infinity }}
+            transition={reduced ? undefined : { duration: 4.2, ease: 'easeInOut', repeat: 2 }}
             className="island relative flex size-16 items-center justify-center rounded-[20px]!"
           >
             <Icon size={26} strokeWidth={1.6} style={{ color: tone }} aria-hidden="true" />

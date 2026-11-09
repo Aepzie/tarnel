@@ -11,7 +11,9 @@ import { GLASS_SURFACE } from '../spaces/surface';
 import { AnimatedNumber } from './AnimatedNumber';
 import { SPARK_SAMPLES, Sparkline } from './Sparkline';
 
-const POLL_MS = 3000;
+/** Live while the popover is open; the resting chip only needs a slow refresh. */
+const POLL_OPEN_MS = 3000;
+const POLL_IDLE_MS = 10_000;
 const HEAVY_MB = 2048;
 const SPARK_WIDTH = 264;
 const SPARK_HEIGHT = 56;
@@ -20,9 +22,9 @@ const formatPercent = (value: number): string => `${Math.round(value)}%`;
 
 /** Right-side island chip: live memory readout; opens a glass popover with stats, sparkline and actions. */
 export function PerfChip() {
-  const stats = usePerf(POLL_MS);
-  const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
+  const stats = usePerf(open ? POLL_OPEN_MS : POLL_IDLE_MS);
+  const reduce = useReducedMotion();
   const [samples, setSamples] = useState<number[]>([]);
   const [slept, setSlept] = useState<number | null>(null);
   useOverlayPresence(open);
