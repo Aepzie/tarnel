@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - New Vela logo: a sail cut by one slanted gap into an accent cap and a white body, like two floating islands. It replaces both the old constellation icon and the different sail glyph Settings → About used, so the taskbar, window, installer, About page, new-tab logo hero and the Settings/History tab favicons now show the same mark. The window icon is also set when running unpackaged (`npm run dev`), so it no longer shows Electron's icon. Windows builds ship a multi-size `.ico` (16–256) and macOS builds a squircle `.icns` with Apple's margin; all of it is generated from one source by `npm run icons`.
 
+### Fixed
+- Signing in with Google failed with "Couldn't sign you in – This browser or app may not be secure", because Vela still looked like an embedded Electron browser. Vela now presents one consistent Chromium identity in every Space (fingerprint protection on or off): the User-Agent carries the frozen `Chrome/<major>.0.0.0` version like every Chromium browser instead of the full build number; `window.chrome` has `app`, `csi` and `loadTimes` (it was empty); navigations now send the `Sec-CH-UA`, `Sec-CH-UA-Mobile` and `Sec-CH-UA-Platform` headers that Chromium sends to every secure site (only subresources had them); Google's account pages get the detailed client hints they ask for, with the same values `navigator.userAgentData` reports (reduced in Strict Spaces); and `Accept-Language` now matches `navigator.languages`. This also covers "Sign in with Google" popups from other sites.
+- Sign-in pages no longer open the Windows Hello / passkey dialog by themselves on load. Passkey autofill (conditional mediation) is reported as unavailable, because Vela has no autofill menu to show it in; signing in with a passkey via the site's button still works.
+
 ## [0.2.1] - 2026-11-09
 
 ### Added
