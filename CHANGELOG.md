@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Content blocking is ready before the first page loads: new sessions wait for the cached engine (~30 ms warm; capped at 3 s on a first run without cache). The cached engine is now versioned by Ghostery version and list set, a corrupt or outdated cache is rebuilt, and a long-running browser refreshes its lists every 24 h instead of only at launch.
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
