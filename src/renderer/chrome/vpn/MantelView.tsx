@@ -1,15 +1,44 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, KeyRoundIcon, Loader2Icon, ShieldCheckIcon, ShieldIcon, ZapIcon } from 'lucide-react';
-import { ease, spring } from '@/lib/motion';
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronRightIcon, KeyRoundIcon, Loader2Icon, ShieldCheckIcon, ShieldIcon, ZapIcon } from 'lucide-react';
+import { ease } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Flag } from './Flag';
 import { formatAccountNumber, normalizeAccountNumber } from '@shared/vpn';
 import { FASTEST_ID, TERM_DAYS, accountTerm, hash, resolveServer } from './vpn-data';
-import { MantelMark } from './parts';
+import { MantelMark, StatusDot } from './parts';
 import { useVpn, vpn } from './vpn-store';
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+const quick = { duration: 0.2, ease: ease.out };
+
+/** Numbers that change roll in per character instead of jumping; unchanged characters stay put. */
+function RollingText({ value, className }: { value: string; className?: string }) {
+  const reduce = useReducedMotion();
+  if (reduce) return <span className={cn('tabular-nums', className)}>{value}</span>;
+  const chars = value.split('');
+  return (
+    <span className={cn('inline-flex overflow-hidden tabular-nums', className)} aria-label={value}>
+      {chars.map((char, index) => (
+        <span key={chars.length - index} aria-hidden className="relative inline-block">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={char}
+              className="inline-block whitespace-pre"
+              initial={{ y: '60%', opacity: 0 }}
+              animate={{ y: '0%', opacity: 1 }}
+              exit={{ y: '-60%', opacity: 0 }}
+              transition={{ duration: 0.18, ease: ease.out }}
+            >
+              {char}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function AccountForm() {
   const state = useVpn();
@@ -45,7 +74,7 @@ function AccountForm() {
         <MantelMark />
         <div className="min-w-0">
           <p className="text-[13px] font-semibold tracking-tight text-foreground">Sign in to MantelVPN</p>
-          <p className="text-[11.5px] leading-snug text-muted-foreground">Enter the 16-digit account number from your Mantel account.</p>
+          <p className="text-[12px] leading-snug text-muted-foreground">Enter the 16-digit account number from your Mantel account.</p>
         </div>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -88,7 +117,7 @@ function AccountForm() {
               key="error"
               id={errorId}
               role="alert"
-              className="px-1 text-[11.5px] text-red-500 dark:text-red-400"
+              className="px-1 text-[11px] leading-snug text-red-500 dark:text-red-400"
               initial={{ opacity: 0, y: -3 }}
               animate={{ opacity: 1, y: 0, x: [0, -4, 4, -2, 0] }}
               exit={{ opacity: 0 }}
@@ -97,7 +126,7 @@ function AccountForm() {
               {error}
             </motion.p>
           ) : (
-            <motion.p key="hint" id={hintId} className="px-1 text-[11.5px] text-muted-foreground" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.p key="hint" id={hintId} className="px-1 text-[11px] leading-snug text-muted-foreground" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={quick}>
               16 digits. Spaces and dashes from a paste are fine. Stored encrypted on this device.
             </motion.p>
           )}
@@ -106,11 +135,11 @@ function AccountForm() {
       <button
         type="submit"
         disabled={state.checking || value.trim().length === 0}
-        className="vpn-cta flex h-9 items-center justify-center gap-2 rounded-[10px] text-[13px] font-semibold tracking-tight outline-none transition-[opacity,transform] duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[0.98] disabled:cursor-default disabled:opacity-50"
+        className="vpn-cta flex h-9 items-center justify-center gap-2 rounded-[10px] text-[13px] font-semibold tracking-tight outline-none transition-[opacity,transform] duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[0.97] disabled:cursor-default disabled:opacity-50"
       >
         {state.checking ? (
           <>
-            <Loader2Icon className="size-4 animate-spin" strokeWidth={2} />
+            <Loader2Icon className="size-3.5 animate-spin" strokeWidth={2} />
             Signing in…
           </>
         ) : (
@@ -129,22 +158,22 @@ function DaysRing({ daysLeft }: { daysLeft: number }) {
   return (
     <span className="relative grid size-11 shrink-0 place-items-center">
       <svg aria-hidden viewBox="0 0 40 40" className="absolute inset-0 -rotate-90">
-        <circle cx="20" cy="20" r={radius} fill="none" strokeWidth={3} className="stroke-foreground/10" />
+        <circle cx="20" cy="20" r={radius} fill="none" strokeWidth={2} className="stroke-foreground/[0.08]" />
         <motion.circle
           cx="20"
           cy="20"
           r={radius}
           fill="none"
-          strokeWidth={3}
+          strokeWidth={2}
           strokeLinecap="round"
           stroke="var(--vpn-accent)"
           strokeDasharray={circumference}
           initial={reduce ? false : { strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference * (1 - fraction) }}
-          transition={{ duration: 0.9, ease: ease.out }}
+          transition={{ duration: 0.7, delay: 0.08, ease: ease.out }}
         />
       </svg>
-      <span className="text-[11px] leading-none font-semibold text-foreground tabular-nums">{daysLeft}</span>
+      <span className="text-[11px] leading-none font-medium text-foreground tabular-nums">{daysLeft}</span>
     </span>
   );
 }
@@ -164,12 +193,12 @@ function AccountCard() {
     <section aria-label="MantelVPN account" className="flex items-center gap-3 rounded-xl bg-foreground/[0.04] p-2.5 ring-1 ring-foreground/[0.06] ring-inset">
       {term ? <DaysRing daysLeft={term.daysLeft} /> : <MantelMark className="size-11" />}
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 text-[12.5px] font-semibold tracking-tight text-foreground">
+        <p className="flex items-center gap-1.5 text-[13px] font-medium tracking-tight text-foreground">
           {term && term.daysLeft === 0 ? 'Expired' : 'Mantel account'}
-          <span className="vpn-badge rounded-full px-1.5 py-px text-[9.5px] font-semibold tracking-wide">Partner</span>
+          <span className="rounded-full bg-foreground/[0.06] px-1.5 py-px text-[10px] font-medium tracking-wide text-muted-foreground">Partner</span>
         </p>
-        <p className="text-[11.5px] text-muted-foreground tabular-nums">{term ? `${term.daysLeft} days left` : 'Paid time unknown while offline'}</p>
-        <p className="truncate text-[11px] text-muted-foreground/80 tabular-nums" title={`Account ending ${state.accountTail ?? ''}`}>
+        <p className="text-[12px] text-muted-foreground tabular-nums">{term ? `${term.daysLeft} days left` : 'Paid time unknown while offline'}</p>
+        <p className="truncate text-[11px] text-muted-foreground/70 tabular-nums" title={`Account ending ${state.accountTail ?? ''}`}>
           {term ? `Paid until ${dateFormat.format(term.expiresAt)} · ` : ''}
           <span className="font-mono text-[10.5px]">••{state.accountTail}</span>
         </p>
@@ -224,36 +253,49 @@ function StatusOrb() {
   const state = useVpn();
   const reduce = useReducedMotion();
   return (
-    <div className="relative grid size-[76px] place-items-center">
-      {state.status === 'connected' &&
-        !reduce &&
-        [0, 1].map((ring) => (
-          <motion.span
-            key={ring}
+    <div className="relative grid size-16 place-items-center">
+      <AnimatePresence>
+        {state.status === 'connecting' && (
+          <motion.svg
+            key="spinner"
             aria-hidden
-            className="absolute inset-0 rounded-full border border-emerald-400/50"
-            initial={{ scale: 0.7, opacity: 0.7 }}
-            animate={{ scale: 1.35, opacity: 0 }}
-            transition={{ duration: 2.4, repeat: Infinity, delay: ring * 1.2, ease: 'easeOut' }}
-          />
-        ))}
-      {state.status === 'connecting' && (
-        <svg aria-hidden viewBox="0 0 76 76" className="absolute inset-0 animate-spin [animation-duration:1.1s]">
-          <circle cx="38" cy="38" r="35" fill="none" strokeWidth={2.5} className="stroke-foreground/10" />
-          <circle cx="38" cy="38" r="35" fill="none" strokeWidth={2.5} strokeLinecap="round" stroke="#fbbf24" strokeDasharray="60 160" />
-        </svg>
-      )}
+            viewBox="0 0 64 64"
+            className="absolute inset-0 animate-spin [animation-duration:1.2s]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={quick}
+          >
+            <circle cx="32" cy="32" r="30.5" fill="none" strokeWidth={1.5} strokeLinecap="round" className="stroke-foreground/40" strokeDasharray="40 152" />
+          </motion.svg>
+        )}
+      </AnimatePresence>
       <motion.span
         className={cn(
-          'relative grid size-14 place-items-center rounded-full ring-1 transition-colors duration-300 ring-inset',
-          state.status === 'off' && 'bg-foreground/[0.05] text-muted-foreground ring-foreground/10',
-          state.status === 'connecting' && 'bg-amber-400/10 text-amber-500 ring-amber-400/30 dark:text-amber-300',
-          state.status === 'connected' && 'bg-emerald-400/15 text-emerald-600 ring-emerald-400/40 shadow-[0_0_32px_-6px_rgb(52_211_153/0.6)] dark:text-emerald-300',
+          'relative grid size-14 place-items-center rounded-full bg-foreground/[0.05] ring-1 transition-[color,box-shadow] duration-200 ring-inset',
+          state.status === 'connected'
+            ? 'text-foreground ring-[color-mix(in_oklab,var(--vpn-accent)_45%,transparent)]'
+            : 'text-muted-foreground ring-foreground/10',
         )}
-        animate={state.status === 'connected' && !reduce ? { scale: [0.9, 1.06, 1] } : { scale: 1 }}
-        transition={{ duration: 0.45, ease: ease.out }}
+        animate={state.status === 'connected' && !reduce ? { scale: [0.96, 1.03, 1] } : { scale: 1 }}
+        transition={{ duration: 0.25, ease: ease.out }}
       >
-        {state.status === 'connected' ? <ShieldCheckIcon className="size-6" strokeWidth={1.75} /> : <ShieldIcon className="size-6" strokeWidth={1.75} />}
+        {state.status === 'connected' ? <ShieldCheckIcon className="size-[22px]" strokeWidth={1.5} /> : <ShieldIcon className="size-[22px]" strokeWidth={1.5} />}
+        <AnimatePresence>
+          {state.status === 'connected' && (
+            <motion.span
+              key="tick"
+              aria-hidden
+              className="absolute -right-0.5 -bottom-0.5 grid size-[18px] place-items-center rounded-full bg-[var(--vpn-accent)] text-white ring-2 ring-background"
+              initial={reduce ? false : { scale: 0.4, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              transition={{ duration: 0.22, delay: reduce ? 0 : 0.08, ease: ease.out }}
+            >
+              <CheckIcon className="size-2.5" strokeWidth={3} />
+            </motion.span>
+          )}
+        </AnimatePresence>
       </motion.span>
     </div>
   );
@@ -262,10 +304,10 @@ function StatusOrb() {
 function Stat({ label, value, icon }: { label: string; value: string; icon?: ReactNode }) {
   return (
     <div className="min-w-0 rounded-[10px] bg-foreground/[0.04] px-2.5 py-1.5">
-      <p className="text-[10.5px] text-muted-foreground">{label}</p>
-      <p className="flex items-center gap-1 truncate font-mono text-[12px] font-medium text-foreground tabular-nums">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="flex items-center gap-1 truncate text-[12px] font-medium text-foreground tabular-nums">
         {icon}
-        {value}
+        <RollingText value={value} />
       </p>
     </div>
   );
@@ -279,10 +321,10 @@ function ConnectedStats() {
   return (
     <motion.div
       className="grid w-full grid-cols-2 gap-1.5"
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 4 }}
-      transition={spring.soft}
+      exit={{ opacity: 0, y: 2 }}
+      transition={{ ...quick, delay: 0.06 }}
     >
       <Stat label={state.mode === 'live' ? 'Exit server' : 'Virtual IP'} value={state.ip ?? '—'} />
       <Stat label="Uptime" value={formatUptime(seconds)} />
@@ -293,8 +335,8 @@ function ConnectedStats() {
         </>
       ) : (
         <>
-          <Stat label="Downloaded" value={formatBytes(traffic.down)} icon={<ArrowDownIcon aria-hidden className="size-3 text-emerald-500" strokeWidth={2.25} />} />
-          <Stat label="Uploaded" value={formatBytes(traffic.up)} icon={<ArrowUpIcon aria-hidden className="size-3 text-sky-500" strokeWidth={2.25} />} />
+          <Stat label="Downloaded" value={formatBytes(traffic.down)} icon={<ArrowDownIcon aria-hidden className="size-3 text-muted-foreground" strokeWidth={2} />} />
+          <Stat label="Uploaded" value={formatBytes(traffic.up)} icon={<ArrowUpIcon aria-hidden className="size-3 text-muted-foreground" strokeWidth={2} />} />
         </>
       )}
     </motion.div>
@@ -324,7 +366,7 @@ function LocationButton() {
         <Flag code={server.countryCode} />
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[12.5px] font-medium text-foreground">{fastest ? 'Fastest server' : `${server.city}, ${server.country}`}</span>
+        <span className="block truncate text-[13px] font-medium text-foreground">{fastest ? 'Fastest server' : `${server.city}, ${server.country}`}</span>
         <span className="block truncate text-[11px] text-muted-foreground">
           {fastest ? `${server.city}, ${server.country}${detail ? ' · ' : ''}` : ''}
           {detail || (fastest ? '' : server.country)}
@@ -345,30 +387,22 @@ function ConnectButton() {
       onClick={() => (state.status === 'off' ? void vpn.connect() : vpn.disconnect())}
       aria-label={state.status === 'connecting' ? 'Connecting, press to cancel' : label}
       className={cn(
-        'relative flex h-12 w-full items-center justify-center overflow-hidden rounded-xl text-[14px] font-semibold tracking-tight outline-none transition-[background-color,color,box-shadow,transform] duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[0.98]',
-        state.status === 'off' && 'vpn-cta',
-        state.status === 'connecting' && 'bg-amber-400/15 text-amber-600 ring-1 ring-amber-400/30 ring-inset dark:text-amber-200',
-        state.status === 'connected' && 'bg-foreground/[0.07] text-foreground ring-1 ring-foreground/10 ring-inset hover:bg-red-500/15 hover:text-red-500 dark:hover:text-red-300',
+        'relative flex h-10 w-full items-center justify-center overflow-hidden rounded-xl text-[13px] font-semibold tracking-tight outline-none transition-[background-color,color,box-shadow,transform] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[0.97]',
+        state.status === 'off' && 'vpn-cta hover:opacity-90',
+        state.status === 'connecting' && 'bg-foreground/[0.07] text-muted-foreground ring-1 ring-foreground/10 ring-inset',
+        state.status === 'connected' && 'bg-foreground/[0.07] text-foreground ring-1 ring-foreground/10 ring-inset hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-300',
       )}
     >
-      {state.status === 'connecting' && !reduce && (
-        <motion.span
-          aria-hidden
-          className="absolute inset-y-0 left-0 bg-amber-400/20"
-          initial={{ width: '0%' }}
-          animate={{ width: '100%' }}
-          transition={{ duration: 1.5, ease: ease.inOut }}
-        />
-      )}
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={label}
-          className="relative"
-          initial={{ opacity: 0, y: 6 }}
+          className="relative flex items-center gap-2"
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.16, ease: ease.out }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
+          transition={{ duration: 0.15, ease: ease.out }}
         >
+          {state.status === 'connecting' && <Loader2Icon aria-hidden className="size-3.5 animate-spin" strokeWidth={2} />}
           {label}
         </motion.span>
       </AnimatePresence>
@@ -388,13 +422,18 @@ function ConnectSection() {
   return (
     <div className="flex flex-col items-center gap-3">
       <StatusOrb />
-      <p aria-live="polite" className={cn('-mt-1 text-[12.5px] font-medium', state.status === 'connected' ? 'text-emerald-600 dark:text-emerald-300' : 'text-muted-foreground')}>
-        {caption}
+      <p aria-live="polite" className={cn('-mt-1 flex items-center gap-2 text-[12px] font-medium transition-colors duration-200', state.status === 'connected' ? 'text-foreground' : 'text-muted-foreground')}>
+        <StatusDot status={state.status} />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={caption} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15, ease: ease.out }}>
+            {caption}
+          </motion.span>
+        </AnimatePresence>
       </p>
       <LocationButton />
       <ConnectButton />
       {state.error && (
-        <p role="alert" className="-mt-1 px-1 text-center text-[11.5px] leading-snug text-red-500 dark:text-red-400">
+        <p role="alert" className="-mt-1 px-1 text-center text-[11px] leading-snug text-red-500 dark:text-red-400">
           {state.error}
         </p>
       )}
@@ -406,16 +445,32 @@ function ConnectSection() {
 /** MantelVPN: account number sign-in, then account card + location + connect. */
 export function MantelView() {
   const state = useVpn();
-  if (state.mode === 'signed-out') return <AccountForm />;
+  const reduce = useReducedMotion();
+  const signedOut = state.mode === 'signed-out';
   return (
-    <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-3 [scrollbar-width:thin]">
-      <AccountCard />
-      <ConnectSection />
-      <p className="text-center text-[10.5px] leading-snug text-muted-foreground/70">
-        {state.mode === 'live'
-          ? 'Connect routes the active Space through a Mantel proxy on this location. Other Spaces stay direct.'
-          : (state.notice ?? 'Preview: Mantel is not reachable. Servers and the connection are simulated.')}
-      </p>
-    </div>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={signedOut ? 'sign-in' : 'account'}
+        className="flex min-h-0 flex-col"
+        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={quick}
+      >
+        {signedOut ? (
+          <AccountForm />
+        ) : (
+          <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-3 [scrollbar-width:thin]">
+            <AccountCard />
+            <ConnectSection />
+            <p className="text-center text-[11px] leading-snug text-muted-foreground/70">
+              {state.mode === 'live'
+                ? 'Connect routes the active Space through a Mantel proxy on this location. Other Spaces stay direct.'
+                : (state.notice ?? 'Preview: Mantel is not reachable. Servers and the connection are simulated.')}
+            </p>
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
 }

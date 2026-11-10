@@ -53,7 +53,7 @@ export function VpnButton() {
             {server && (
               <motion.span
                 key="cc"
-                className="overflow-hidden font-mono text-[10.5px] font-medium text-emerald-500 dark:text-emerald-400"
+                className="overflow-hidden font-mono text-[10.5px] font-medium text-muted-foreground"
                 initial={{ width: 0, opacity: 0 }}
                 animate={{ width: 'auto', opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
