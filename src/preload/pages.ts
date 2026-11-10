@@ -72,12 +72,28 @@ if (isVelaPage()) {
 
 interface BootTheme {
   theme: 'dark' | 'light';
+  mode?: string;
   accent: string | null;
   hero?: string;
 }
 
-/** Applies theme + accent synchronously before first paint so vela:// pages never flash. */
+function applyPageTheme(root: HTMLElement, { theme, mode, accent, hero }: BootTheme): void {
+  root.classList.toggle('light', theme === 'light');
+  root.classList.toggle('dark', theme !== 'light');
+  root.dataset.theme = theme;
+  if (typeof mode === 'string' && /^[a-z]{1,8}$/.test(mode)) root.dataset.themeMode = mode;
+  if (typeof hero === 'string' && /^[a-z-]{1,24}$/.test(hero)) root.dataset.hero = hero;
+  if (accent && /^#[0-9a-f]{3,8}$/i.test(accent)) root.style.setProperty('--accent-space', accent);
+}
+
+/**
+ * Applies theme + accent synchronously before first paint so vela:// pages never flash, then
+ * follows live changes (theme setting, OS scheme, Space colour) pushed by the main process.
+ */
 function applyBootTheme(): void {
+  ipcRenderer.on(IPC.pagesEvents.theme, (_event: IpcRendererEvent, next: BootTheme | null) => {
+    if (next && document.documentElement) applyPageTheme(document.documentElement, next);
+  });
   let boot: BootTheme | null = null;
   try {
     boot = ipcRenderer.sendSync('pages:boot-sync') as BootTheme | null;
@@ -85,15 +101,8 @@ function applyBootTheme(): void {
     return;
   }
   if (!boot) return;
-  const { theme, accent, hero } = boot;
-
-  const apply = (root: HTMLElement): void => {
-    root.classList.toggle('light', theme === 'light');
-    root.classList.toggle('dark', theme !== 'light');
-    root.dataset.theme = theme;
-    if (typeof hero === 'string' && /^[a-z-]{1,24}$/.test(hero)) root.dataset.hero = hero;
-    if (accent && /^#[0-9a-f]{3,8}$/i.test(accent)) root.style.setProperty('--accent-space', accent);
-  };
+  const initial = boot;
+  const apply = (root: HTMLElement): void => applyPageTheme(root, initial);
 
   if (document.documentElement) {
     apply(document.documentElement);

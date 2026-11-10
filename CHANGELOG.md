@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The theme setting now applies to the whole workspace: Vela drives the system colour scheme (native menus, Mica/Acrylic backdrop, opaque window background, prefers-color-scheme), and every open vela:// page (new tab, settings, history, error) follows theme and Space-colour changes live, without a reload
+- Tab views paint the themed backdrop before a vela:// page's first frame, so a dark new tab no longer flashes white
+- The Vela logo in the About section takes the Space accent for its cap and glow, like the sidebar mark and the new-tab logo
+- The new-tab page background carries a faint flat tint of the Space accent
+
 ### Fixed
 - New tabs (the + button, the vertical New Tab row, Ctrl+T and the palette's New tab command) open Vela's start page with its search box focused instead of popping the command palette; clicking the address, Ctrl+L and Ctrl+K still open it
+- Clicking an inactive tab (or split pane) only switches to it; the command palette opens only when clicking the tab that was already active, and never after a drag.
+- The start page can no longer be closed when it is the only tab of a Space: it has no close button, and Ctrl+W, middle-click and the context menu's Close do nothing. Closing the last tab that shows a website still turns it into the start page.
 
 ## [0.5.0] - 2026-11-10
 

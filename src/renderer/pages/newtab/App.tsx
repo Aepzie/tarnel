@@ -48,7 +48,7 @@ export function App() {
   }, []);
 
   return (
-    <div className="relative h-full overflow-hidden bg-background">
+    <div className="vt-backdrop relative h-full overflow-hidden">
       <Aurora />
       <main className="relative z-10 flex h-full flex-col items-center justify-center px-4 pb-[6vh]">
         <motion.div

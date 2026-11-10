@@ -1,6 +1,7 @@
 import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContents } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
+import { isLoneStartPage } from '../shared/tab-close';
 import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabMediaDevices, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
@@ -17,6 +18,7 @@ import { onPaneFocus, trackPanes, type Pane } from './split-panes';
 import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTabMediaDevices, tabMediaDevices } from './audio-devices/state';
 import { forgetTabAudio, onTabAudioChanged, restoreTabAudio, tabAudioSettings } from './audio-mixer/state';
 import type { TabAudioSettings } from '../shared/audio-mixer';
+import { attachViewBackdrop } from './page-theme';
 
 export interface SavedTab {
   url: string;
@@ -334,6 +336,7 @@ function createView(tab: Tab): WebContentsView {
     },
   });
   tab.view = view;
+  attachViewBackdrop(view, tab.errorUrl ?? tab.url);
   const wc = view.webContents;
   wcToTab.set(wc.id, tab.id);
   wireEvents(tab, view);
@@ -536,6 +539,8 @@ function closeTabInternal(id: number, replace: boolean): void {
 }
 
 export function closeTab(id: number): void {
+  const tab = tabs.get(id);
+  if (tab && isLoneStartPage({ id, spaceId: tab.spaceId, url: tab.errorUrl ?? tab.url }, [...tabs.values()])) return;
   closeTabInternal(id, true);
 }
 

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { DEFAULT_SETTINGS, type Settings, type SpaceColor } from '@shared/types';
+import { DEFAULT_SETTINGS, type Settings } from '@shared/types';
 import { AlertCircle, RotateCw } from 'lucide-react';
 import { applyTheme, velaPages } from '@/lib/vela';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,6 @@ export function useSettings(): SettingsStore {
 export function SettingsProvider({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
   const [settings, setSettings] = useState<Settings | null>(() => (hasBridge() ? null : { ...DEFAULT_SETTINGS }));
   const [savedTick, setSavedTick] = useState(0);
-  const [accent, setAccent] = useState<SpaceColor | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const writeSeq = useRef(0);
@@ -57,27 +56,16 @@ export function SettingsProvider({ children, fallback }: { children: ReactNode; 
     };
   }, [loadAttempt]);
 
-  useEffect(() => {
-    if (!hasBridge()) return;
-    let alive = true;
-    velaPages()
-      .currentSpace?.()
-      .then((space) => alive && space && setAccent(space.color), () => undefined);
-    return () => {
-      alive = false;
-    };
-  }, []);
-
   const theme = settings?.theme;
   useEffect(() => {
     if (!theme) return;
-    applyTheme(theme, accent);
+    applyTheme(theme);
     if (theme !== 'system') return;
     const query = window.matchMedia('(prefers-color-scheme: light)');
     const listeners = new AbortController();
-    query.addEventListener('change', () => applyTheme('system', accent), { signal: listeners.signal });
+    query.addEventListener('change', () => applyTheme('system'), { signal: listeners.signal });
     return () => listeners.abort();
-  }, [theme, accent]);
+  }, [theme]);
 
   const markSaved = useCallback(() => setSavedTick((tick) => tick + 1), []);
 

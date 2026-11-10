@@ -188,6 +188,8 @@ function GroupUnderline({ color, end, reduced }: { color: string; end: boolean; 
 function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, onDragEnd, width, compact = false, groupColor, groupEnd = false, ref }: TabItemProps) {
   const reduced = !!useReducedMotion();
   const dragged = useRef(false);
+  /** Whether this tab was already active when the primary button went down; only then may the click open the palette. */
+  const wasActive = useRef(false);
   const iconOnly = tab.pinned || compact;
   const minWidth = PILL_MIN;
   const maxWidth = iconOnly ? PILL_MIN : PILL_MAX;
@@ -197,16 +199,16 @@ function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, 
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>): void => {
     dragged.current = false;
+    wasActive.current = e.button === 0 && active;
     if (e.button !== 0) return;
     if (!active) settle(vela().tabs.activate(tab.id));
   };
 
   const onClick = (): void => {
-    if (dragged.current) {
-      dragged.current = false;
-      return;
-    }
-    if (active) ui.openPalette('current', addressSeed(tab.url));
+    const opensPalette = wasActive.current && !dragged.current;
+    dragged.current = false;
+    wasActive.current = false;
+    if (opensPalette) ui.openPalette('current', addressSeed(tab.url));
   };
 
   const onMouseDown = (e: MouseEvent): void => {
