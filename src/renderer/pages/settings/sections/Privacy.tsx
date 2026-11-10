@@ -3,6 +3,7 @@ import { velaPages } from '@/lib/vela';
 import { ConfirmActions } from '../components/confirm';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge } from '../store';
+import { SiteDataOnClose } from './SiteDataOnClose';
 
 export function Privacy() {
   return (
@@ -22,6 +23,7 @@ export function Privacy() {
           setting="sendDoNotTrack"
         />
       </Group>
+      <SiteDataOnClose />
       <Group title="History">
         <Row title="Browsing history" description="Removes visited pages and top sites from every Space.">
           <ConfirmActions
