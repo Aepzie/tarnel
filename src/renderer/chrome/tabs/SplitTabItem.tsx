@@ -1,13 +1,12 @@
 import { memo, useRef, type MouseEvent } from 'react';
 import { Reorder, motion, useReducedMotion, type Transition } from 'motion/react';
-import { XIcon } from 'lucide-react';
 import type { SplitId, TabState } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { spring } from '@/lib/motion';
 import { addressSeed, settle, vela } from '@/lib/vela';
 import { ui } from '../ui-store';
-import { Favicon } from './Favicon';
-import { LoadingBar, OMNIBOX_SURFACE, OmniboxContent, PILL_MAX, PILL_MIN } from './TabItem';
+import { ActiveSurface, PILL_MAX, PILL_MIN } from './TabItem';
+import { TabFace, tabTooltip } from './TabFace';
 import { TabContextMenu } from './TabContextMenu';
 import type { SplitUnit } from './groups/units';
 
@@ -17,8 +16,7 @@ export interface SplitTabItemProps {
   unit: SplitUnit;
   activeTabId: number | null;
   paletteOpen: boolean;
-  /** Widths from the strip's layout pass: each pane counts like one tab. */
-  omniboxWidth?: number;
+  /** Width from the strip's layout pass: each pane counts like one tab. */
   pillWidth?: number;
   compact: boolean;
   onDragStart: (splitId: SplitId) => void;
@@ -28,11 +26,11 @@ export interface SplitTabItemProps {
 }
 
 /**
- * A split view in the horizontal strip: its panes joined into one capsule, each pane a segment. When
- * the split is on screen the focused pane is the omnibox; clicking another segment focuses that pane
- * (or restores the split when it is in the background). Drags move the whole split.
+ * A split view in the horizontal strip: its panes joined into one capsule, each pane a segment. Every pane
+ * has the strip's tab width; clicking another segment focuses that pane (or restores the split when it is
+ * in the background). Drags move the whole split.
  */
-function SplitTabItemImpl({ unit, activeTabId, paletteOpen, omniboxWidth, pillWidth, compact, onDragStart, onDragEnd, groupColor, groupEnd = false }: SplitTabItemProps) {
+function SplitTabItemImpl({ unit, activeTabId, paletteOpen, pillWidth, compact, onDragStart, onDragEnd, groupColor, groupEnd = false }: SplitTabItemProps) {
   const reduced = !!useReducedMotion();
   const dragged = useRef(false);
   const layoutTransition = reduced ? INSTANT : spring.snappy;
@@ -80,67 +78,39 @@ function SplitTabItemImpl({ unit, activeTabId, paletteOpen, omniboxWidth, pillWi
           transition={layoutTransition}
         />
       )}
-      {unit.tabs.map((tab, index) =>
-        tab.id === activeTabId ? (
-          <OmniSegment key={tab.id} tab={tab} width={omniboxWidth} paletteOpen={paletteOpen} reduced={reduced} dragged={dragged} />
-        ) : (
-          <PaneSegment key={tab.id} tab={tab} width={pillWidth} compact={compact} first={index === 0} reduced={reduced} dragged={dragged} />
-        ),
-      )}
+      {unit.tabs.map((tab, index) => (
+        <Segment
+          key={tab.id}
+          tab={tab}
+          active={tab.id === activeTabId}
+          width={pillWidth}
+          compact={compact}
+          first={index === 0}
+          paletteOpen={paletteOpen}
+          reduced={reduced}
+          dragged={dragged}
+        />
+      ))}
     </Reorder.Item>
   );
 }
 
 interface SegmentProps {
   tab: TabState;
+  active: boolean;
   width?: number;
+  compact: boolean;
+  first: boolean;
+  paletteOpen: boolean;
   reduced: boolean;
   dragged: { current: boolean };
 }
 
-/** The focused pane of the split on screen: the omnibox (shares `layoutId="omnibox"` with the palette). */
-function OmniSegment({ tab, width, paletteOpen, reduced, dragged }: SegmentProps & { paletteOpen: boolean }) {
-  return (
-    <TabContextMenu tab={tab}>
-      <motion.div
-        role="tab"
-        aria-selected={true}
-        aria-label={tab.title || tab.url || 'New Tab'}
-        tabIndex={0}
-        data-tab-id={tab.id}
-        data-omnibox=""
-        className="relative flex h-8 min-w-0 cursor-default items-center rounded-[10px] outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ring)]"
-        initial={false}
-        animate={{ width: width ?? 'auto' }}
-        transition={reduced ? INSTANT : spring.snappy}
-        onClick={() => {
-          if (dragged.current) {
-            dragged.current = false;
-            return;
-          }
-          ui.openPalette('current', addressSeed(tab.url));
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return;
-          event.preventDefault();
-          ui.openPalette('current', addressSeed(tab.url));
-        }}
-      >
-        {paletteOpen ? (
-          <span className="absolute inset-0 rounded-[10px] bg-white/[0.03] ring-1 ring-white/[0.06] light:bg-black/[0.03] light:ring-black/[0.05]" />
-        ) : (
-          <motion.span layoutId="omnibox" transition={reduced ? INSTANT : spring.snappy} style={{ borderRadius: 10 }} className={OMNIBOX_SURFACE} />
-        )}
-        <OmniboxContent tab={tab} reduced={reduced} paletteOpen={paletteOpen} />
-        <LoadingBar show={tab.loading} reduced={reduced} />
-      </motion.div>
-    </TabContextMenu>
-  );
-}
-
-/** Any other pane: favicon + title, hairline to its left; a press focuses it (restoring the split). */
-function PaneSegment({ tab, width, compact, first, reduced, dragged }: SegmentProps & { compact: boolean; first: boolean }) {
-  const label = tab.title || tab.url || 'New Tab';
+/**
+ * One pane of the split: same width as any other tab. A press focuses it (restoring the split); a click
+ * on the focused pane opens the palette, whose surface morphs out of the pane's raised fill.
+ */
+function Segment({ tab, active, width, compact, first, paletteOpen, reduced, dragged }: SegmentProps) {
   const target = compact ? PILL_MIN : width;
 
   const onAuxClick = (event: MouseEvent): void => {
@@ -149,81 +119,52 @@ function PaneSegment({ tab, width, compact, first, reduced, dragged }: SegmentPr
     settle(vela().tabs.close(tab.id));
   };
 
+  const onClick = (): void => {
+    if (dragged.current) {
+      dragged.current = false;
+      return;
+    }
+    if (active) ui.openPalette('current', addressSeed(tab.url));
+  };
+
   return (
     <TabContextMenu tab={tab}>
       <motion.div
         role="tab"
-        aria-selected={false}
-        aria-label={label}
-        tabIndex={-1}
-        title={label}
+        aria-selected={active}
+        aria-label={tab.title || tab.url || 'New Tab'}
+        tabIndex={active ? 0 : -1}
+        title={tabTooltip(tab, active)}
         data-tab-id={tab.id}
+        data-omnibox={active ? '' : undefined}
         className={cn(
-          'group/seg relative flex h-8 min-w-0 cursor-default items-center rounded-[10px] outline-none transition-colors duration-150 hover:bg-accent',
+          'group/tab relative flex h-8 min-w-0 cursor-default items-center rounded-[10px] outline-none transition-colors duration-150',
           'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ring)]',
+          !active && 'hover:bg-accent',
           !first && 'before:pointer-events-none before:absolute before:top-1/2 before:-left-[2.5px] before:h-3.5 before:w-px before:-translate-y-1/2 before:bg-white/10 light:before:bg-black/10',
         )}
         initial={false}
         animate={target === undefined ? { width: 'auto', minWidth: PILL_MIN, maxWidth: PILL_MAX } : { width: target, minWidth: 0, maxWidth: 'none' }}
         transition={reduced ? INSTANT : spring.snappy}
         onPointerDown={(event) => {
-          if (event.button === 0) settle(vela().tabs.activate(tab.id));
+          if (event.button === 0 && !active) settle(vela().tabs.activate(tab.id));
         }}
         onMouseDown={(event) => event.button === 1 && event.preventDefault()}
         onAuxClick={onAuxClick}
-        onClick={() => {
-          dragged.current = false;
-        }}
+        onClick={onClick}
         onKeyDown={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
-          settle(vela().tabs.activate(tab.id));
+          if (active) ui.openPalette('current', addressSeed(tab.url));
+          else settle(vela().tabs.activate(tab.id));
         }}
       >
-        <span className={cn('relative z-10 flex min-w-0 flex-1 items-center gap-2', compact ? 'justify-center' : 'pr-1 pl-2.5')}>
-          <span className="relative inline-flex size-4 shrink-0 items-center justify-center">
-            <Favicon src={tab.favicon} url={tab.url} title={tab.title} asleep={tab.asleep} />
-            {tab.loading && (
-              <span className="absolute -inset-1 animate-spin rounded-full border-[1.5px] border-transparent border-t-space [animation-duration:0.8s]" />
-            )}
-          </span>
-          {!compact && (
-            <>
-              <span
-                className={cn(
-                  'min-w-0 flex-1 overflow-hidden py-1 text-[12.5px] leading-none tracking-tight whitespace-nowrap text-zinc-400 transition-colors duration-150',
-                  '[mask-image:linear-gradient(to_right,#000_calc(100%-16px),transparent)] group-hover/seg:[mask-image:linear-gradient(to_right,#000_calc(100%-36px),transparent_calc(100%-20px))]',
-                  'group-hover/seg:text-zinc-100 light:text-zinc-600 light:group-hover/seg:text-zinc-900',
-                  tab.asleep && 'text-zinc-500 light:text-zinc-500',
-                )}
-              >
-                {tab.title || 'New Tab'}
-              </span>
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-label="Close tab"
-                className={cn(
-                  'absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-[opacity,background-color,color] duration-150',
-                  'group-hover/seg:opacity-100 hover:bg-white/10 hover:text-zinc-100 active:scale-[0.92]',
-                  'light:text-zinc-500 light:hover:bg-black/[0.07] light:hover:text-zinc-900',
-                )}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  settle(vela().tabs.close(tab.id));
-                }}
-              >
-                <XIcon className="size-3.5" strokeWidth={2} />
-              </button>
-            </>
-          )}
-        </span>
+        {active && <ActiveSurface paletteOpen={paletteOpen} reduced={reduced} />}
+        <TabFace tab={tab} active={active} iconOnly={compact} />
       </motion.div>
     </TabContextMenu>
   );
 }
-
 function sameTab(x: TabState, y: TabState): boolean {
   return (
     x === y ||
@@ -245,7 +186,7 @@ function sameTab(x: TabState, y: TabState): boolean {
 
 function same(a: SplitTabItemProps, b: SplitTabItemProps): boolean {
   if (a.activeTabId !== b.activeTabId || a.paletteOpen !== b.paletteOpen || a.compact !== b.compact) return false;
-  if (a.omniboxWidth !== b.omniboxWidth || a.pillWidth !== b.pillWidth || a.groupColor !== b.groupColor || a.groupEnd !== b.groupEnd) return false;
+  if (a.pillWidth !== b.pillWidth || a.groupColor !== b.groupColor || a.groupEnd !== b.groupEnd) return false;
   if (a.onDragStart !== b.onDragStart || a.onDragEnd !== b.onDragEnd || a.unit.key !== b.unit.key) return false;
   const x = a.unit.tabs;
   const y = b.unit.tabs;

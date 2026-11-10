@@ -38,8 +38,8 @@ function applyOrder(ids: number[], byId: Map<number, TabState>): TabState[] {
 
 /**
  * Horizontal tab strip for the active space. Pinned group (icon-only) → separator → tabs and group
- * chips → "+". The active tab renders as the omnibox pill and shares `layoutId="omnibox"` with the
- * command palette. Grouped tabs carry an underline in their group's color that starts at the chip.
+ * chips → "+". All tabs share one width; the active tab's raised fill shares `layoutId="omnibox"` with
+ * the command palette. Grouped tabs carry an underline in their group's color that starts at the chip.
  */
 export function TabStrip() {
   const tabs = useSpaceTabs();
@@ -164,26 +164,22 @@ export function TabStrip() {
 
   const widths = useMemo(() => {
     if (available === null) return null;
-    const activeInSpace = tabs.some((t) => t.id === activeTabId);
-    const pinnedInactive = pinned.filter((t) => t.id !== activeTabId).length;
-    const inactive = rest.filter((t) => t.id !== activeTabId).length;
     const reserved = units.reduce(
       (sum, unit) => (unit.kind === 'group' ? sum + chipWidth(unit.group, unit.group.id === editingGroup) + CHIP_GAP : sum),
       0,
     );
     return computeTabWidths({
       available,
-      pinnedInactive,
-      inactive,
-      hasActive: activeInSpace,
+      pinned: pinned.length,
+      tabs: rest.length,
       separator: pinned.length > 0 && units.length > 0,
       reserved,
     });
-  }, [available, tabs, pinned, rest, units, activeTabId, editingGroup]);
+  }, [available, pinned.length, rest.length, units, editingGroup]);
 
   const renderItem = (tab: TabState, unit?: TabUnit) => (
     <TabItem
-      width={widths ? (tab.id === activeTabId ? widths.omnibox : widths.pill) : undefined}
+      width={widths?.pill}
       compact={widths?.iconOnly ?? false}
       key={tab.id}
       tab={tab}
@@ -207,7 +203,6 @@ export function TabStrip() {
           unit={unit}
           activeTabId={activeTabId}
           paletteOpen={paletteOpen}
-          omniboxWidth={widths?.omnibox}
           pillWidth={widths?.pill}
           compact={widths?.iconOnly ?? false}
           onDragStart={drag.onSplitDragStart}

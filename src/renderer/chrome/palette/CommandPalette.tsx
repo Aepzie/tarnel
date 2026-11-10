@@ -3,7 +3,8 @@ import { Command as CommandPrimitive } from 'cmdk';
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react';
 import { Command } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
-import { getBrowserStateSnapshot, useActiveSpace, useBrowserSlice, useSettings } from '@/hooks/browser';
+import { getBrowserStateSnapshot, useActiveSpace, useActiveTab, useBrowserSlice, useSettings } from '@/hooks/browser';
+import { BlockedBadge, SecurityIcon, parseAddress } from '../tabs/TabItem';
 import { useOverlay } from '@/hooks/overlay';
 import { settle } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
@@ -312,6 +313,7 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
                   autoComplete="off"
                   className="h-full min-w-0 flex-1 bg-transparent text-[15px] tracking-tight text-foreground outline-none placeholder:text-muted-foreground/70"
                 />
+                {palette.mode === 'current' && kind !== 'command' && <SiteInfo />}
                 {kind === 'command' && (
                   <motion.span
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -365,6 +367,25 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Security state, host and blocked-request count of the page the palette edits. */
+function SiteInfo() {
+  const tab = useActiveTab();
+  const reduce = !!useReducedMotion();
+  if (!tab) return null;
+  const address = parseAddress(tab);
+  if (address.empty) return null;
+  const security = address.internal ? 'Vela page' : tab.secure ? 'Secure connection' : tab.url.startsWith('http:') ? 'Not secure' : address.host;
+  return (
+    <span className="flex shrink-0 items-center gap-1.5" title={security}>
+      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-white/[0.05] px-2 text-[11.5px] text-muted-foreground ring-1 ring-white/[0.06] light:bg-black/[0.035] light:ring-black/[0.06]">
+        <SecurityIcon tab={tab} address={address} />
+        <span className="max-w-[160px] truncate">{address.host}</span>
+      </span>
+      <BlockedBadge count={tab.blockedCount} reduced={reduce} />
+    </span>
   );
 }
 
