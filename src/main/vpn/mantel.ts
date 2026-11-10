@@ -81,9 +81,9 @@ async function request(method: Method, route: string, options: { token?: string;
 }
 
 function fail(status: number, body: unknown): never {
-  const { code } = parseApiError(body);
+  const { code, message } = parseApiError(body);
   const kind = status === 401 && (code === null || code === 'unauthorized') ? 'auth' : 'api';
-  throw new MantelError(describeApiError(status, code), kind, status, code);
+  throw new MantelError(describeApiError(status, code, message), kind, status, code);
 }
 
 function unexpected(status: number): never {

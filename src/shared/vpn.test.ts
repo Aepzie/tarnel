@@ -67,3 +67,9 @@ test('API errors become short user-facing copy', () => {
   assert.match(describeApiError(401, 'totp_required'), /two-factor/);
   assert.match(describeApiError(429, null), /Too many/);
 });
+
+test('a 403 is only two-factor when Mantel says so', () => {
+  assert.doesNotMatch(describeApiError(403, null), /two-factor/);
+  assert.match(describeApiError(403, 'account_expired'), /no active time/);
+  assert.equal(describeApiError(403, 'forbidden', 'Not allowed from this client.'), 'Mantel: Not allowed from this client. (forbidden, 403)');
+});
