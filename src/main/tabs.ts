@@ -1,6 +1,7 @@
 import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContents } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
+import { isLoneStartPage } from '../shared/tab-close';
 import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabMediaDevices, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
@@ -537,6 +538,8 @@ function closeTabInternal(id: number, replace: boolean): void {
 }
 
 export function closeTab(id: number): void {
+  const tab = tabs.get(id);
+  if (tab && isLoneStartPage({ id, spaceId: tab.spaceId, url: tab.errorUrl ?? tab.url }, [...tabs.values()])) return;
   closeTabInternal(id, true);
 }
 

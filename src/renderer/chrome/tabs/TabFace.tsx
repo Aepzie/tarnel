@@ -3,6 +3,7 @@ import { XIcon } from 'lucide-react';
 import type { TabState } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { settle, vela } from '@/lib/vela';
+import { useTabClosable } from '@/hooks/browser';
 import { TabAudioButton } from '../audio/TabAudioButton';
 import { Favicon } from './Favicon';
 
@@ -65,8 +66,9 @@ export interface TabFaceProps {
  * close button on hover, except pinned ones.
  */
 export function TabFace({ tab, active, iconOnly }: TabFaceProps) {
+  const canClose = useTabClosable(tab);
   if (iconOnly) {
-    const closable = active && !tab.pinned;
+    const closable = canClose && active && !tab.pinned;
     return (
       <span className="relative z-10 flex min-w-0 flex-1 items-center justify-center">
         <FaviconSlot tab={tab} className={closable ? 'group-hover/tab:opacity-0' : undefined} />
@@ -93,14 +95,19 @@ export function TabFace({ tab, active, iconOnly }: TabFaceProps) {
       >
         {tab.title || 'New Tab'}
       </span>
-      <TabAudioButton tab={tab} className={cn('transition-[margin,background-color,color]', active ? 'mr-6' : 'group-hover/tab:mr-6')} />
-      <CloseButton
+      <TabAudioButton
         tab={tab}
-        className={cn(
-          'absolute top-1/2 right-1.5 -translate-y-1/2',
-          active ? 'opacity-100' : 'opacity-0 group-hover/tab:opacity-100 group-focus-visible/tab:opacity-100',
-        )}
+        className={cn('transition-[margin,background-color,color]', canClose && (active ? 'mr-6' : 'group-hover/tab:mr-6'))}
       />
+      {canClose && (
+        <CloseButton
+          tab={tab}
+          className={cn(
+            'absolute top-1/2 right-1.5 -translate-y-1/2',
+            active ? 'opacity-100' : 'opacity-0 group-hover/tab:opacity-100 group-focus-visible/tab:opacity-100',
+          )}
+        />
+      )}
     </span>
   );
 }
