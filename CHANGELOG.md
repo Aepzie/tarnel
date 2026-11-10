@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Task manager (`Shift+Esc`, palette "Task manager", or the activity button in the perf popover): CPU and private memory per tab (favicon, Space colour, active / playing / background / asleep / crashed), per extension, the Vela interface, Browser, GPU and utility services (Network, Audio…), with sortable columns, totals and Sleep / End process / Go to tab. Live once a second while open; nothing runs while it is closed
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
