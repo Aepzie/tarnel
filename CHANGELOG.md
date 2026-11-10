@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Settings → Privacy → "Remove tracking parameters" (on by default): click and share trackers (utm_*, fbclid, gclid, msclkid, igshid, mc_eid, HubSpot/Marketo ids, Spotify/YouTube `si`, Twitter/X `ref_src`, …) are stripped from pages you open, addresses you type and links you copy. A curated list that leaves affiliate tags such as Amazon `tag` alone; removed parameters count towards the tab's blocked badge
+- Settings → Privacy → "Trim referrers" (on by default): other sites only receive the origin you came from, never the full page address, even when a page asks for more; nothing is sent when going from HTTPS to HTTP
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
