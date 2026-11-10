@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Clicking an inactive tab (or split pane) only switches to it; the command palette opens only when clicking the tab that was already active, and never after a drag.
+
 ## [0.5.0] - 2026-11-10
 
 ### Added
