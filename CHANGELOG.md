@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Import from other browsers (Settings → Import): bookmarks and recent history from Chrome, Edge, Brave, Vivaldi, Opera, Chromium and Firefox profiles on Windows, macOS and Linux, into the Space you choose. Passwords come from the CSV file those browsers, Bitwarden or 1Password export; the file is read in the main process and never shown to pages. A fresh new tab page offers a small, dismissible "Import from Chrome" hint
+
 ## [0.7.1] - 2026-11-10
 
 First published build of the 0.7 line (the v0.7.0 tag was never released because its macOS packaging failed in CI).
