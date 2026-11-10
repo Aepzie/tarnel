@@ -142,6 +142,7 @@ export const IPC = {
   },
   pagesEvents: {
     update: 'pages-event:update',
+    theme: 'pages-event:theme',
   },
 } as const;
 
