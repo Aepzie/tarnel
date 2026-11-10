@@ -27,6 +27,7 @@ import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } 
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
+import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -430,5 +431,34 @@ export interface VelaChromeAPI {
     /** Routes one tab through a MantelVPN country (own partition), or back to its Space with null. */
     routeTab(tabId: number, country: string | null): Promise<VpnResult>;
     onState(cb: (state: VpnState) => void): Unsubscribe;
+  };
+}
+
+/** Site info popover (chrome) and site-data-on-close policies (Settings → Privacy). Channels live in SITE_IPC (shared/site-data.ts). */
+export interface VelaChromeAPI {
+  site: {
+    /** Connection, cookies, storage, permissions and close policy of a tab's site; null for non-web pages. */
+    info(tabId: number): Promise<SiteInfo | null>;
+    /** Deletes the site's cookies and storage in the tab's Space. */
+    clear(tabId: number): Promise<SiteInfo | null>;
+    /** Forgets a remembered permission answer so the site has to ask again. */
+    resetPermission(tabId: number, key: SitePermissionKey): Promise<SiteInfo | null>;
+    /** Per-site "keep" / "delete when Vela closes"; null falls back to the Space default. */
+    setOnClose(tabId: number, action: SiteCloseAction | null): Promise<SiteInfo | null>;
+  };
+}
+
+export interface SpaceSiteDataPolicy {
+  spaceId: SpaceId;
+  name: string;
+  color: string;
+  policy: SiteDataPolicy;
+}
+
+export interface VelaPagesAPI {
+  siteData: {
+    /** Close policies of every persistent Space (burner Spaces are always wiped). */
+    list(): Promise<SpaceSiteDataPolicy[]>;
+    set(spaceId: SpaceId, policy: SiteDataPolicy): Promise<SpaceSiteDataPolicy[]>;
   };
 }
