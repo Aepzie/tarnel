@@ -335,6 +335,7 @@ src/main/settings.ts   settings                       — data
 src/main/spaces.ts     spaces + sessions              — data
 src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
+src/main/dns.ts        DNS-over-HTTPS (global host resolver; presets + validation in src/shared/doh.ts) — data
 src/main/fingerprint/* per-space fingerprint seeds, preload registration, header hints, worker patching (CDP) — data
 src/preload/fingerprint*.ts  main-world fingerprint patch (frame + service-worker session preloads) — data
 src/main/identity/*, src/preload/identity*.ts  Chromium identity: window.chrome shape, client-hint headers (every Space) — data
@@ -417,6 +418,27 @@ NOTE: `webRequest` allows only ONE listener per event per session, so nothing ca
 dispatcher (see [Network pipeline](#network-pipeline-srcmainnet)). https-only upgrade is done in tabs.ts
 (`will-navigate`/URL resolution) and privacy.ts exposes `export function upgradeToHttps(url: string): string`.
 Third-party cookie blocking strips the `Cookie` header on third-party sub-resource requests in that stage.
+
+### `src/main/dns.ts` (Secure DNS)
+```ts
+export function initSecureDns(): void; // after 'ready'; re-applies on every settings change
+```
+Settings → Privacy → Secure DNS maps `secureDns` (`off` | `automatic` | `cloudflare` | `quad9` | `mullvad` |
+`mullvad-adblock` | `nextdns` | `custom`), `secureDnsStrict`, `secureDnsNextDns` and `secureDnsTemplate` to
+`app.configureHostResolver({ secureDnsMode, secureDnsServers })` via the pure `resolveSecureDns()` in
+`src/shared/doh.ts`. Provider + Strict = Chromium `secure` mode (lookups fail instead of falling back to plain
+DNS); without Strict = `automatic` with that server. `automatic` alone upgrades only when the system resolver is a
+known DoH provider. A NextDNS/custom choice without a valid template resolves to `off` (never a strict mode with no
+server). Templates must be `https://` without credentials or fragment, plain (POST) or ending in `{?dns}` (GET);
+`sanitize()` rejects anything else, so persisted values are always valid or `''`.
+
+* **Process-global.** Electron's host resolver lives in the single network service, so this is one setting for
+  every Space; per-Space DoH is not possible. `configureHostResolver` can be called again at any time after
+  'ready' and applies to the next lookup (verified on Electron 45: strict with an unreachable server fails with
+  `ERR_DNS_SECURE_RESOLVER_HOSTNAME_RESOLUTION_FAILED` right after the call), so no restart is needed. While the
+  setting has never left `off`, Vela does not call it at all (Chromium defaults).
+* **Proxied Spaces.** A Space or tab behind a proxy (MantelVPN, SOCKS5, HTTP) hands the hostname to the proxy
+  (`CONNECT host`, SOCKS5 remote resolution), so the proxy resolves it and DoH does not apply there.
 
 ### `src/main/perf/flags.ts`
 ```ts
