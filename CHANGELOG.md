@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Built-in password manager, per Space: Vela offers to save (or update) a password after you sign in, and offers saved accounts on sign-in forms. Nothing is filled until you pick an account. Passwords are encrypted with your OS (DPAPI, Keychain or a Linux keyring); if that is not available Vela does not save them. Burner Spaces keep passwords in memory only.
+- vela://passwords: search, reveal (with a confirm, hidden again after 30 s), copy (cleared from the clipboard after 30 s), edit, delete, CSV export, "Never saved" sites, and a shortcut to install Bitwarden or 1Password instead.
+- Settings → Privacy → Passwords: "Offer to save passwords" and "Auto-fill" switches.
+
 ## [0.7.1] - 2026-11-10
 
 First published build of the 0.7 line (the v0.7.0 tag was never released because its macOS packaging failed in CI).

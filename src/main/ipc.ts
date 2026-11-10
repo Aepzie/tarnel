@@ -36,6 +36,7 @@ import { registerVpnIpc } from './vpn';
 import { panic } from './panic';
 import { registerSiteDataIpc } from './site-data';
 import { registerTaskManagerIpc } from './perf/task-manager';
+import { registerPasswordIpc } from './passwords';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -339,6 +340,7 @@ export function registerIpc(): void {
   handleChrome(PANIC_IPC.run, () => panic());
   registerSiteDataIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
+  registerPasswordIpc(handleChrome, handlePages);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
