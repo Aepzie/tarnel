@@ -3,9 +3,10 @@ import { createRoot } from 'react-dom/client';
 import '@/styles/globals.css';
 import './page.css';
 import { App } from './App';
+import { parseWarning, Warning } from './Warning';
+
+const warning = parseWarning(location.search);
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <StrictMode>{warning ? <Warning warning={warning} /> : <App />}</StrictMode>,
 );

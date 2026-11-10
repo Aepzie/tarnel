@@ -2,9 +2,11 @@ import { nativeImage } from 'electron';
 import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
+import type { ExtensionPermission, PermissionRisk } from '../../shared/types';
+import { classifyPermissions, overallRisk, type PermissionManifest } from './risk';
 
 /** The subset of manifest.json Vela reads itself (Chromium parses the rest). */
-interface RawManifest {
+interface RawManifest extends PermissionManifest {
   manifest_version?: number;
   name?: string;
   version?: string;
@@ -28,6 +30,8 @@ export interface StaticInfo {
   icon: string | null;
   /** Options page path relative to the extension root. */
   optionsPage: string | null;
+  permissions: ExtensionPermission[];
+  risk: PermissionRisk;
 }
 
 const ICON_SIZE = 32;
@@ -129,7 +133,8 @@ export function staticInfo(dir: string): StaticInfo {
   }
   const page = manifest?.options_ui?.page ?? manifest?.options_page;
   const optionsPage = typeof page === 'string' && page && inside(dir, page) ? page.replace(/^\/+/, '') : null;
-  const info = { icon, optionsPage };
+  const permissions = manifest ? classifyPermissions(manifest) : [];
+  const info = { icon, optionsPage, permissions, risk: overallRisk(permissions) };
   infoCache.set(dir, info);
   return info;
 }

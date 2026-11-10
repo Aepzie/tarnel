@@ -2,7 +2,7 @@ import { app, safeStorage } from 'electron';
 import { VPN_IPC, normalizeAccountNumber, normalizeTotp, type VpnConnection, type VpnResult, type VpnServer, type VpnState } from '../../shared/vpn';
 import { normalizeCountry, pickServer } from '../../shared/vpn-route';
 import { getActiveSpaceId, getSpace, refreshRoutedProxies, routedCountryOf, setRouteProxyProvider, updateSpace } from '../spaces';
-import { getTabVpn, setTabVpn } from '../tabs';
+import { getBrowserState, getTabVpn, setTabVpn } from '../tabs';
 import { createStore, type JsonStore } from '../store';
 import { sendToChrome } from '../window';
 import { MantelError, mantel } from './mantel';
@@ -376,4 +376,11 @@ export function registerVpnIpc(handle: ChromeHandler): void {
     restoreRoute();
     return emit();
   });
+}
+
+/** Panic: drop the Space route and every per-tab route (keeps the account signed in). */
+export function disconnectAll(): void {
+  restoreRoute();
+  for (const tab of getBrowserState().tabs) if (tab.vpn) setTabVpn(tab.id, null);
+  emit();
 }

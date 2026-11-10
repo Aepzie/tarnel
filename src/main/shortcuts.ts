@@ -19,6 +19,7 @@ import {
 } from './tabs';
 import { getChromeView, getMainWindow, isHtmlFullscreen, sendToChrome, toggleFullscreen } from './window';
 import { toggleSplit } from './split';
+import { panic } from './panic';
 
 const isMac = process.platform === 'darwin';
 
@@ -57,6 +58,10 @@ function handle(input: Input): boolean {
   const mod = isMac ? input.meta : input.control;
   const { shift, alt, code, key } = input;
 
+  if (key === 'Escape' && shift && !mod && !alt) {
+    if (!input.isAutoRepeat) sendCommand('task-manager');
+    return true;
+  }
   if (key === 'Escape') {
     if (isHtmlFullscreen()) {
       withActive((id) => {
@@ -110,6 +115,8 @@ function handle(input: Input): boolean {
         });
       case 'KeyM':
         return once(() => sendCommand('audio-mixer'));
+      case 'Delete':
+        return once(() => void panic());
       case 'Equal':
         withActive((id) => zoomTab(id, 1));
         return true;

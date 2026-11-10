@@ -40,6 +40,10 @@ export type WebRequestEvent = keyof StageMap;
 
 /** Order of the built-in stages (lower runs first). */
 export const STAGE_ORDER = {
+  /** Dangerous-site warning: decides before the blockers so a listed page shows the interstitial. */
+  safety: 40,
+  /** Tracking-parameter removal on main-frame navigations: redirects before anything is blocked or counted. */
+  urlClean: 50,
   /** Ghostery: the browser's own blocker, runs before extensions (keeps its stats unchanged). */
   adblock: 100,
   /** DNT / GPC, client hints, fingerprint header reduction, third-party cookie stripping. */
