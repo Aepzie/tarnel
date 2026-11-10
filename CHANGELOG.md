@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-10
+
 ### Added
 - MantelVPN per tab: right-click a tab → MantelVPN → a country from the live server list routes just that tab through Mantel (Off brings it back). The country's flag shows faintly behind the tab, fading to the right, in the horizontal strip, vertical rows and split segments; the tooltip says "Via MantelVPN · <country>". A routed tab has its own cookies and logins per country (separate partition with the Space's protections), keeps its routing across restarts and fails closed if the proxy is unavailable. Not signed in: the menu offers "Sign in to MantelVPN…"
 - Bundled country flags (no flag emoji on Windows), also used in the VPN server picker
@@ -192,7 +194,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Aepzie/vela/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Aepzie/vela/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Aepzie/vela/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Aepzie/vela/compare/v0.3.0...v0.4.0
