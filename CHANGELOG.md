@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Faster startup: the main process reuses a V8 compile cache across launches, and vela:// pages (new tab, settings, history) use Chromium's code cache
+- The audio mixer, VPN panel, release notes and site-permission prompt load on first use, trimming the browser UI's startup bundle by about 8%
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
