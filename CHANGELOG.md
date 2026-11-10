@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0] - 2026-11-10
+## [0.7.1] - 2026-11-10
+
+First published build of the 0.7 line (the v0.7.0 tag was never released because its macOS packaging failed in CI).
+
+### Fixed
+- Release CI: unused signing secrets no longer break macOS packaging.
+
+## [0.7.0] - 2026-11-10 (not released)
 
 ### Added
 - Freeze background tabs (Settings → Performance, default 5 min): idle background tabs are paused with the Page Lifecycle freeze before they sleep, keeping their place but using no CPU; they resume instantly when shown. Tabs playing audio, pinned, using the mic or camera, in a call or downloading keep running
@@ -224,7 +231,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.1
 [0.7.0]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Aepzie/vela/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Aepzie/vela/compare/v0.4.1...v0.5.0
