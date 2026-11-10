@@ -73,7 +73,14 @@ jobs:
         run: node scripts/signing-config.mjs
 
       - name: Package installers
-        run: npx electron-builder ${{ matrix.args }} ${{ steps.signing.outputs.args }} --publish never
+        shell: bash
+        run: |
+          # Secrets that are not used arrive as empty strings; electron-builder treats a set-but-empty
+          # CSC_LINK as a certificate path ("… not a file"), so drop every empty signing variable.
+          for name in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET WIN_CSC_LINK WIN_CSC_KEY_PASSWORD CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then unset "$name"; fi
+          done
+          npx electron-builder ${{ matrix.args }} ${{ steps.signing.outputs.args }} --publish never
         env:
           # Unsigned builds must not go looking for a keychain / certificate-store identity.
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.signed == 'true' && 'true' || 'false' }}
