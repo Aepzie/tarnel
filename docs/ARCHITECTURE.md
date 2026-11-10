@@ -93,9 +93,14 @@ The seed never leaves main.
 | UA client hints (JS + `Sec-CH-UA-*` headers) | real | full versions reduced to `N.0.0.0`, model empty |
 | Media device labels | real | generic ("Microphone", "Camera", "Speakers") |
 | `getGamepads()` | real | always empty |
+| Timezone (`Intl`, `Date` offset/strings, `toLocale*`) | per Space setting (Automatic = system) | per Space setting (Automatic = UTC, or the MantelVPN country's zone in a routed tab) |
+| Intl default locale, `navigator.language(s)`, `Accept-Language` | per Space language (System = real) | same |
+| Font enumeration (`measureText`, `FontFaceSet.check`, `queryLocalFonts`) | real | fonts outside a common per-platform set (the page's own web fonts excepted) measure as missing; `queryLocalFonts` denied |
 
 Every row applies in workers too where the API exists there (`WorkerNavigator`, `OffscreenCanvas` 2D/WebGL,
 `TextMetrics`, `NavigatorUAData`); workers have no screen, media devices, gamepads, battery or Web Audio.
+
+Timezone and locale are not patched in JavaScript: the tab's DevTools-protocol client (the one that holds workers) sends `Emulation.setTimezoneOverride` / `Emulation.setLocaleOverride` to the page and every out-of-process iframe before it runs. Chromium applies them to the whole renderer process, so dedicated workers in it agree natively (measured: window and blob worker both `Asia/Tokyo`, offset -540, `de-DE`). The override is process-wide: a second tab sharing a renderer gets "already in effect" (same Space, same value) and re-claims it when the owning tab closes. Service workers and shared workers in their own process keep the system zone. DOM-based font probing (element widths) is not covered.
 
 **Not protected:** CSS media queries (`device-width`, resolution), DOM-based font enumeration, timezone/`Intl` (left
 alone: spoofing breaks calendars, banking and booking sites), the IP address itself (use a per-Space proxy), worklets

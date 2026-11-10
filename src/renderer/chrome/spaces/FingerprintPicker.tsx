@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Check, Fingerprint, Loader2, RefreshCw } from 'lucide-react';
 import { FINGERPRINT_LEVELS, type FingerprintLevel, type SpaceId } from '@shared/types';
+import { LANGUAGE_CHOICES, TIMEZONE_CHOICES } from '@shared/fingerprint';
 import { vela } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -133,5 +134,73 @@ function RegenerateButton({ spaceId }: { spaceId: SpaceId }) {
       <Icon className={cn('size-3', phase === 'busy' && 'animate-spin')} strokeWidth={2} aria-hidden />
       {phase === 'done' ? 'Regenerated' : 'New fingerprint'}
     </button>
+  );
+}
+
+/** Timezone select options: automatic, system, VPN country, then fixed zones. */
+export const TIMEZONE_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: '', label: 'Automatic' },
+  { value: 'system', label: 'System' },
+  { value: 'vpn', label: 'Match VPN country' },
+  ...TIMEZONE_CHOICES,
+];
+
+export const LANGUAGE_OPTIONS: readonly { value: string; label: string }[] = [{ value: '', label: 'System' }, ...LANGUAGE_CHOICES];
+
+export const TIMEZONE_HINT = 'Automatic: UTC in Strict (the VPN country’s zone for routed tabs), the system zone otherwise.';
+
+interface RegionSelectProps {
+  label: string;
+  value: string;
+  options: readonly { value: string; label: string }[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  className?: string;
+}
+
+/** Quiet native select for the timezone / language rows. */
+export function RegionSelect({ label, value, options, onChange, disabled, className }: RegionSelectProps) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      className={cn(
+        'h-8 rounded-lg border border-border bg-background px-2 text-[12px] text-foreground outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:bg-white/[0.04]',
+        className,
+      )}
+    >
+      {!options.some((option) => option.value === value) && <option value={value}>{value}</option>}
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+interface RegionFieldsProps {
+  timezone: string;
+  language: string;
+  onTimezone: (value: string) => void;
+  onLanguage: (value: string) => void;
+  disabled?: boolean;
+}
+
+/** Timezone + language pair for the Space dialog (applies only while protection is on). */
+export function RegionFields({ timezone, language, onTimezone, onLanguage, disabled }: RegionFieldsProps) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <label className="flex flex-col gap-1 text-[12px] font-medium text-muted-foreground">
+        Timezone
+        <RegionSelect label="Timezone" value={timezone} options={TIMEZONE_OPTIONS} onChange={onTimezone} disabled={disabled} />
+      </label>
+      <label className="flex flex-col gap-1 text-[12px] font-medium text-muted-foreground">
+        Language
+        <RegionSelect label="Language" value={language} options={LANGUAGE_OPTIONS} onChange={onLanguage} disabled={disabled} />
+      </label>
+    </div>
   );
 }

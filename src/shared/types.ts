@@ -22,6 +22,10 @@ export interface Space {
   proxy: string;
   /** Per-space fingerprint protection. Burner spaces default to 'strict'. */
   fingerprint: FingerprintLevel;
+  /** Timezone pages see (protected Spaces only); see TIMEZONE_* in shared/fingerprint. Missing = automatic. */
+  timezone?: string;
+  /** Language pages see (protected Spaces only); '' or missing = system. */
+  language?: string;
   createdAt: number;
 }
 
@@ -34,6 +38,8 @@ export interface SpaceInput {
   ephemeral: boolean;
   proxy?: string;
   fingerprint?: FingerprintLevel;
+  timezone?: string;
+  language?: string;
 }
 
 export interface TabState {
