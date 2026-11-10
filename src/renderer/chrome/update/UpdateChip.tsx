@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { AlertCircle, ArrowDownToLine, CircleFadingArrowUp, ExternalLink, RotateCw, ScrollText } from 'lucide-react';
 import type { UpdateStatus } from '@shared/types';
@@ -9,7 +9,8 @@ import { ease, spring } from '@/lib/motion';
 import { settle, vela } from '@/lib/vela';
 import { cn } from '@/lib/utils';
 import { GLASS_SURFACE } from '../spaces/surface';
-import { ReleaseNotesDialog } from './ReleaseNotesDialog';
+// The release-notes dialog (markdown renderer + dialog primitives) mounts on first "What's new" only.
+const ReleaseNotesDialog = lazy(() => import('./ReleaseNotesDialog').then((module) => ({ default: module.ReleaseNotesDialog })));
 
 const updatesApi = typeof window !== 'undefined' ? window.vela?.updates : undefined;
 
@@ -46,6 +47,11 @@ export function UpdateChip() {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  // Stays mounted after the first open so the dialog's close animation still plays.
+  const [notesRequested, setNotesRequested] = useState(false);
+  useEffect(() => {
+    if (notesOpen) setNotesRequested(true);
+  }, [notesOpen]);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const kind = chipKind(status);
   const visible = kind !== null && `${status?.version}:${kind}` !== dismissed;
@@ -132,7 +138,11 @@ export function UpdateChip() {
           </Popover>
         )}
       </AnimatePresence>
-      {status?.version && <ReleaseNotesDialog status={status} open={notesOpen} onOpenChange={setNotesOpen} />}
+      {status?.version && notesRequested && (
+        <Suspense fallback={null}>
+          <ReleaseNotesDialog status={status} open={notesOpen} onOpenChange={setNotesOpen} />
+        </Suspense>
+      )}
     </>
   );
 }
