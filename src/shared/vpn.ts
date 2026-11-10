@@ -198,15 +198,36 @@ export function parseApiError(body: unknown): { code: string | null; message: st
   return { code, message };
 }
 
-/** Short, user-facing copy for an API error code / status. */
-export function describeApiError(status: number, code: string | null): string {
-  if (code === 'invalid_code') return 'An account number has exactly 16 digits.';
-  if (code === 'unknown_code') return 'This account number does not exist.';
-  if (code === 'totp_required' || code === 'totp_invalid' || status === 403) {
-    return 'This account uses two-factor authentication, which Vela does not support yet.';
+/** Short, user-facing copy for an API error code / status. Unknown codes fall back to Mantel's own text. */
+export function describeApiError(status: number, code: string | null, serverMessage: string | null = null): string {
+  switch (code) {
+    case 'invalid_code':
+      return 'An account number has exactly 16 digits.';
+    case 'unknown_code':
+    case 'account_not_found':
+      return 'This account number does not exist.';
+    case 'totp_required':
+    case 'totp_invalid':
+      return 'This account uses two-factor authentication, which Vela does not support yet.';
+    case 'account_expired':
+      return 'This Mantel account has no active time left.';
+    case 'device_limit_reached':
+      return 'This Mantel account has reached its device limit.';
+    case 'device_locked':
+      return 'This device is locked on your Mantel account.';
+    case 'location_paused':
+    case 'location_upgrading':
+    case 'location_full':
+    case 'node_unavailable':
+      return 'This location is not available right now. Pick another one.';
+    case 'rate_limited':
+      return 'Too many attempts. Try again in a minute.';
+    case 'unauthorized':
+      return 'Your Mantel session ended. Sign in again.';
   }
-  if (code === 'rate_limited' || status === 429) return 'Too many attempts. Try again in a minute.';
-  if (code === 'unauthorized' || status === 401) return 'Your Mantel session ended. Sign in again.';
+  if (status === 429) return 'Too many attempts. Try again in a minute.';
+  if (status === 401) return 'Your Mantel session ended. Sign in again.';
   if (status >= 500) return 'Mantel is having trouble right now. Try again later.';
-  return `Mantel answered with an error (${status}).`;
+  const detail = code ? ` (${code}, ${status})` : ` (${status})`;
+  return serverMessage ? `Mantel: ${serverMessage}${detail}` : `Mantel answered with an error${detail}.`;
 }
