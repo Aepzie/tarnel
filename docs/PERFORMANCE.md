@@ -203,6 +203,37 @@ built-in 144 Hz panel on the Intel iGPU + 75 Hz primary monitor on the NVIDIA dG
 | 75 Hz primary | 75 fps | 75 fps (switch not set) |
 | 75 Hz primary, *Highest* | — | 144 fps (oversampling, as documented) |
 
+### 9. Startup: code caches and a slimmer first bundle
+
+- **Main process.** `dist/main/index.js` is a tiny boot entry (`src/main/boot.ts`) that calls
+  Node's `module.enableCompileCache()` (Electron 45 ships Node 24) with `<userData>/compile-cache`,
+  then requires the real bundle `dist/main/app.js`. Later launches deserialize the bundle's (and the
+  lazily required adblock/extension libraries') bytecode instead of compiling it. The cache is
+  flushed 3 s after boot; it is keyed by file content, so a new build just misses once.
+  `VELA_NO_COMPILE_CACHE=1` turns it off for A/B runs.
+- **vela:// pages.** The scheme is registered with the `codeCache` privilege: Chromium only code-caches
+  http(s) by default. Default `v8CacheOptions` ('code', with heat check) applies, so a page's scripts
+  are served from cache from roughly the third load on.
+- **Chrome UI.** It loads from `file://`, which Chromium never code-caches, so `v8CacheOptions` on the
+  chrome view would do nothing. Serving it from `vela://chrome/` would enable the cache but touches the
+  CSP, the preload and IPC sender checks: not done.
+- **Lazy chrome UI.** The audio mixer panel, VPN panel, release-notes dialog and site-permission prompt
+  are `React.lazy` chunks loaded on first open (mixer/VPN prefetch on hover or focus of their button).
+  Initial chrome JS (production build): 867 KB → 794 KB; 76 KB moved into on-demand chunks.
+- **Main init deferral: measured, not worth it.** With `VELA_STARTUP_TRACE=1` everything between
+  `whenReady` and `openWindow()` (spaces, identity, fingerprint, audio, adblock kick-off, extensions,
+  IPC) takes ~15 ms; sync, updater and sleeper after boot take ~1 ms. Creating the window + chrome view
+  takes ~60 ms and the chrome renderer load ~200–600 ms, so deferring init would not move first paint.
+- **Browser-process V8 snapshot** (`LoadBrowserProcessSpecificV8Snapshot`): skipped. It needs a
+  custom snapshot build step (electron-mksnapshot) per Electron upgrade, for a main bundle whose
+  compile cost the compile cache already removes.
+
+Startup trace (Windows 11, warm profile, `VELA_STARTUP_TRACE=1`, median of 5): bundle evaluated at
+~106 ms process uptime with the compile cache vs ~142 ms without. End-to-end numbers (spawn → chrome
+`load`, spawn → new-tab `load`) were measured over CDP with the window moved off-screen; occluded
+windows never record first-contentful-paint, so `load` is used instead, and the machine was busy, so
+treat run-to-run noise (±150 ms) as larger than the effect.
+
 ## Measuring it in-app
 
 `collectPerfStats()` (`src/main/perf/metrics.ts`) sums **private memory** (`privateBytes` from

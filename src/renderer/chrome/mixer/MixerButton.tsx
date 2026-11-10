@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { lazy, Suspense, useCallback, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SlidersVerticalIcon } from 'lucide-react';
 import type { UICommand } from '@shared/types';
@@ -9,8 +9,11 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { ui } from '../ui-store';
 import { MIXER_SHORTCUT } from './mixer-commands';
-import { MixerPanel } from './MixerPanel';
 import { mixerPanel, useMixer } from './mixer-store';
+
+// The panel (EQ graph, faders, knobs) is the largest chrome feature: loaded on first open/hover.
+const loadPanel = () => import('./MixerPanel');
+const MixerPanel = lazy(() => loadPanel().then((module) => ({ default: module.MixerPanel })));
 
 const BAR_HEIGHTS = [[0.35, 1, 0.5], [0.8, 0.3, 1], [0.5, 0.9, 0.3]];
 
@@ -59,6 +62,7 @@ export function MixerButton() {
       }
       if (command !== 'audio-mixer') return;
       if (autoHideToolbar) ui.setIslandRevealed(true);
+      void loadPanel();
       mixerPanel.toggle();
     },
     [autoHideToolbar],
@@ -72,6 +76,8 @@ export function MixerButton() {
           type="button"
           aria-label={playing ? 'Audio mixer, sound playing' : 'Audio mixer'}
           title={`Audio mixer (${MIXER_SHORTCUT})`}
+          onPointerEnter={() => void loadPanel()}
+          onFocus={() => void loadPanel()}
           className={cn(
             'no-drag relative grid size-7 shrink-0 place-items-center rounded-[10px] text-muted-foreground transition-[background-color,color] duration-150 outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]',
             mixer.open && 'bg-accent text-foreground',
@@ -93,7 +99,9 @@ export function MixerButton() {
         }}
         className="w-auto max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl border-0 bg-popover p-0 outline-none shadow-[0_0_0_1px_var(--island-ring),inset_0_1px_0_var(--island-highlight),0_24px_64px_-12px_rgb(0_0_0/0.55)] backdrop-blur-2xl backdrop-saturate-150 light:shadow-[0_0_0_1px_var(--island-ring),inset_0_1px_0_var(--island-highlight),0_20px_48px_-16px_rgb(0_0_0/0.25)]"
       >
-        <MixerPanel />
+        <Suspense fallback={null}>
+          <MixerPanel />
+        </Suspense>
       </PopoverContent>
     </Popover>
   );

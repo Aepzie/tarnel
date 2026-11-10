@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { LayoutGroup } from 'motion/react';
 import type { UICommand } from '@shared/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -12,9 +12,13 @@ import { WindowTint } from './WindowTint';
 import { TopIsland } from './island/TopIsland';
 import { FindBar } from './find/FindBar';
 import { CommandPalette } from './palette/CommandPalette';
-import { PermissionPrompt } from './permissions/PermissionPrompt';
+import { usePermissionQueue } from './permissions/permission-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
+
+// Site permission prompts are rare: the prompt UI loads with the first request (the queue store
+// itself is eager, so no request is missed while it loads).
+const PermissionPrompt = lazy(() => import('./permissions/PermissionPrompt').then((module) => ({ default: module.PermissionPrompt })));
 
 /**
  * Browser chrome root. Layout: floating top island, optional find strip, page viewport; in the
@@ -24,6 +28,11 @@ import { TaskManager } from './task-manager/TaskManager';
 export function App() {
   const settings = useSettings();
   const space = useActiveSpace();
+  const permissionQueue = usePermissionQueue();
+  const [permissionUi, setPermissionUi] = useState(false);
+  useEffect(() => {
+    if (permissionQueue.length > 0) setPermissionUi(true);
+  }, [permissionQueue.length]);
 
   useEffect(() => resetOverlayOnBoot(), []);
 
@@ -85,7 +94,11 @@ export function App() {
             <Viewport />
           </div>
         </div>
-        <PermissionPrompt />
+        {permissionUi && (
+          <Suspense fallback={null}>
+            <PermissionPrompt />
+          </Suspense>
+        )}
         <CommandPalette />
         <TaskManager />
       </LayoutGroup>

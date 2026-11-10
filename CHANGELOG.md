@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memory saver (Off / Balanced / Maximum) with a memory limit: when Vela uses more than the limit, the least recently used background tabs are slept; the performance chip shows how much it freed
 
 ### Changed
+- Faster startup: the main process reuses a V8 compile cache across launches, and vela:// pages (new tab, settings, history) use Chromium's code cache
+- The audio mixer, VPN panel, release notes and site-permission prompt load on first use, trimming the browser UI's startup bundle by about 8%
 - Background throttling can no longer be switched off by command-line switches; intensive wake-up throttling stays enabled
 - Address-bar prefetch: resting on a URL suggestion for 150 ms fetches the page into the cache through the Space's session, so cacheable pages open almost instantly (291 ms → 25 ms on a local test). https only, never search pages, Burner Spaces or VPN-routed tabs, 1 at a time and 3 per minute. Settings → Performance → "Preload pages from the address bar" (on by default)
 - Per-Space timezone and language (Space dialog and Settings → Spaces): Timezone Automatic / System / UTC / Match VPN country / a fixed zone; Language System / English / others. Timezone and Intl locale use Chromium's native per-tab override (DevTools protocol), so the page, its iframes and its workers report the same zone, offset, `Date` strings and locale; navigator.language(s) and Accept-Language follow the Space language. Automatic means UTC in Strict (the VPN country's zone for routed tabs) and the system zone in Standard.

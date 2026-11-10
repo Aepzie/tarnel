@@ -25,9 +25,19 @@ const shared = {
 /** Main process + sandboxed preloads (esbuild). The renderer is built by Vite. */
 const nodeConfigs = [
   {
+    // Tiny startup entry (package.json "main"): enables Node's V8 compile cache, then requires app.js.
+    ...shared,
+    entryPoints: [join(src, 'main', 'boot.ts')],
+    outfile: join(out, 'main', 'index.js'),
+    platform: 'node',
+    format: 'cjs',
+    target: 'node20',
+    external: ['electron', './app.js'],
+  },
+  {
     ...shared,
     entryPoints: [join(src, 'main', 'index.ts')],
-    outfile: join(out, 'main', 'index.js'),
+    outfile: join(out, 'main', 'app.js'),
     platform: 'node',
     format: 'cjs',
     target: 'node20',
