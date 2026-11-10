@@ -1,3 +1,5 @@
+import type { SecureDnsMode } from './doh';
+
 export type SpaceId = string;
 
 export type SpaceColor =
@@ -194,6 +196,14 @@ export interface Settings {
   updateAutoDownload: boolean;
   /** Offer pre-releases (e.g. 0.3.0-beta.1). */
   updatePrerelease: boolean;
+  /** DNS-over-HTTPS resolver. Process-global (Electron's host resolver), not per Space. */
+  secureDns: SecureDnsMode;
+  /** Fail lookups instead of falling back to plain DNS when DoH fails (Chromium "secure" mode). */
+  secureDnsStrict: boolean;
+  /** NextDNS configuration ID or DoH URL; always valid or ''. */
+  secureDnsNextDns: string;
+  /** Custom DoH URI template; always valid or ''. */
+  secureDnsTemplate: string;
 }
 
 export interface Suggestion {
@@ -309,6 +319,10 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,
+  secureDns: 'off',
+  secureDnsStrict: false,
+  secureDnsNextDns: '',
+  secureDnsTemplate: '',
 };
 
 /** Where an installed extension came from. */

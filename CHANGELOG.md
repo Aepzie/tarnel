@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Settings → Privacy → "Remove tracking parameters" (on by default): click and share trackers (utm_*, fbclid, gclid, msclkid, igshid, mc_eid, HubSpot/Marketo ids, Spotify/YouTube `si`, Twitter/X `ref_src`, …) are stripped from pages you open, addresses you type and links you copy. A curated list that leaves affiliate tags such as Amazon `tag` alone; removed parameters count towards the tab's blocked badge
 - Settings → Privacy → "Trim referrers" (on by default): other sites only receive the origin you came from, never the full page address, even when a page asks for more; nothing is sent when going from HTTPS to HTTP
+- Release pipeline is ready for code signing: Windows via Azure Trusted Signing or a PFX certificate, macOS via Developer ID with notarization (hardened runtime + entitlements for camera, microphone, location and security keys). It switches on automatically once the secrets in docs/RELEASING.md are added; without them releases stay unsigned as before
+- Secure DNS (DNS-over-HTTPS) in Settings → Privacy: Off, Automatic (upgrade when the system resolver supports it), Cloudflare, Quad9, Mullvad, Mullvad with ad blocking, NextDNS (configuration ID) or a custom `https://` template. "Strict" fails lookups instead of falling back to plain DNS. Applies live to every Space at once (Electron's resolver is process-global); Spaces behind a proxy or MantelVPN keep resolving through the proxy
+
+### Changed
+- Content blocking is ready before the first page loads: new sessions wait for the cached engine (~30 ms warm; capped at 3 s on a first run without cache). The cached engine is now versioned by Ghostery version and list set, a corrupt or outdated cache is rebuilt, and a long-running browser refreshes its lists every 24 h instead of only at launch.
+
+### Security
+- Windows downloads carry the Mark-of-the-Web (`Zone.Identifier`: internet zone plus source and referrer URL, URLs omitted for burner Spaces and blob/data downloads), so SmartScreen, Defender and Office Protected View treat them like Chrome downloads
+- Packaged builds flip Electron fuses: no `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` or `--inspect`; app code only from an integrity-checked `app.asar`; cookies encrypted at rest with the OS key. Existing plaintext cookies stay readable and are encrypted as they are rewritten; going back to 0.6.0 or older afterwards logs you out of sites
 
 ## [0.6.0] - 2026-11-10
 
