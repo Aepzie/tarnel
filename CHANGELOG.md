@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Freeze background tabs (Settings → Performance, default 5 min): idle background tabs are paused with the Page Lifecycle freeze before they sleep, keeping their place but using no CPU; they resume instantly when shown. Tabs playing audio, pinned, using the mic or camera, in a call or downloading keep running
+- Memory saver (Off / Balanced / Maximum) with a memory limit: when Vela uses more than the limit, the least recently used background tabs are slept; the performance chip shows how much it freed
+
+### Changed
+- Background throttling can no longer be switched off by command-line switches; intensive wake-up throttling stays enabled
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
