@@ -471,6 +471,55 @@ export function serializeSession(): SavedTab[]; export function restoreSession()
 // …plus whatever else ipc.ts needs (back/forward/reload/find/zoom/move/duplicate/pin/mute/moveToSpace)
 ```
 
+## VPN (MantelVPN)
+
+`src/shared/vpn.ts` (contract + pure parsers, unit-tested), `src/main/vpn/mantel.ts` (API client),
+`src/main/vpn/index.ts` (state, safeStorage, Space routing, `vela.vpn.*` IPC), UI in `src/renderer/chrome/vpn/*`.
+
+**Mantel API** (wire format taken from the public Windows client
+[Mantel-Collective-LLC/mantel-windows](https://github.com/Mantel-Collective-LLC/mantel-windows), GPL-3.0: only
+endpoint shapes are reused, no code). Base `https://mantelvpn.com` (the client takes it from `MANTEL_API_URL` at
+build time; `mantelvpn.com/api/v1/*` answers with Mantel's JSON errors). `VELA_MANTEL_API_URL` may point at a
+loopback mock for development (http only for loopback).
+
+| Call | Use in Vela |
+|---|---|
+| `POST /api/v1/auth/login` `{code, totp}` → `{token, account:{id, paidUntil}}` | sign in with the 16-digit account number; bearer token kept in memory only |
+| `GET /api/v1/account` → `{paidUntil, graceUntil?, devices, settings}` | expiry |
+| `GET /api/v1/nodes` → `[{id, city, country, endpointHost, endpointPort, online, latencyMs?, status?}]` | server list (needs auth in production; no load figure) |
+| `GET/POST/DELETE /api/v1/proxies` → `{proxy:{host, port, protocol, exit, username}, password}` | per-location account proxy used for Connect |
+| `POST /api/v1/auth/logout` | sign out |
+
+Not used: `POST /api/v1/devices` (registers a WireGuard public key, returns the tunnel config), port forwarding,
+Tor, tickets, two-factor (`totp_required` is shown as unsupported).
+
+**Tunnel.** The Mantel app brings WireGuard up through the official WireGuard for Windows tunnel service, driven by
+the closed-source, admin-installed Mantel Service over a named pipe (kill switch = Windows Firewall rules). A browser
+cannot do that, so Vela does not register devices or keys.
+
+**Connect = Space proxy.** Mantel offers account-scoped "server proxies" (SOCKS5, HTTP, MTProto; exit "direct" =
+the location's IP, or Tor). Connect lists the account's proxies, reuses Vela's own HTTP proxy for that location or
+creates one (`name: "Vela", protocol: "http", exit: "direct"`), stores the once-shown password with safeStorage and
+sets the active Space's proxy to `http://host:port` (existing fail-closed Space proxy path). Chromium cannot do
+SOCKS5 username/password auth, hence HTTP; the `Proxy-Authorization` challenge is answered in main via `app.on('login')`
+only for the exact host:port in use. HTTPS sites stay end-to-end TLS inside `CONNECT`; the proxy credentials
+themselves travel in plain text to the proxy (Mantel's own app warns about this). Disconnect, sign-out and the next
+start restore the Space's previous proxy (unless the user changed it). Sign-out deletes Vela's proxies and the token.
+
+**Preview fallback.** If the API is unreachable (network error/timeout), the panel shows built-in preview servers and
+a simulated connection, labelled "Preview"; nothing is routed.
+
+**What Mantel would need to provide for a solid in-browser VPN:**
+1. Proxy endpoints meant for browsers: HTTPS proxy (TLS to the proxy, so credentials are not sent in clear) or SOCKS5
+   over TLS, on every location, with documented hostnames and limits (Vela creates one per used location).
+2. A scoped app token / OAuth-style device grant ("Vela may manage proxies") instead of the raw account number, plus
+   token refresh; ideally revocable from the Mantel account page.
+3. A public, unauthenticated location list (or one usable with that scoped token) including load.
+4. Two-factor support for third-party clients (the login takes `totp`; Vela has no prompt yet).
+5. Stated rate limits and a stable, versioned API contract for partners.
+6. Alternatively a userspace WireGuard → local SOCKS bridge (wireproxy-style) that Mantel ships and signs; Vela would
+   then point a Space at `socks5://127.0.0.1:<port>` without admin rights. Vela does not bundle such a binary today.
+
 ## Sync (optional, end-to-end encrypted)
 
 Off by default. There is no Vela server: the user picks the storage — a **folder** (OneDrive,
