@@ -38,6 +38,8 @@ if (isVelaPage()) {
       reload: (id) => call(EXTENSION_IPC.reload, id),
       remove: (id) => call(EXTENSION_IPC.remove, id),
       openOptions: (id) => call(EXTENSION_IPC.pageOptions, id),
+      confirmInstall: (token) => call(EXTENSION_IPC.confirmInstall, token),
+      cancelInstall: (token) => call(EXTENSION_IPC.cancelInstall, token),
     },
     sync: {
       status: () => call(ch.syncStatus),

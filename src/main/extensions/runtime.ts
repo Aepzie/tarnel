@@ -7,7 +7,7 @@ import { isInternalUrl } from '../url';
 import { getMainWindow } from '../window';
 import { staticInfo } from './manifest';
 import { attachDnr, forgetDnrSession, loadDnr, registerDnrPreload, unloadDnr } from './dnr';
-import { getInstalled, runsIn, wantedIn } from './registry';
+import { allowedIn, arm, getInstalled, isArmed, listInstalled, runsIn, wantedIn, type InstalledExtension } from './registry';
 
 /**
  * Per-Space extension hosts. `electron-chrome-extensions` (chrome.tabs / windows / action /
@@ -397,11 +397,23 @@ async function actionIcon(
   return url;
 }
 
+/** 'On click' extensions allowed in the Space but not loaded yet: their button loads them. */
+function waitingForClick(host: Host | undefined): InstalledExtension[] {
+  const space = host ? getSpace(host.spaceId) : undefined;
+  if (!space) return [];
+  return listInstalled().filter((entry) => entry.siteAccess === 'click' && !isArmed(entry.id) && allowedIn(entry, space));
+}
+
+function waitingAction(entry: InstalledExtension): ExtensionAction {
+  return { id: entry.id, title: `${entry.name} — click to run`, badgeText: '', badgeColor: null, icon: staticInfo(entry.path).icon };
+}
+
 /** Action buttons of the extensions running in the active tab's Space. */
 export async function activeActions(): Promise<ExtensionAction[]> {
   const wc = activeContents();
   const host = wc ? hosts.get(wc.session) : undefined;
-  if (!wc || !host?.crx || host.loaded.size === 0) return [];
+  const waiting = waitingForClick(host).map(waitingAction);
+  if (!wc || !host?.crx || host.loaded.size === 0) return waiting;
   const api = internals(host.crx).api.browserAction;
   let actions: ReturnType<typeof api.getState>['actions'] = [];
   try {
@@ -410,7 +422,7 @@ export async function activeActions(): Promise<ExtensionAction[]> {
     actions = [];
   }
   const byId = new Map(actions.map((action) => [action.id, action]));
-  return Promise.all(
+  const live = await Promise.all(
     [...host.loaded].map(async ([id, path]): Promise<ExtensionAction> => {
       const action = byId.get(id);
       const tab = action?.tabs[String(wc.id)];
@@ -424,9 +436,21 @@ export async function activeActions(): Promise<ExtensionAction[]> {
       };
     }),
   );
+  return [...live, ...waiting];
 }
 
-export function activateAction(id: string, anchor: ExtensionAnchor, kind: 'click' | 'contextmenu'): void {
+/** Site access 'On click': the first click on its button loads it (for this launch), then runs the click. */
+async function armOnClick(host: Host | undefined, id: string): Promise<void> {
+  if (!host || host.loaded.has(id)) return;
+  if (!waitingForClick(host).some((entry) => entry.id === id)) return;
+  arm(id);
+  await syncAll();
+  changed();
+}
+
+export async function activateAction(id: string, anchor: ExtensionAnchor, kind: 'click' | 'contextmenu'): Promise<void> {
+  const before = activeContents();
+  await armOnClick(before ? hosts.get(before.session) : undefined, id);
   const wc = activeContents();
   const host = wc ? hosts.get(wc.session) : undefined;
   if (!wc || !host?.crx || !host.loaded.has(id)) throw new Error('Extension is not running in this Space');
