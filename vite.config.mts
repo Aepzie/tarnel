@@ -39,6 +39,7 @@ export default defineConfig(({ mode }) => ({
         settings: resolve(root, 'pages/settings/index.html'),
         error: resolve(root, 'pages/error/index.html'),
         history: resolve(root, 'pages/history/index.html'),
+        passwords: resolve(root, 'pages/passwords/index.html'),
       },
     },
   },
