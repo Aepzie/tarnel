@@ -17,12 +17,8 @@ function MantelCard() {
       onClick={() => vpn.setView('mantel')}
       className="group relative block w-full rounded-[14px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[0.99] transition-transform duration-150"
     >
-      <span aria-hidden className="vpn-ring vpn-orbit pointer-events-none absolute -inset-1 rounded-[17px] opacity-50 blur-md" />
       <span aria-hidden className="vpn-ring vpn-orbit pointer-events-none absolute inset-0 rounded-[14px]" />
       <span className="vpn-card relative block overflow-hidden rounded-[14px] p-3">
-        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-[14px]">
-          <span className="vpn-sweep absolute inset-y-0 -left-1/3 w-1/3" />
-        </span>
         <span className="relative flex items-center gap-3">
           <MantelMark />
           <span className="min-w-0 flex-1">
