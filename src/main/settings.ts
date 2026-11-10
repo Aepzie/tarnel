@@ -19,6 +19,7 @@ const BOOLEAN_KEYS = [
   'updateAutoCheck',
   'updateAutoDownload',
   'updatePrerelease',
+  'warnDangerousSites',
   'secureDnsStrict',
 ] as const satisfies readonly (keyof Settings)[];
 

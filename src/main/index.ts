@@ -17,6 +17,7 @@ import { initSleeper, stopSleeper } from './perf/sleeper';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, onTrackingStripped, setPermissionPrompter } from './privacy';
 import { VELA_SCHEME, registerVelaProtocol } from './protocol';
+import { attachSafety, initSafety } from './safety';
 import { getSettings, onSettingsChanged } from './settings';
 import { clearSiteDataOnQuit, siteDataClearPending } from './site-data';
 import { attachShortcuts } from './shortcuts';
@@ -124,10 +125,12 @@ if (!app.requestSingleInstanceLock()) {
     initAudioMixer();
 
     void initAdblock().catch(() => undefined);
+    initSafety();
     initFrameRate();
     onSessionCreated((ses) => {
       registerVelaProtocol(ses);
       attachDownloads(ses);
+      attachSafety(ses);
       enableAdblockForSession(ses);
     });
     initExtensions();

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { EXTENSION_IPC, IPC, type VelaPagesAPI } from '../shared/ipc';
+import { EXTENSION_IPC, IPC, SAFETY_IPC, type VelaPagesAPI } from '../shared/ipc';
 import { SITE_IPC } from '../shared/site-data';
 import type { UpdateStatus } from '../shared/types';
 
@@ -39,6 +39,10 @@ if (isVelaPage()) {
       reload: (id) => call(EXTENSION_IPC.reload, id),
       remove: (id) => call(EXTENSION_IPC.remove, id),
       openOptions: (id) => call(EXTENSION_IPC.pageOptions, id),
+    },
+    safety: {
+      status: () => call(SAFETY_IPC.status),
+      proceed: (url) => call(SAFETY_IPC.proceed, url),
     },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),

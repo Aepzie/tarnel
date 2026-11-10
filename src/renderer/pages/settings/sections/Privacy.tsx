@@ -1,5 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { Eraser } from 'lucide-react';
+import type { SafetyStatus } from '@shared/ipc';
+import { formatCount } from '@/lib/vela';
 import { nextDnsTemplate, validateDohTemplate, type SecureDnsMode } from '@shared/doh';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -110,6 +112,27 @@ function SecureDns() {
   );
 }
 
+function useSafetyStatus(): SafetyStatus | null {
+  const [status, setStatus] = useState<SafetyStatus | null>(null);
+  useEffect(() => {
+    if (!hasBridge()) return;
+    velaPages()
+      .safety.status()
+      .then(setStatus)
+      .catch(() => undefined);
+  }, []);
+  return status;
+}
+
+function SafetyDescription() {
+  const status = useSafetyStatus();
+  const base = 'Checks pages against local phishing and malware lists. Nothing you visit is sent anywhere.';
+  if (!status) return base;
+  if (!status.updatedAt) return `${base} Lists not downloaded yet.`;
+  const when = new Date(status.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return `${base} ${formatCount(status.entries)} entries, updated ${when}.`;
+}
+
 export function Privacy() {
   return (
     <>
@@ -127,6 +150,7 @@ export function Privacy() {
           description="Ask sites not to sell or share your data."
           setting="sendDoNotTrack"
         />
+        <SwitchRow title="Warn about dangerous sites" description={<SafetyDescription />} setting="warnDangerousSites" />
         <SwitchRow
           title="Remove tracking parameters"
           description="Strip click and share trackers like utm_ and fbclid from links you open or copy."

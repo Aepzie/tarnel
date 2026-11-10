@@ -4,13 +4,14 @@ import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { IPC } from '../shared/ipc';
+import { isDangerousUrlChain } from './safety';
 import type { DownloadState } from '../shared/types';
 import { sendToChrome } from './window';
 import { formatZoneIdentifier } from './zone-identifier';
 
 const EMIT_INTERVAL_MS = 250;
 const attached = new WeakSet<Session>();
-const paths = new Map<string, { path: string; done: boolean }>();
+const paths = new Map<string, { path: string; done: boolean; dangerous: boolean }>();
 /** Paths claimed by in-progress downloads that do not exist on disk yet. */
 const reserved = new Set<string>();
 
@@ -65,7 +66,7 @@ export function attachDownloads(session: Session): void {
     reserved.add(path);
     const id = randomUUID();
     const referrerUrl = webContents && !webContents.isDestroyed() ? webContents.getURL() : '';
-    paths.set(id, { path, done: false });
+    paths.set(id, { path, done: false, dangerous: isDangerousUrlChain(item.getURLChain()) });
 
     let lastEmit = 0;
     let timer: NodeJS.Timeout | null = null;
@@ -95,6 +96,11 @@ export function attachDownloads(session: Session): void {
 export function getCompletedDownloadPath(id: string): string | null {
   const entry = paths.get(id);
   return entry?.done ? entry.path : null;
+}
+
+/** Downloaded from a site on the dangerous-sites lists: never opened directly, only shown in its folder. */
+export function isDangerousDownload(id: string): boolean {
+  return paths.get(id)?.dangerous ?? false;
 }
 
 export function getDownloadPath(id: string): string | null {

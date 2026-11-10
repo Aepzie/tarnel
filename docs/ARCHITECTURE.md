@@ -343,6 +343,7 @@ src/main/perf/*        flags, adblock, sleeper, metrics — perf
 src/main/extensions/*  Chrome extensions (lazy)       — extensions
 src/main/extensions/dnr/*, src/preload/extension-api.ts  declarativeNetRequest engine + extension-context API — extensions
 src/main/net/*         webRequest dispatcher (one listener per event, ordered stages), registrable domain — core
+src/main/safety/*      phishing & malware protection (local blocklists, warning interstitial) — core
 src/main/sync/*        optional E2E-encrypted sync     — sync (engine lazy-loaded)
 src/preload/chrome.ts  window.vela                    — ui
 src/main/tab-groups.ts tab groups (model + ordering)  — core
@@ -627,7 +628,7 @@ replaces the first). `net/dispatcher.ts` owns that listener and runs ordered, sy
 
 | Event | Stages (in order) | Composition |
 |---|---|---|
-| `onBeforeRequest` (`<all_urls>`) | `url-clean` (50, main-frame GET only, present only while "Remove tracking parameters" is on), Ghostery `adblock` (100), extension `dnr` (200) | first cancel / redirect wins, later stages are skipped |
+| `onBeforeRequest` (`<all_urls>`) | `safety` (40: dangerous-site warning), `url-clean` (50, main-frame GET only, present only while "Remove tracking parameters" is on), Ghostery `adblock` (100), extension `dnr` (200) | first cancel / redirect wins, later stages are skipped |
 | `onBeforeSendHeaders` (all) | `privacy` (100: referrer trimming, DNT/GPC, client hints, fingerprint header reduction, third-party `Cookie` stripping), `dnr` (200) | each stage edits the same header object; a cancel stops |
 | `onHeadersReceived` (`<all_urls>`) | Ghostery `adblock` (100: CSP injection), `dnr` (200) | each stage sees the previous stage's headers; changed headers are returned once |
 
@@ -638,6 +639,36 @@ stage is skipped (fail open). Ghostery keeps its own library code path: `perf/ad
 dispatcher stages, so its blocking, redirects, CSP injection and stats are unchanged. `net/domain.ts` holds the
 registrable-domain heuristic shared by privacy, fingerprinting and DNR (pure, unit-testable).
 
+## Phishing & malware protection (`src/main/safety/*`)
+
+Electron has no Safe Browsing, so Vela checks navigations against bulk-downloaded public blocklists, entirely
+locally: no URL, host or hash prefix is ever sent anywhere (unlike Google Safe Browsing's update/lookup API).
+
+| Source | Feed | Format / matching | Threat | License |
+|---|---|---|---|---|
+| [URLhaus](https://urlhaus.abuse.ch/) (abuse.ch) | `downloads/text_online/` (online malware URLs) | full URL (fragment dropped) — never the whole host, since many entries are compromised legitimate sites | malware | CC0 1.0 |
+| [Phishing Army](https://phishing.army/) | `phishing_army_blocklist.txt` (non-extended) | domain: exact host + parent domains down to the registrable domain | phishing | CC BY-NC 4.0 (attribution shown as "Listed by Phishing Army"; Vela is free and non-commercial) |
+| [uBlock filters – Badware risks](https://github.com/uBlockOrigin/uAssets) | `filters/badware.txt` | only whole-host rules (`\|\|host^`, optionally `$doc`/`$all`/`$important`/party options); path, cosmetic, exception and type-restricted rules are skipped | badware / scams | GPL-3.0 (fetched at runtime, not redistributed) |
+
+Not used: PhishTank (needs a registered API key per app), OpenPhish community feed (terms restrict use), the
+URLhaus host file (blocks whole shared/compromised hosts).
+
+- `lists.ts` (pure, unit-tested): sources, parsers (`urls` / `hosts` / `adblock`), `BlocklistIndex` (two `Map`s:
+  URL → source, host → source). Host matching walks the host and its parent domains but stops at the
+  registrable domain (`net/domain.ts`), so a listed shared suffix (`github.io`) never blocks its users.
+- `index.ts`: downloads with Electron `net.fetch` 5 s after start when the cache is older than 6 h, then every
+  6 h (30 s timeout, 16 MB cap per list, streamed). A download that parses to zero entries keeps the old cache.
+  Cache: `userData/safety/<id>.txt` + `meta.json` (written atomically); the index is rebuilt and swapped in
+  whole. Disabled (Settings → Privacy → "Warn about dangerous sites", `warnDangerousSites`, default on) means
+  no checks and no downloads.
+- Dispatcher stage `safety` (50, every session via `onSessionCreated`): `mainFrame` hits redirect to
+  `vela://error/?threat=<malware|phishing|badware>&source=<name>&url=<original>` (the error page renders the
+  warning instead of an error); `subFrame` hits are cancelled. Other resource types are not checked.
+- "Back to safety" = history back (or the start page when there is no history). "Proceed anyway (unsafe)"
+  calls `pages:safety-proceed`, which allowlists that exact hostname in memory until Vela quits, then navigates.
+- Downloads whose URL chain is listed are flagged; the downloads "open" action only reveals them in the folder
+  (same as `DANGEROUS_EXT`).
+- IPC (vela:// pages only): `pages:safety-status` → `{ enabled, entries, updatedAt, sources }`.
 ### Tracking parameters (`src/shared/url-clean.ts`)
 
 `cleanUrl(url)` is pure and unit-tested (`url-clean.test.ts`). It removes a curated, ClearURLs-style list:
@@ -675,7 +706,7 @@ embedded under site A writes localStorage, and B opened top-level reads `null`.
 `vela://shared/<file>` → `dist/renderer/shared/<file>`. Registered as privileged
 (`standard`, `secure`, `supportFetchAPI`) before ready, and handled via `session.protocol.handle`
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
-Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`).
+Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`, or the dangerous-site warning `vela://error/?threat=…&source=…&url=…`).
 
 ## Extensions (`src/main/extensions/*`)
 

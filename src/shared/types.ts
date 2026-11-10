@@ -196,6 +196,8 @@ export interface Settings {
   updateAutoDownload: boolean;
   /** Offer pre-releases (e.g. 0.3.0-beta.1). */
   updatePrerelease: boolean;
+  /** Warn before opening sites on the local phishing / malware blocklists. */
+  warnDangerousSites: boolean;
   /** DNS-over-HTTPS resolver. Process-global (Electron's host resolver), not per Space. */
   secureDns: SecureDnsMode;
   /** Fail lookups instead of falling back to plain DNS when DoH fails (Chromium "secure" mode). */
@@ -320,6 +322,7 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,
+  warnDangerousSites: true,
   secureDns: 'off',
   secureDnsStrict: false,
   secureDnsNextDns: '',
