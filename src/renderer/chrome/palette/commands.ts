@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { EyeOff, Flame, Focus, History, Monitor, Moon, Plus, RotateCcw, Settings2, ShieldCheck, Sun } from 'lucide-react';
+import { EyeOff, Flame, Focus, History, Monitor, Moon, Plus, Puzzle, RotateCcw, Settings2, ShieldCheck, Sun } from 'lucide-react';
 import { ChevronsDownUp, ChevronsUpDown, LayersPlus, PanelLeft, PanelTop } from 'lucide-react';
 import { Bookmark, BookmarkCheck, Star } from 'lucide-react';
 import { ui } from '../ui-store';
@@ -122,6 +122,13 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       keywords: 'visited recent pages past browsing',
       hint: 'Ctrl H',
       run: () => void vela.tabs.create({ url: 'vela://history' }),
+    },
+    {
+      id: 'cmd:extensions-store',
+      title: 'Extensions store',
+      icon: Puzzle,
+      keywords: 'extensions add-ons plugins marketplace install chrome web store',
+      run: () => void vela.tabs.create({ url: 'vela://extensions/' }),
     },
     {
       id: 'cmd:settings',

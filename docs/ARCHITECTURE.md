@@ -776,6 +776,19 @@ index.ts     initExtensions() wiring + registerExtensionIpc() (registered from i
   to narrow content-script matches or host permissions per session; doing it would mean loading a rewritten
   copy of the extension (changes unpacked IDs) — the UI says so and points to On click / Spaces.
 
+* **Marketplace (`vela://extensions`).** A renderer page (`src/renderer/pages/extensions/`, served by the
+  generic `vela://<host>` mapping in `protocol.ts`) over the existing `velaPages.extensions` bridge — no new IPC.
+  `src/shared/extension-catalog.ts` is a hand-curated list (CWS ID, name, category, permission note; every ID
+  checked against its store listing; no bundled logos — uninstalled entries get a letter tile, installed ones
+  the icon read from the downloaded manifest). Install = `install(id)` → `ExtensionReview` dialog →
+  `confirmInstall`, i.e. the same staged permission review as Settings. "Search the Chrome Web Store" opens
+  `chromewebstore.google.com/search/<q>` in a new tab. The store's own "Add to Chrome" button is **not** wired:
+  `electron-chrome-web-store`'s `installChromeWebStore()` would install straight into a session, bypassing
+  Vela's registry, Spaces and review. Instead the top island shows an **Add to Vela** pill while the active tab
+  is a store detail page (`storeDetailId`), which opens `vela://extensions/#install=<id>` and runs the review
+  flow there. Entry points: that pill, "Browse extensions" in the puzzle popover, Settings → Extensions and the
+  palette command "Extensions store". Shared review/permission UI lives in `src/renderer/components/extensions.tsx`.
+
 ### declarativeNetRequest (`src/main/extensions/dnr/*`)
 
 Electron 45 compiles in the `chrome.declarativeNetRequest` bindings but nothing behind them evaluates rules, so
@@ -845,6 +858,45 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   enable up to Chrome's 30k guaranteed + 300k pool), no `topDomains` condition, no `getMatchedRules` quota
   throttling, static regex rules beyond Chrome's 1000 per ruleset are not dropped, `onRuleMatchedDebug` reports
   `frameId: -1`, and `activeTab` is treated as granted for `getMatchedRules`.
+
+## Passwords (`src/main/passwords/*`)
+
+- **Storage.** One vault per Space at `userData/passwords/<spaceId>.json` (`vault.ts`, pure). Every password is
+  sealed with Electron `safeStorage` (DPAPI on Windows, Keychain on macOS, libsecret/kwallet on Linux) and stored
+  as base64 ciphertext; origins and usernames are plain. Writes are atomic (0600 temp file, fsync, rename).
+  Linux `basic_text` (hard-coded key) counts as unavailable: with no real OS encryption nothing is saved and
+  vela://passwords says so. Burner Spaces keep their vault in memory only; removing a Space deletes its file.
+- **Origins.** `origin.ts` normalises to scheme + host + non-default port, http(s) only. Matching is exact: no
+  subdomain, http↔https or port sharing.
+- **Capture.** A session preload (`src/preload/passwords.ts`, every web frame, isolated world) stays idle until
+  the frame has an `<input type=password>`, then asks main once (sendSync) whether saving / filling is on. It
+  sends `{username, password}` on submit, on a click on a button, or on Enter. Main ignores the page's idea of
+  where it is: the origin comes from `event.senderFrame.url`, the Space from the tab owning the sender, and
+  only top frames or frames same-origin with the top frame are accepted. Unchanged credentials and "Never"
+  sites produce no prompt. The pending plain password lives in main memory until answered (3 min max).
+- **Prompts.** The chrome gets `PasswordSavePrompt` / `PasswordFillOffer` (host, username, ids; never a password)
+  and renders them under the address area for the active tab only.
+- **Fill.** Only after the user picks an account. Main resolves the stored frame (`webFrameMain.fromId`), checks it
+  is still attached, in the same tab and Space, and that both it and its top frame still have the login's origin,
+  then sends the login to that frame only (`frame.send`). There is no automatic fill, also not on http:// (the
+  picker warns there). A login form that appears more than 30 s after load is not detected (keeps the observer cheap).
+- **vela://passwords.** `pages:passwords-*` channels are accepted only from a top-level vela://passwords frame of a
+  tab, and the pages preload only exposes `velaPages.passwords` on that host. Reveal is a two-step confirm in the
+  page and auto-hides after 30 s; no OS re-authentication (Windows Hello has no Electron API;
+  `systemPreferences.promptTouchID` is macOS only), so anyone at an unlocked machine can reveal, as in Chrome
+  with no OS password set. Copy happens in main (`clipboard`), cleared after 30 s if the clipboard still holds it.
+  CSV export (Chrome / Bitwarden / 1Password format, RFC 4180 quoting, no formula escaping so it re-imports
+  unchanged) is written by main after a warning and a native save dialog.
+- **Threat model.** Protects against: other users / offline disk access (OS encryption), web pages (they never
+  see stored logins; the isolated world and main-side origin checks stop a page or a cross-origin iframe from
+  requesting fills or reading another origin's login), other vela:// pages and the chrome UI (no password
+  channel). Does not protect against: malware running as the user (it can call the same OS decryption), a
+  compromised renderer of the site itself after a fill (the page owns its form), someone at the unlocked machine
+  (reveal has no re-auth), or a CSV export file left on disk. Imports (`importLogins`) go through the same
+  validation and encryption.
+- **External managers.** vela://passwords installs Bitwarden (`nngceckbapebfimnlniiiahkandclblb`) or 1Password
+  (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) through the normal extension review flow and offers to turn off
+  `offerToSavePasswords` / `passwordAutofill`.
 
 ## Auto-update (`src/main/updater.ts`)
 

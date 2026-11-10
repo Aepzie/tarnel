@@ -6,6 +6,7 @@ import { VPN_IPC } from '../shared/vpn';
 import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
+import { PASSWORD_IPC } from '../shared/passwords';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -179,6 +180,15 @@ const api: VelaChromeAPI = {
     search: (query, limit, spaceId) => invoke(BOOKMARKS_IPC.chromeSearch, query, limit ?? null, spaceId ?? null),
     onChange: (cb) => subscribe(BOOKMARKS_IPC.changed, cb),
     openManager: () => invoke(BOOKMARKS_IPC.chromeOpenManager),
+    },
+  passwords: {
+    onSavePrompt: (cb) => subscribe(PASSWORD_IPC.savePrompt, cb),
+    onSaveCancel: (cb) => subscribe(PASSWORD_IPC.saveCancel, cb),
+    answerSave: (id, answer) => invoke(PASSWORD_IPC.answerSave, id, answer),
+    onFillOffer: (cb) => subscribe(PASSWORD_IPC.fillOffer, cb),
+    onFillCancel: (cb) => subscribe(PASSWORD_IPC.fillCancel, cb),
+    fill: (offerId, loginId) => invoke(PASSWORD_IPC.fill, offerId, loginId),
+    dismissOffer: (offerId) => invoke(PASSWORD_IPC.dismissOffer, offerId),
   },
 };
 

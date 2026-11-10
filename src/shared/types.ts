@@ -227,6 +227,10 @@ export interface Settings {
   secureDnsNextDns: string;
   /** Custom DoH URI template; always valid or ''. */
   secureDnsTemplate: string;
+  /** Password manager: ask to save logins submitted on web pages. */
+  offerToSavePasswords: boolean;
+  /** Password manager: offer saved accounts on login forms (filling always needs a click). */
+  passwordAutofill: boolean;
 }
 
 export interface Suggestion {
@@ -359,6 +363,8 @@ export const DEFAULT_SETTINGS: Settings = {
   secureDnsStrict: false,
   secureDnsNextDns: '',
   secureDnsTemplate: '',
+  offerToSavePasswords: true,
+  passwordAutofill: true,
 };
 
 /** Where an installed extension came from. */

@@ -38,6 +38,7 @@ import { registerSiteDataIpc } from './site-data';
 import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
+import { registerPasswordIpc } from './passwords';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -343,6 +344,7 @@ export function registerIpc(): void {
   registerSiteDataIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
+  registerPasswordIpc(handleChrome, handlePages);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());

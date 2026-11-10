@@ -8,6 +8,7 @@ import { initIdentity } from './identity';
 import { initAudioDevices } from './audio-devices';
 import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
+import { initPasswords } from './passwords';
 import { registerIpc } from './ipc';
 import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
@@ -136,6 +137,7 @@ if (!app.requestSingleInstanceLock()) {
     initFingerprint();
     initAudioDevices();
     initAudioMixer();
+    initPasswords();
 
     void initAdblock().catch(() => undefined);
     initSafety();
