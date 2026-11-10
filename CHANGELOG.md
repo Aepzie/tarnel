@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- New tabs (the + button, the vertical New Tab row, Ctrl+T and the palette's New tab command) open Vela's start page with its search box focused instead of popping the command palette; clicking the address, Ctrl+L and Ctrl+K still open it
+
 ## [0.5.0] - 2026-11-10
 
 ### Added

@@ -36,8 +36,16 @@ export function SearchBar() {
       input.focus();
       input.select();
     };
+    // Main focuses this page when its tab becomes active; land in the search box unless something else has focus.
+    const onFocus = (): void => {
+      if (document.activeElement === document.body || document.activeElement === null) inputRef.current?.focus();
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const submit = (event: FormEvent): void => {
