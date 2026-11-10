@@ -1,6 +1,6 @@
 import { useRef, useState, type MouseEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Pin, Puzzle, Settings2 } from 'lucide-react';
+import { Pin, Puzzle, Settings2, Store } from 'lucide-react';
 import type { ExtensionAction, ExtensionAnchor, ExtensionInfo } from '@shared/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useOverlayPresence } from '@/hooks/overlay';
@@ -174,6 +174,11 @@ export function ExtensionsButton() {
     activate(id, trigger.current);
   };
 
+  const browse = (): void => {
+    setOpen(false);
+    settle(vela().tabs.create({ url: 'vela://extensions/', active: true }));
+  };
+
   const manage = (): void => {
     setOpen(false);
     settle(vela().tabs.create({ url: 'vela://settings/#extensions', active: true }));
@@ -221,6 +226,14 @@ export function ExtensionsButton() {
             ))}
           </div>
           <div className="mx-2 my-1 h-px bg-border" />
+          <button
+            type="button"
+            onClick={browse}
+            className="flex h-8 w-full items-center gap-2.5 rounded-[10px] px-2 text-[13px] tracking-tight text-muted-foreground outline-none transition-colors duration-100 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Store className="size-4" strokeWidth={1.75} />
+            Browse extensions
+          </button>
           <button
             type="button"
             onClick={manage}

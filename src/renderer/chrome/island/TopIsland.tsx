@@ -9,6 +9,7 @@ import { TabStrip } from '../tabs/TabStrip';
 import { PerfChip } from '../perf/PerfChip';
 import { DownloadsButton } from '../downloads/DownloadsButton';
 import { ExtensionsButton } from '../extensions/ExtensionsButton';
+import { StoreAddButton } from '../extensions/StoreAddButton';
 import { UpdateChip } from '../update/UpdateChip';
 import { MixerButton } from '../mixer/MixerButton';
 import { VpnButton } from '../vpn/VpnButton';
@@ -120,6 +121,7 @@ export function TopIsland() {
         )}
         <div className="no-drag flex shrink-0 items-center gap-1">
           <VpnButton />
+          <StoreAddButton />
           <ExtensionsButton />
           <UpdateChip />
           <DownloadsButton />
