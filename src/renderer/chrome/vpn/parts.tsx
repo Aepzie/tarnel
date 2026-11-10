@@ -31,17 +31,6 @@ export function MantelMark({ className }: { className?: string }) {
   );
 }
 
-export function PreviewChip() {
-  return (
-    <span
-      title="Preview: Mantel is not reachable, so servers and the connection are simulated. No traffic is routed."
-      className="rounded-full bg-foreground/[0.06] px-1.5 py-px text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-    >
-      Preview
-    </span>
-  );
-}
-
 export function BackButton({ label, to }: { label: string; to: VpnView }) {
   return (
     <button
