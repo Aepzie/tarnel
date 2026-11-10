@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Site info panel: click the lock/host chip in the address palette for the connection state, trackers blocked on the page, the permissions this site holds in the current Space (revoke or reset each one), its cookie count and stored data size, a "Clear site data" button, and a per-site "When Vela closes: Keep data / Delete data" choice
+- Clear cookies and site data when Vela closes (Settings → Privacy, per Space) with a list of sites to keep; optionally clear a site's data 30 seconds after its last tab in that Space closes. Clearing runs during quit with a bounded timeout; burner Spaces are wiped as before
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
