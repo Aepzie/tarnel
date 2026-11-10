@@ -8,6 +8,7 @@ import { Favicon } from '../tabs/Favicon';
 import { TabContextMenu } from '../tabs/TabContextMenu';
 import type { SplitUnit } from '../tabs/groups/units';
 import { ACTIVE_ROW, ROW_HEIGHT } from './VerticalTabRow';
+import { TabFlag, withVpnLabel } from '../vpn/TabFlag';
 
 const INSTANT: Transition = { duration: 0 };
 
@@ -122,7 +123,7 @@ function Segment({ tab, focused, first, iconOnly, compact, grouped, reduced }: S
         aria-selected={focused}
         aria-label={label}
         tabIndex={focused ? 0 : -1}
-        title={iconOnly ? undefined : label}
+        title={iconOnly ? undefined : withVpnLabel(label, tab)}
         data-tab-id={tab.id}
         style={compact ? { flex: '0 0 auto' } : undefined}
         onPointerDown={(event) => {
@@ -143,6 +144,7 @@ function Segment({ tab, focused, first, iconOnly, compact, grouped, reduced }: S
         )}
       >
         {focused && <motion.span layoutId="vertical-active-tab" className={ACTIVE_ROW} transition={reduced ? INSTANT : spring.snappy} />}
+        <TabFlag tab={tab} />
         <span
           className={cn(
             'relative z-10 flex h-full min-w-0 flex-1 items-center gap-2',

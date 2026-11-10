@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { flagUrl } from './flags';
 
 let supported: boolean | null = null;
 
@@ -32,8 +33,16 @@ export function flagEmoji(countryCode: string): string {
   return String.fromCodePoint(...[...countryCode.toUpperCase()].map((char) => 0x1f1e6 + char.charCodeAt(0) - 65));
 }
 
-/** Country flag emoji, or a compact country-code chip where the OS font has no flags. */
+/** Country flag (bundled SVG), else the flag emoji, else a compact country-code chip where the OS font has no flags. */
 export function Flag({ code, className }: { code: string; className?: string }) {
+  const url = flagUrl(code);
+  if (url) {
+    return (
+      <span aria-hidden className={cn('inline-grid w-5 shrink-0 place-items-center', className)}>
+        <img src={url} alt="" draggable={false} className="h-3 w-4 rounded-[2px] object-cover ring-1 ring-foreground/10" />
+      </span>
+    );
+  }
   if (flagsSupported()) {
     return (
       <span aria-hidden className={cn('inline-block w-5 shrink-0 text-center text-[15px] leading-none', className)}>

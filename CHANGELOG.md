@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- MantelVPN per tab: right-click a tab → MantelVPN → a country from the live server list routes just that tab through Mantel (Off brings it back). The country's flag shows faintly behind the tab, fading to the right, in the horizontal strip, vertical rows and split segments; the tooltip says "Via MantelVPN · <country>". A routed tab has its own cookies and logins per country (separate partition with the Space's protections), keeps its routing across restarts and fails closed if the proxy is unavailable. Not signed in: the menu offers "Sign in to MantelVPN…"
+- Bundled country flags (no flag emoji on Windows), also used in the VPN server picker
+
 ### Changed
 - The theme setting now applies to the whole workspace: Vela drives the system colour scheme (native menus, Mica/Acrylic backdrop, opaque window background, prefers-color-scheme), and every open vela:// page (new tab, settings, history, error) follows theme and Space-colour changes live, without a reload
 - Tab views paint the themed backdrop before a vela:// page's first frame, so a dark new tab no longer flashes white

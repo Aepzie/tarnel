@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { settle, vela } from '@/lib/vela';
 import { Favicon } from '../tabs/Favicon';
 import { TabContextMenu } from '../tabs/TabContextMenu';
+import { TabFlag, withVpnLabel } from '../vpn/TabFlag';
 import { AudioButton } from '../tabs/TabItem';
 
 const INSTANT: Transition = { duration: 0 };
@@ -65,7 +66,7 @@ function VerticalTabRowImpl({ tab, active, iconOnly, groupColor, groupEnd = fals
         aria-label={label}
         tabIndex={active ? 0 : -1}
         data-tab-id={tab.id}
-        title={iconOnly ? label : undefined}
+        title={iconOnly || tab.vpn ? withVpnLabel(label, tab) : undefined}
         initial={reduced ? false : { opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: ROW_HEIGHT }}
         exit={reduced ? { opacity: 0, transition: INSTANT } : { opacity: 0, height: 0, transition: { ...spring.snappy, opacity: { duration: 0.1 } } }}
@@ -105,6 +106,7 @@ function VerticalTabRowImpl({ tab, active, iconOnly, groupColor, groupEnd = fals
             style={{ backgroundColor: groupColor }}
           />
         )}
+        <TabFlag tab={tab} />
         <span
           className={cn(
             'relative z-10 flex h-full min-w-0 flex-1 items-center gap-2.5',
@@ -173,6 +175,7 @@ function same(a: VerticalTabRowProps, b: VerticalTabRowProps): boolean {
       x.audible === y.audible &&
       x.muted === y.muted &&
       x.micActive === y.micActive &&
+      x.vpn === y.vpn &&
       !x.devices === !y.devices &&
       x.pinned === y.pinned &&
       x.groupId === y.groupId &&

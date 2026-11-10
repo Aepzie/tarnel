@@ -506,6 +506,24 @@ only for the exact host:port in use. HTTPS sites stay end-to-end TLS inside `CON
 themselves travel in plain text to the proxy (Mantel's own app warns about this). Disconnect, sign-out and the next
 start restore the Space's previous proxy (unless the user changed it). Sign-out deletes Vela's proxies and the token.
 
+**Per-tab routing.** Electron applies proxies per *session*, not per webContents, so a tab routed through a
+country lives in its own partition per (Space, country): `persist:space-<id>-vpn-<cc>` (`space-<id>-vpn-<cc>` for
+Burners, in memory). `spaces.getSpaceSession(spaceId, cc)` creates it lazily under the session key `<id>@vpn-<cc>`
+and runs every `onSessionCreated` hook with the owning Space (privacy, identity, fingerprint seed, adblock, vela://,
+extensions; `gateSessionReady(space.id)` called from inside a hook applies to the session being created). Its
+proxy comes from the provider the VPN module registers (`setRouteProxyProvider`): `http://<host:port>` of the
+stored Mantel proxy for that country (`vpn.json` `countries: {cc → proxy id}`), else the blackhole — fail closed,
+also after sign-out or when the proxy was deleted. `refreshRoutedProxies()` re-applies it after changes.
+`vpn.routeTab(tabId, cc)` picks the country's server (`shared/vpn-route.ts`: usable, lowest ping), reuses or creates
+one Mantel proxy per location (same `credentialFor` as Connect) and calls `tabs.setTabVpn`, which destroys the view,
+keeps its history and recreates it in the other session (position, group and split stay). Pages opened from a
+routed tab inherit its route. `SavedTab.vpn` persists the choice; a restored routed tab works without contacting
+the API (the proxy and its password are stored). Proxy auth is answered per session: a routed session gets only
+its country's credential. Removing a Space (or quitting with Burners) also wipes its routed partitions.
+Limitations: a routed tab has separate cookies/storage per country (said in the menu); per-tab audio
+device/mixer preload scripts are registered on Space sessions only, so they do not apply to routed tabs; the
+fingerprint seed is the Space's.
+
 **Preview fallback.** If the API is unreachable (network error/timeout), the panel shows built-in preview servers and
 a simulated connection, labelled "Preview"; nothing is routed.
 

@@ -1,6 +1,8 @@
 import { app, safeStorage } from 'electron';
 import { VPN_IPC, normalizeAccountNumber, normalizeTotp, type VpnConnection, type VpnResult, type VpnServer, type VpnState } from '../../shared/vpn';
-import { getActiveSpaceId, getSpace, updateSpace } from '../spaces';
+import { normalizeCountry, pickServer } from '../../shared/vpn-route';
+import { getActiveSpaceId, getSpace, refreshRoutedProxies, routedCountryOf, setRouteProxyProvider, updateSpace } from '../spaces';
+import { getTabVpn, setTabVpn } from '../tabs';
 import { createStore, type JsonStore } from '../store';
 import { sendToChrome } from '../window';
 import { MantelError, mantel } from './mantel';
@@ -34,6 +36,8 @@ interface VpnFile {
   tail: string | null;
   proxies: StoredProxy[];
   route: StoredRoute | null;
+  /** Per-tab routing: country code -> id of the stored proxy its tabs use. */
+  countries: Record<string, string>;
 }
 
 type ChromeHandler = (channel: string, fn: (...args: unknown[]) => unknown) => void;
@@ -55,7 +59,7 @@ const isTotpError = (error: unknown): boolean =>
   error instanceof MantelError && (error.code === 'totp_required' || error.code === 'totp_invalid');
 
 function requireStore(): JsonStore<VpnFile> {
-  store ??= createStore<VpnFile>('vpn', { account: null, tail: null, proxies: [], route: null });
+  store ??= createStore<VpnFile>('vpn', { account: null, tail: null, proxies: [], route: null, countries: {} });
   return store;
 }
 
@@ -211,6 +215,43 @@ async function connect(serverId: unknown): Promise<VpnResult> {
   }
 }
 
+function countryMap(): Record<string, string> {
+  const countries = requireStore().get().countries;
+  return countries && typeof countries === 'object' ? countries : {};
+}
+
+/** Proxy rules for a routed country: its stored Mantel proxy, or null (blackhole) when there is none. */
+function countryProxy(country: string): string | null {
+  const file = requireStore().get();
+  if (!file.account && !volatileAccount) return null;
+  const proxyId = countryMap()[country];
+  const proxy = proxyId ? file.proxies.find((entry) => entry.id === proxyId) : undefined;
+  return proxy ? `http://${proxy.address}` : null;
+}
+
+/** Routes one tab through a country (creating or reusing that location's proxy), or back to its Space (null). */
+async function routeTab(rawTabId: unknown, rawCountry: unknown): Promise<VpnResult> {
+  if (typeof rawTabId !== 'number' || !Number.isInteger(rawTabId)) throw new TypeError('Invalid tab');
+  if (rawCountry === null) {
+    setTabVpn(rawTabId, null);
+    return { ok: true, state: emit() };
+  }
+  const country = normalizeCountry(rawCountry);
+  if (!country) throw new TypeError('Invalid country');
+  if (mode !== 'live') return { ok: false, error: 'Sign in to MantelVPN to route a tab.', state: emit() };
+  const server = pickServer(servers, country);
+  if (!server) return { ok: false, error: 'No server in this country is available right now.', state: emit() };
+  try {
+    const credential = await withSession((session) => credentialFor(session, server.id));
+    requireStore().update((current) => ({ ...current, countries: { ...countryMap(), [country]: credential.id } }));
+    refreshRoutedProxies();
+    if (getTabVpn(rawTabId) !== country) setTabVpn(rawTabId, country);
+    return { ok: true, state: emit() };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 async function login(raw: unknown): Promise<VpnResult> {
   const accountNumber = typeof raw === 'string' ? normalizeAccountNumber(raw) : null;
   if (!accountNumber) return { ok: false, error: 'An account number has exactly 16 digits.', state: snapshot() };
@@ -274,7 +315,8 @@ async function logout(): Promise<VpnState> {
   volatileAccount = null;
   pendingAccount = null;
   totpNeeded = false;
-  requireStore().set({ account: null, tail: null, proxies: [], route: null });
+  requireStore().set({ account: null, tail: null, proxies: [], route: null, countries: {} });
+  refreshRoutedProxies();
   return emit();
 }
 
@@ -301,12 +343,15 @@ async function refresh(): Promise<VpnState> {
 
 /** Answers proxy auth challenges for the Mantel proxy currently in use, and nothing else. */
 function answerProxyAuth(): void {
-  app.on('login', (event, _webContents, _details, authInfo, callback) => {
+  app.on('login', (event, webContents, _details, authInfo, callback) => {
     if (!authInfo.isProxy) return;
     const file = requireStore().get();
-    const route = file.route;
-    if (!route || `${bracket(authInfo.host)}:${authInfo.port}` !== route.proxy) return;
-    const credential = file.proxies.find((entry) => entry.address === route.proxy);
+    const address = `${bracket(authInfo.host)}:${authInfo.port}`;
+    const country = webContents && !webContents.isDestroyed() ? routedCountryOf(webContents.session) : null;
+    const inUse = new Set([...Object.values(countryMap())]);
+    const credential = country
+      ? file.proxies.find((entry) => entry.id === countryMap()[country] && entry.address === address)
+      : file.proxies.find((entry) => entry.address === address && (file.route?.proxy === address || inUse.has(entry.id)));
     const password = credential ? decrypt(credential.password) : null;
     if (!credential || !password) return;
     event.preventDefault();
@@ -315,6 +360,8 @@ function answerProxyAuth(): void {
 }
 
 export function registerVpnIpc(handle: ChromeHandler): void {
+  setRouteProxyProvider(countryProxy);
+  refreshRoutedProxies();
   restoreRoute();
   if (requireStore().get().account) mode = 'preview';
   answerProxyAuth();
@@ -324,6 +371,7 @@ export function registerVpnIpc(handle: ChromeHandler): void {
   handle(VPN_IPC.verifyTotp, (raw) => verifyTotp(raw));
   handle(VPN_IPC.logout, () => logout());
   handle(VPN_IPC.connect, (serverId) => connect(serverId));
+  handle(VPN_IPC.routeTab, (tabId, country) => routeTab(tabId, country));
   handle(VPN_IPC.disconnect, () => {
     restoreRoute();
     return emit();

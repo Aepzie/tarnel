@@ -61,6 +61,8 @@ export interface TabState {
   devices: TabMediaDevices | null;
   /** The current page was granted the microphone (cleared when the tab navigates away). */
   micActive: boolean;
+  /** MantelVPN country this tab routes through (lower-case ISO code, own partition); null = the Space's network. */
+  vpn: string | null;
 }
 
 /** Speakers/headphones, microphone, camera. */

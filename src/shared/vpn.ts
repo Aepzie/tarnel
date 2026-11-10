@@ -14,6 +14,7 @@ export const VPN_IPC = {
   refresh: 'chrome:vpn-refresh',
   connect: 'chrome:vpn-connect',
   disconnect: 'chrome:vpn-disconnect',
+  routeTab: 'chrome:vpn-route-tab',
   changed: 'chrome-event:vpn',
 } as const;
 
