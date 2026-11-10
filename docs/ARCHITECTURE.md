@@ -769,3 +769,41 @@ Brand: `src/shared/brand-mark.ts` holds the logo's path data and app-icon tile; 
 (`scripts/icons.mjs`, offscreen Electron) generates `build/icon.svg`, `icon-mono.svg`, the PNG set,
 `icon.ico` and `icon.icns` from it. Unpackaged runs set the window icon from `build/` (`devWindowIcon`
 in `window.ts`); packaged builds take it from the executable.
+
+## Security hardening
+
+### Electron fuses (`electronFuses` in `electron-builder.yml`)
+
+electron-builder flips these in the packaged executable (after embedding the asar header hash as a
+Windows resource / macOS `ElectronAsarIntegrity` plist key). Unpackaged `npm run dev` runs are unaffected.
+
+| Fuse | Value | Why |
+|---|---|---|
+| `RunAsNode` | off | `ELECTRON_RUN_AS_NODE` would turn `Vela.exe` into a plain Node.js (a signed LOLBin). Vela never forks the main process (no `process.fork`; use `utilityProcess` if ever needed). |
+| `EnableNodeOptionsEnvironmentVariable` | off | `NODE_OPTIONS` / `NODE_EXTRA_CA_CERTS` could inject code or CAs into the main process. |
+| `EnableNodeCliInspectArguments` | off | `--inspect*` / `SIGUSR1` would expose a debugger on the main process. |
+| `EnableEmbeddedAsarIntegrityValidation` | on | `app.asar` is checked against the hash baked into the executable (Windows since Electron 30, macOS). |
+| `OnlyLoadAppFromAsar` | on | No fallback to an `app/` folder or `default_app.asar`, so integrity validation cannot be sidestepped. |
+| `EnableCookieEncryption` | on | Cookie values are encrypted at rest with the OS key (DPAPI on Windows, Keychain on macOS, libsecret/kwallet on Linux), like Chrome. |
+| `GrantFileProtocolExtraPrivileges` | **on** (default) | The chrome UI is loaded via `file://` (`window.ts` → `dist/renderer/chrome/index.html`); its ES-module chunks (`dist/renderer/assets/`) and `@font-face` fonts are CORS-mode loads that rely on these privileges. Turning it off needs the chrome UI moved to a privileged custom scheme first. Web content never runs on `file://` with Node, and tabs are separate sandboxed views. |
+| `LoadBrowserProcessSpecificV8Snapshot` | default (off) | Not used. |
+
+**Cookie encryption migration.** Chromium's `os_crypt` reads both plaintext and encrypted (`v10`-prefixed)
+cookie values, so existing profiles keep their logins: old plaintext cookies stay readable and are
+re-written encrypted as sites update them. The transition is one-way — a build *without* the fuse cannot
+read encrypted cookies, so downgrading to a pre-fuse Vela (≤ 0.6.0) silently loses those cookies (sites
+log out; nothing else breaks). The encryption key lives in `userData/Local State` (`os_crypt.encrypted_key`),
+so copying a profile to another Windows account or machine also loses cookies, as in Chrome.
+
+Verify a build: `node -e "require('@electron/fuses').getCurrentFuseWire('<exe>').then(console.log)"`
+(`@electron/fuses` is already a transitive dependency of electron-builder).
+
+### Mark-of-the-Web on downloads (`src/main/zone-identifier.ts`)
+
+On Windows every completed download gets a `Zone.Identifier` alternate data stream
+(`[ZoneTransfer]` / `ZoneId=3` / `ReferrerUrl` / `HostUrl`, CRLF), written by `downloads.ts` after the
+`done` event, so SmartScreen, Defender, Office Protected View and the "Unblock" checkbox treat the file
+like a Chrome/Edge download. `HostUrl` is the last URL of the redirect chain, `ReferrerUrl` the page that
+started the download. Only http(s) URLs are recorded (credentials and fragment stripped); `blob:`,
+`data:`, `vela://` etc. and every download from a non-persistent (burner) session get the zone line only.
+Writing is best effort: volumes without ADS support (FAT32/exFAT, some shares) simply get no mark.

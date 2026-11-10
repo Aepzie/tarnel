@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Windows downloads carry the Mark-of-the-Web (`Zone.Identifier`: internet zone plus source and referrer URL, URLs omitted for burner Spaces and blob/data downloads), so SmartScreen, Defender and Office Protected View treat them like Chrome downloads
+- Packaged builds flip Electron fuses: no `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` or `--inspect`; app code only from an integrity-checked `app.asar`; cookies encrypted at rest with the OS key. Existing plaintext cookies stay readable and are encrypted as they are rewritten; going back to 0.6.0 or older afterwards logs you out of sites
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
