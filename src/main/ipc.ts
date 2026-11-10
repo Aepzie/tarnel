@@ -14,6 +14,7 @@ import { clearHistory, deleteHistoryEntry, listHistory, suggest, topSites } from
 import { getBlockedTotal } from './perf/adblock';
 import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
+import { schedulePrefetch } from './perf/prerender';
 import { pageThemeFor } from './page-theme';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
@@ -207,6 +208,7 @@ function preconnect(rawUrl: unknown): void {
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
   getSpaceSession(getActiveSpaceId()).preconnect({ url: url.origin, numSockets: 1 });
+  schedulePrefetch(url.href);
 }
 
 async function removeSpace(id: unknown): Promise<void> {

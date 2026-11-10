@@ -190,6 +190,8 @@ export interface Settings {
   updateAutoDownload: boolean;
   /** Offer pre-releases (e.g. 0.3.0-beta.1). */
   updatePrerelease: boolean;
+  /** Prefetch the top address-bar URL suggestion while the user lingers on it (docs/PERFORMANCE.md). */
+  preloadPages: boolean;
 }
 
 export interface Suggestion {
@@ -303,6 +305,7 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,
+  preloadPages: true,
 };
 
 /** Where an installed extension came from. */
