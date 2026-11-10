@@ -221,7 +221,16 @@
     0 8px 28px -14px rgb(0 0 0 / 0.2);
 }
 
-/* VPN preview: MantelVPN partner card. The ring is a masked conic gradient whose angle orbits. */
+/* VPN preview: MantelVPN partner card. One quiet accent; the only motion is a short highlight that
+   travels along the hairline border. */
+:root {
+  --vpn-accent: #d6bd8a;
+}
+
+:root.light {
+  --vpn-accent: #8c6d32;
+}
+
 @property --vpn-angle {
   syntax: "<angle>";
   initial-value: 0deg;
@@ -230,13 +239,18 @@
 
 .vpn-ring {
   padding: 1px;
-  background: conic-gradient(from var(--vpn-angle), #22d3ee, #818cf8 22%, #c084fc 38%, #22d3ee 55%, #34d399 75%, #22d3ee);
+  background: conic-gradient(
+    from var(--vpn-angle),
+    transparent 0 72%,
+    color-mix(in oklab, var(--vpn-accent) 85%, transparent) 86%,
+    transparent 100%
+  );
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
 }
 
 .vpn-orbit {
-  animation: vpn-orbit 6s linear infinite;
+  animation: vpn-orbit 7s linear infinite;
 }
 
 @keyframes vpn-orbit {
@@ -244,55 +258,32 @@
 }
 
 .vpn-card {
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgb(34 211 238 / 0.13), transparent 55%),
-    radial-gradient(120% 140% at 100% 100%, rgb(192 132 252 / 0.12), transparent 55%),
-    color-mix(in oklab, var(--foreground) 4%, transparent);
-}
-
-.vpn-sweep {
-  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.09) 45%, rgb(255 255 255 / 0.16) 50%, rgb(255 255 255 / 0.09) 55%, transparent);
-  animation: vpn-sweep 4.2s cubic-bezier(0.65, 0, 0.35, 1) 0.6s infinite;
-}
-
-:root.light .vpn-sweep {
-  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.5) 50%, transparent);
-}
-
-@keyframes vpn-sweep {
-  0% { transform: translateX(0); }
-  45%, 100% { transform: translateX(450%); }
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--vpn-accent) 22%, transparent);
 }
 
 .vpn-mark {
-  background: linear-gradient(140deg, #22d3ee, #818cf8 55%, #c084fc);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 4px 14px -4px rgb(129 140 248 / 0.6);
+  color: var(--background);
+  background: var(--vpn-accent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
 }
 
 .vpn-badge {
-  color: #a5f3fc;
-  background: linear-gradient(90deg, rgb(34 211 238 / 0.16), rgb(192 132 252 / 0.18));
-  box-shadow: inset 0 0 0 1px rgb(165 243 252 / 0.18);
-}
-
-:root.light .vpn-badge {
-  color: #0e7490;
-  box-shadow: inset 0 0 0 1px rgb(14 116 144 / 0.18);
+  color: var(--vpn-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--vpn-accent) 40%, transparent);
 }
 
 .vpn-cta {
-  color: #fff;
-  background: linear-gradient(100deg, #0891b2, #6366f1 60%, #9333ea);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 8px 24px -10px rgb(99 102 241 / 0.7);
+  color: var(--background);
+  background: var(--foreground);
 }
 
 .vpn-cta:hover:not(:disabled) {
-  filter: brightness(1.08);
+  opacity: 0.9;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vpn-orbit,
-  .vpn-sweep {
+  .vpn-orbit {
     animation: none !important;
   }
 }

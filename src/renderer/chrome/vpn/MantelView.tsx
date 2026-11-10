@@ -138,8 +138,8 @@ function DaysRing({ daysLeft }: { daysLeft: number }) {
         />
         <defs>
           <linearGradient id="vpn-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" />
-            <stop offset="100%" stopColor="#a78bfa" />
+            <stop offset="0%" stopColor="var(--vpn-accent)" />
+            <stop offset="100%" stopColor="var(--vpn-accent)" />
           </linearGradient>
         </defs>
       </svg>
