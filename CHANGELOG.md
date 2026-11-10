@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Site info panel: click the lock/host chip in the address palette for the connection state, trackers blocked on the page, the permissions this site holds in the current Space (revoke or reset each one), its cookie count and stored data size, a "Clear site data" button, and a per-site "When Vela closes: Keep data / Delete data" choice
+- Clear cookies and site data when Vela closes (Settings → Privacy, per Space) with a list of sites to keep; optionally clear a site's data 30 seconds after its last tab in that Space closes. Clearing runs during quit with a bounded timeout; burner Spaces are wiped as before
 - Task manager (`Shift+Esc`, palette "Task manager", or the activity button in the perf popover): CPU and private memory per tab (favicon, Space colour, active / playing / background / asleep / crashed), per extension, the Vela interface, Browser, GPU and utility services (Network, Audio…), with sortable columns, totals and Sleep / End process / Go to tab. Live once a second while open; nothing runs while it is closed
 - Settings → Privacy → "Remove tracking parameters" (on by default): click and share trackers (utm_*, fbclid, gclid, msclkid, igshid, mc_eid, HubSpot/Marketo ids, Spotify/YouTube `si`, Twitter/X `ref_src`, …) are stripped from pages you open, addresses you type and links you copy. A curated list that leaves affiliate tags such as Amazon `tag` alone; removed parameters count towards the tab's blocked badge
 - Settings → Privacy → "Trim referrers" (on by default): other sites only receive the origin you came from, never the full page address, even when a page asks for more; nothing is sent when going from HTTPS to HTTP

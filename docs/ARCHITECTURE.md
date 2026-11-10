@@ -493,6 +493,14 @@ export function serializeSession(): SavedTab[]; export function restoreSession()
 // …plus whatever else ipc.ts needs (back/forward/reload/find/zoom/move/duplicate/pin/mute/moveToSpace)
 ```
 
+## Site info & site data on close (`src/main/site-data.ts`)
+
+- Contract: `src/shared/site-data.ts` (pure, unit-tested: `SITE_IPC`, `SiteInfo`, `SiteDataPolicy`, exception matching). Chrome API `vela.site.*`, pages API `velaPages.siteData.*`.
+- **Site info** (`src/renderer/chrome/site-info/SiteInfoPanel.tsx`): the palette's lock/host chip opens a portalled popover inside the palette's overlay. `getSiteInfo(tabId)` reads the tab's session (its VPN partition when routed): cookies via `cookies.get({ domain: <registrable domain> })`, storage via `navigator.storage.estimate()` in an isolated world (800 ms cap), permission answers via `listOriginDecisions` in `permissions.ts`. "Secure" is the tab's https state; Vela installs no certificate-error override, so an https page that loaded passed Chromium's verification (no certificate details are shown).
+- **Clear site data**: removes the site's cookies (registrable domain and subdomains) and `clearData({ origins })` for the tab origin plus bare/`www` https/http variants (localStorage, IndexedDB, service workers, file systems, WebSQL, background fetch; not the HTTP cache).
+- **Policies** (store `site-data.json`, `Record<SpaceId, SiteDataPolicy>`): `clearOnExit`, `clearOnLastTab`, and per-site overrides `sites[pattern] = 'keep' | 'clear'` (a pattern covers its subdomains; the most specific wins). On quit, `clearSiteDataOnQuit()` runs in the `before-quit` dispose race (extra 3 s when anything is pending): whole-Space clear when nothing is kept, otherwise cookies are filtered per domain and storage is cleared with `excludeOrigins` = kept sites' origin variants + open tabs' origins of kept sites. Persistent Spaces only; VPN country partitions are not touched.
+- **Last tab**: an `onStateChanged` diff of open (Space, site) pairs schedules `clearSite` 30 s after a site's last tab in a Space closes (cancelled if it reopens). Kept sites are never cleared.
+
 ## VPN (MantelVPN)
 
 `src/shared/vpn.ts` (contract + pure parsers, unit-tested), `src/main/vpn/mantel.ts` (API client),

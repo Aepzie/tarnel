@@ -7,6 +7,7 @@ import { velaPages } from '@/lib/vela';
 import { ConfirmActions } from '../components/confirm';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
+import { SiteDataOnClose } from './SiteDataOnClose';
 
 const DNS_OPTIONS: readonly { value: SecureDnsMode; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -137,6 +138,7 @@ export function Privacy() {
           setting="trimReferrers"
         />
       </Group>
+      <SiteDataOnClose />
       <SecureDns />
       <Group title="History">
         <Row title="Browsing history" description="Removes visited pages and top sites from every Space.">
