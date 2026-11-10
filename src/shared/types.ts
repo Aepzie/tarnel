@@ -1,3 +1,5 @@
+import type { SecureDnsMode } from './doh';
+
 export type SpaceId = string;
 
 export type SpaceColor =
@@ -171,6 +173,10 @@ export interface Settings {
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
+  /** Strip click/share tracking parameters (src/shared/url-clean.ts) from top-level navigations and copied links. */
+  removeTrackingParams: boolean;
+  /** Cross-site requests send only the origin as Referer; none on https → http. */
+  trimReferrers: boolean;
   restoreSession: boolean;
   /** Vertical tab layout: the tab island is collapsed to icons only. */
   sidebarCollapsed: boolean;
@@ -190,6 +196,14 @@ export interface Settings {
   updateAutoDownload: boolean;
   /** Offer pre-releases (e.g. 0.3.0-beta.1). */
   updatePrerelease: boolean;
+  /** DNS-over-HTTPS resolver. Process-global (Electron's host resolver), not per Space. */
+  secureDns: SecureDnsMode;
+  /** Fail lookups instead of falling back to plain DNS when DoH fails (Chromium "secure" mode). */
+  secureDnsStrict: boolean;
+  /** NextDNS configuration ID or DoH URL; always valid or ''. */
+  secureDnsNextDns: string;
+  /** Custom DoH URI template; always valid or ''. */
+  secureDnsTemplate: string;
 }
 
 export interface Suggestion {
@@ -293,6 +307,8 @@ export const DEFAULT_SETTINGS: Settings = {
   httpsOnly: true,
   blockThirdPartyCookies: true,
   sendDoNotTrack: true,
+  removeTrackingParams: true,
+  trimReferrers: true,
   restoreSession: true,
   sidebarCollapsed: false,
   sidebarWidth: 240,
@@ -304,6 +320,10 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,
+  secureDns: 'off',
+  secureDnsStrict: false,
+  secureDnsNextDns: '',
+  secureDnsTemplate: '',
 };
 
 /** Where an installed extension came from. */

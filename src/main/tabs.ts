@@ -5,7 +5,7 @@ import { isLoneStartPage } from '../shared/tab-close';
 import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabMediaDevices, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
-import { upgradeToHttps } from './privacy';
+import { cleanUserUrl, upgradeToHttps } from './privacy';
 import { rendererMemoryKB } from './perf/metrics';
 import type { SleepCandidate } from './perf/sleeper';
 import { getSettings } from './settings';
@@ -590,8 +590,11 @@ let blockedEmitTimer: NodeJS.Timeout | null = null;
 export function navigateTab(id: number, input: string): void {
   const tab = tabs.get(id);
   if (!tab) return;
-  const url = resolveInput(input, getSettings().searchEngine);
-  if (!url) return;
+  const resolved = resolveInput(input, getSettings().searchEngine);
+  if (!resolved) return;
+  // Typed/pasted links lose their trackers before the first request (the webRequest stage would
+  // otherwise redirect, and the trackers would linger in history for the original entry).
+  const url = cleanUserUrl(resolved);
   tab.errorUrl = null;
   tab.savedHistory = null;
   const existing = liveWc(tab);
