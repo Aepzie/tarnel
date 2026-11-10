@@ -270,7 +270,7 @@ export function registerVpnIpc(handle: ChromeHandler): void {
   restoreRoute();
   if (requireStore().get().account) mode = 'preview';
   answerProxyAuth();
-  handle(VPN_IPC.state, () => (mode === 'signed-out' ? snapshot() : refresh()));
+  handle(VPN_IPC.state, () => snapshot());
   handle(VPN_IPC.refresh, () => refresh());
   handle(VPN_IPC.login, (raw) => login(raw));
   handle(VPN_IPC.logout, () => logout());

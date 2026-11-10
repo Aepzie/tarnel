@@ -414,8 +414,9 @@ export interface VelaChromeAPI {
 /** MantelVPN (chrome only). Channels live in VPN_IPC (shared/vpn.ts); see docs/ARCHITECTURE.md → VPN. */
 export interface VelaChromeAPI {
   vpn: {
-    /** Current state; refreshes account + servers from Mantel when signed in. */
+    /** Current state as main knows it (no network). */
     state(): Promise<VpnState>;
+    /** Re-signs in / reloads account + servers from Mantel. */
     refresh(): Promise<VpnState>;
     /** Account number (16 digits, spaces/dashes allowed). Stored with safeStorage in main only. */
     login(accountNumber: string): Promise<VpnResult>;

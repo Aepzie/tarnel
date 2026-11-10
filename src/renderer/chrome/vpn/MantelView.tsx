@@ -168,10 +168,10 @@ function AccountCard() {
           {term && term.daysLeft === 0 ? 'Expired' : 'Mantel account'}
           <span className="vpn-badge rounded-full px-1.5 py-px text-[9.5px] font-semibold tracking-wide">Partner</span>
         </p>
-        <p className="text-[11.5px] text-muted-foreground tabular-nums">{term ? `${term.daysLeft} days left` : 'Paid time unknown offline'}</p>
+        <p className="text-[11.5px] text-muted-foreground tabular-nums">{term ? `${term.daysLeft} days left` : 'Paid time unknown while offline'}</p>
         <p className="truncate text-[11px] text-muted-foreground/80 tabular-nums" title={`Account ending ${state.accountTail ?? ''}`}>
           {term ? `Paid until ${dateFormat.format(term.expiresAt)} · ` : ''}
-          <span className="font-mono text-[10.5px]">•••• {state.accountTail}</span>
+          <span className="font-mono text-[10.5px]">••{state.accountTail}</span>
         </p>
       </div>
       <button

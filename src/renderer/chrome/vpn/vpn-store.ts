@@ -136,12 +136,14 @@ function start(): void {
   void bridge.state().then(applyState, () => undefined);
 }
 
+start();
+
 export const vpn = {
   setOpen(open: boolean): void {
     if (open === snapshot.open) return;
     start();
     emit(open ? { open, view: snapshot.mode !== 'signed-out' ? 'mantel' : 'providers', error: null } : { open });
-    if (open && snapshot.mode !== 'signed-out') void api()?.state().then(applyState, () => undefined);
+    if (open && snapshot.mode !== 'signed-out') vpn.refresh();
   },
   open(): void {
     vpn.setOpen(true);
