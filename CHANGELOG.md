@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- VPN panel (preview, not yet connected to a real VPN): MantelVPN partner card with license activation, account expiry, server picker and a simulated connection; Mullvad and Proton VPN listed as coming soon
+
 ## [0.4.1] - 2026-11-10
 
 ### Fixed
