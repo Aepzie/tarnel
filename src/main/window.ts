@@ -4,6 +4,7 @@ import { IPC } from '../shared/ipc';
 import { splitGeometry } from '../shared/split-layout';
 import type { ContentBounds, WindowMaterial } from '../shared/types';
 import { getSettings } from './settings';
+import { emulateDragSnap } from './snap';
 import { createStore, type JsonStore } from './store';
 
 interface WindowFile {
@@ -127,7 +128,8 @@ const CLEAR_BG = '#00000000';
 /**
  * 'none' = fully transparent window: the desktop shows (unblurred) around the islands.
  * Mica/Acrylic = opaque-to-DWM window with a system backdrop. `transparent` is construction-only,
- * so switching between the two families recreates the window (see swapWindow).
+ * so switching between the two families recreates the window (see swapWindow). On Windows a
+ * transparent window gets no WS_THICKFRAME, so no native Snap: see emulateDragSnap.
  */
 function windowLook(material: WindowMaterial): WindowLook {
   if (material === 'none') return { transparent: true, backgroundColor: CLEAR_BG };
@@ -179,6 +181,7 @@ function wireWindow(current: BaseWindow): void {
   current.on('resize', own(layout));
   current.on('resized', own(saveBounds));
   current.on('moved', own(saveBounds));
+  if (process.platform === 'win32' && windowTransparent) current.on('moved', own(() => emulateDragSnap(current) && saveBounds()));
   const emitMaximized = own((): void => {
     layout();
     saveBounds();

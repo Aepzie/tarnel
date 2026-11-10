@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows: dragging the window to a screen edge now snaps (top = maximize, left/right = half
+  screen) with the "None" window material too. Electron gives transparent windows no thick frame,
+  so native Snap is off there and Vela emulates the drag-to-edge part.
+
 ## [0.4.1] - 2026-11-10
 
 ### Fixed
