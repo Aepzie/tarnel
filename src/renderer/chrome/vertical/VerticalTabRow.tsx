@@ -2,6 +2,7 @@ import { memo, useRef, type MouseEvent, type PointerEvent } from 'react';
 import { Reorder, motion, useReducedMotion, type Transition } from 'motion/react';
 import { XIcon } from 'lucide-react';
 import type { TabState } from '@shared/types';
+import { useTabClosable } from '@/hooks/browser';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { settle, vela } from '@/lib/vela';
@@ -40,6 +41,7 @@ function VerticalTabRowImpl({ tab, active, iconOnly, groupColor, groupEnd = fals
   const dragged = useRef(false);
   const label = tab.title || tab.url || 'New Tab';
   const grouped = !!groupColor;
+  const closable = useTabClosable(tab);
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
     dragged.current = false;
@@ -127,24 +129,26 @@ function VerticalTabRowImpl({ tab, active, iconOnly, groupColor, groupEnd = fals
               >
                 {tab.title || 'New Tab'}
               </span>
-              <AudioButton tab={tab} className="transition-[margin,background-color,color] group-hover/row:mr-6" />
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-label="Close tab"
-                className={cn(
-                  'absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-[opacity,background-color,color] duration-150',
-                  'group-hover/row:opacity-100 group-focus-visible/row:opacity-100 hover:bg-white/10 hover:text-zinc-100 active:scale-[0.92]',
-                  'light:text-zinc-500 light:hover:bg-black/[0.07] light:hover:text-zinc-900',
-                )}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  settle(vela().tabs.close(tab.id));
-                }}
-              >
-                <XIcon className="size-3.5" strokeWidth={2} />
-              </button>
+              <AudioButton tab={tab} className={cn('transition-[margin,background-color,color]', closable && 'group-hover/row:mr-6')} />
+              {closable && (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-label="Close tab"
+                  className={cn(
+                    'absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-[opacity,background-color,color] duration-150',
+                    'group-hover/row:opacity-100 group-focus-visible/row:opacity-100 hover:bg-white/10 hover:text-zinc-100 active:scale-[0.92]',
+                    'light:text-zinc-500 light:hover:bg-black/[0.07] light:hover:text-zinc-900',
+                  )}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    settle(vela().tabs.close(tab.id));
+                  }}
+                >
+                  <XIcon className="size-3.5" strokeWidth={2} />
+                </button>
+              )}
             </>
           )}
         </span>
