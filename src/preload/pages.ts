@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import { EXTENSION_IPC, IPC, SAFETY_IPC, type VelaPagesAPI } from '../shared/ipc';
 import { SITE_IPC } from '../shared/site-data';
+import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -45,6 +46,13 @@ if (isVelaPage()) {
     safety: {
       status: () => call(SAFETY_IPC.status),
       proceed: (url) => call(SAFETY_IPC.proceed, url),
+    },
+    bookmarks: {
+      list: (spaceId) => call(BOOKMARKS_IPC.pagesList, spaceId ?? null),
+      add: (input, spaceId) => call(BOOKMARKS_IPC.pagesAdd, input, spaceId ?? null),
+      update: (id, patch, spaceId) => call(BOOKMARKS_IPC.pagesUpdate, id, patch, spaceId ?? null),
+      remove: (id, spaceId) => call(BOOKMARKS_IPC.pagesRemove, id, spaceId ?? null),
+      search: (query, limit, spaceId) => call(BOOKMARKS_IPC.pagesSearch, query, limit ?? null, spaceId ?? null),
     },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),
