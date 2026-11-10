@@ -12,7 +12,7 @@ import { SPACE_HEX, vela } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { ColorSwatches } from './ColorSwatches';
-import { FingerprintPicker } from './FingerprintPicker';
+import { FingerprintPicker, RegionFields } from './FingerprintPicker';
 import { SpaceMark } from './SpaceMark';
 import { GLASS_SURFACE } from './surface';
 
@@ -47,6 +47,8 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
   const [ephemeral, setEphemeral] = useState(false);
   const [proxy, setProxy] = useState('');
   const [fingerprint, setFingerprint] = useState<FingerprintLevel>('standard');
+  const [timezone, setTimezone] = useState('');
+  const [language, setLanguage] = useState('');
   /** Until the user picks a level, Burner implies Strict. */
   const fingerprintTouched = useRef(false);
   const [advanced, setAdvanced] = useState(false);
@@ -61,6 +63,8 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
       setEphemeral(editing.ephemeral);
       setProxy(editing.proxy);
       setFingerprint(editing.fingerprint);
+      setTimezone(editing.timezone ?? '');
+      setLanguage(editing.language ?? '');
       setAdvanced(Boolean(editing.proxy) || editing.fingerprint !== (editing.ephemeral ? 'strict' : 'standard'));
     } else {
       const used = new Set(spaces.map((space) => space.color));
@@ -69,6 +73,8 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
       setEphemeral(false);
       setProxy('');
       setFingerprint('standard');
+      setTimezone('');
+      setLanguage('');
       setAdvanced(false);
     }
     fingerprintTouched.current = false;
@@ -90,9 +96,9 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
     const finalName = name.trim() || (editing?.name ?? fallbackName);
     try {
       if (editing) {
-        await vela().spaces.update(editing.id, { name: finalName, color, proxy: proxy.trim(), fingerprint });
+        await vela().spaces.update(editing.id, { name: finalName, color, proxy: proxy.trim(), fingerprint, timezone, language });
       } else {
-        const createdId = createdRef.current ?? (await vela().spaces.create({ name: finalName, color, ephemeral, proxy: proxy.trim(), fingerprint })).id;
+        const createdId = createdRef.current ?? (await vela().spaces.create({ name: finalName, color, ephemeral, proxy: proxy.trim(), fingerprint, timezone, language })).id;
         createdRef.current = createdId;
         try {
           await vela().spaces.activate(createdId);
@@ -271,6 +277,15 @@ export function CreateSpaceDialog({ open, onOpenChange, editing = null }: Create
                           fingerprintTouched.current = true;
                           setFingerprint(level);
                         }}
+                      />
+                    </div>
+                    <div className="pt-3">
+                      <RegionFields
+                        timezone={timezone}
+                        language={language}
+                        onTimezone={setTimezone}
+                        onLanguage={setLanguage}
+                        disabled={fingerprint === 'off'}
                       />
                     </div>
                   </motion.div>

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Per-Space timezone and language (Space dialog and Settings → Spaces): Timezone Automatic / System / UTC / Match VPN country / a fixed zone; Language System / English / others. Timezone and Intl locale use Chromium's native per-tab override (DevTools protocol), so the page, its iframes and its workers report the same zone, offset, `Date` strings and locale; navigator.language(s) and Accept-Language follow the Space language. Automatic means UTC in Strict (the VPN country's zone for routed tabs) and the system zone in Standard.
+- Strict fingerprint protection reduces font enumeration: `measureText` and `document.fonts.check` answer as if fonts outside a common per-platform set (and the page's own web fonts) were not installed; `queryLocalFonts()` is denied.
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
