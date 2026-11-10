@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-10
+
 ### Fixed
 
 - Audio mixer: a tab that is playing but was never adjusted no longer says "No sound yet"; it shows live meters
@@ -160,7 +162,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Aepzie/vela/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Aepzie/vela/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Aepzie/vela/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Aepzie/vela/compare/v0.2.0...v0.2.1
