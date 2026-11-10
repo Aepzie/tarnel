@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import { EXTENSION_IPC, IPC, SAFETY_IPC, type VelaPagesAPI } from '../shared/ipc';
 import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
+import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
+import { PASSWORD_IPC } from '../shared/passwords';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -47,6 +49,13 @@ if (isVelaPage()) {
       status: () => call(SAFETY_IPC.status),
       proceed: (url) => call(SAFETY_IPC.proceed, url),
     },
+    bookmarks: {
+      list: (spaceId) => call(BOOKMARKS_IPC.pagesList, spaceId ?? null),
+      add: (input, spaceId) => call(BOOKMARKS_IPC.pagesAdd, input, spaceId ?? null),
+      update: (id, patch, spaceId) => call(BOOKMARKS_IPC.pagesUpdate, id, patch, spaceId ?? null),
+      remove: (id, spaceId) => call(BOOKMARKS_IPC.pagesRemove, id, spaceId ?? null),
+      search: (query, limit, spaceId) => call(BOOKMARKS_IPC.pagesSearch, query, limit ?? null, spaceId ?? null),
+    },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),
       set: (spaceId, policy) => call(SITE_IPC.pagesSetPolicy, spaceId, policy),
@@ -86,6 +95,20 @@ if (isVelaPage()) {
       openRelease: () => call(ch.updateOpenRelease),
     },
   };
+
+  if (location.host === 'passwords') {
+    const pw = PASSWORD_IPC;
+    api.passwords = {
+      status: () => call(pw.status),
+      list: (spaceId) => call(pw.list, spaceId),
+      reveal: (spaceId, loginId) => call(pw.reveal, spaceId, loginId),
+      copy: (spaceId, loginId, field) => call(pw.copy, spaceId, loginId, field),
+      update: (spaceId, loginId, patch) => call(pw.update, spaceId, loginId, patch),
+      remove: (spaceId, loginId) => call(pw.remove, spaceId, loginId),
+      exportCsv: (spaceId) => call(pw.exportCsv, spaceId),
+      removeNever: (spaceId, origin) => call(pw.neverRemove, spaceId, origin),
+    };
+  }
 
   contextBridge.exposeInMainWorld('velaPages', api);
   applyBootTheme();

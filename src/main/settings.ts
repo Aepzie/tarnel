@@ -16,6 +16,7 @@ const BOOLEAN_KEYS = [
   'restoreSession',
   'sidebarCollapsed',
   'autoHideToolbar',
+  'showBookmarksBar',
   'updateAutoCheck',
   'updateAutoDownload',
   'updatePrerelease',
@@ -23,6 +24,8 @@ const BOOLEAN_KEYS = [
   'panicClearRecentHistory',
   'warnDangerousSites',
   'secureDnsStrict',
+  'offerToSavePasswords',
+  'passwordAutofill',
 ] as const satisfies readonly (keyof Settings)[];
 
 const listeners = new Set<(settings: Settings) => void>();

@@ -13,12 +13,16 @@ import { TopIsland } from './island/TopIsland';
 import { FindBar } from './find/FindBar';
 import { CommandPalette } from './palette/CommandPalette';
 import { usePermissionQueue } from './permissions/permission-store';
+import { usePasswordQueue } from './passwords/password-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
+import { BookmarksBar } from './bookmarks/BookmarksBar';
+import { BookmarkEditor } from './bookmarks/BookmarkEditor';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
 const PermissionPrompt = lazy(() => import('./permissions/PermissionPrompt').then((module) => ({ default: module.PermissionPrompt })));
+const PasswordPrompt = lazy(() => import('./passwords/PasswordPrompt').then((module) => ({ default: module.PasswordPrompt })));
 
 /**
  * Browser chrome root. Layout: floating top island, optional find strip, page viewport; in the
@@ -33,6 +37,11 @@ export function App() {
   useEffect(() => {
     if (permissionQueue.length > 0) setPermissionUi(true);
   }, [permissionQueue.length]);
+  const passwordQueue = usePasswordQueue();
+  const [passwordUi, setPasswordUi] = useState(false);
+  useEffect(() => {
+    if (passwordQueue.saves.length + passwordQueue.offers.length > 0) setPasswordUi(true);
+  }, [passwordQueue]);
 
   useEffect(() => resetOverlayOnBoot(), []);
 
@@ -69,8 +78,12 @@ export function App() {
         case 'toggle-sidebar':
           settle(window.vela.settings.set({ autoHideToolbar: !settings.autoHideToolbar }));
           break;
+        case 'bookmark-page':
+          ui.openBookmarkEditor();
+          break;
         case 'escape':
-          if (ui.get().palette.open) ui.closePalette();
+          if (ui.get().bookmarkEditor.open) ui.closeBookmarkEditor();
+          else if (ui.get().palette.open) ui.closePalette();
           else if (ui.get().find.open) ui.closeFind();
           break;
         case 'new-space':
@@ -90,6 +103,7 @@ export function App() {
           {settings.tabLayout === 'vertical' && <VerticalIsland />}
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <TopIsland />
+            <BookmarksBar />
             <FindBar />
             <Viewport />
           </div>
@@ -99,7 +113,13 @@ export function App() {
             <PermissionPrompt />
           </Suspense>
         )}
+        {passwordUi && (
+          <Suspense fallback={null}>
+            <PasswordPrompt />
+          </Suspense>
+        )}
         <CommandPalette />
+        <BookmarkEditor />
         <TaskManager />
       </LayoutGroup>
     </TooltipProvider>

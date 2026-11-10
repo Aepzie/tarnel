@@ -85,6 +85,23 @@ export function Appearance() {
           />
         </Row>
       </Group>
+      <Group title="Bookmarks">
+        <SwitchRow
+          title="Show bookmarks bar"
+          setting="showBookmarksBar"
+          description={
+            <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              A slim row of bookmarks under the toolbar
+              <span aria-hidden>·</span>
+              <KbdGroup>
+                <Kbd>Ctrl</Kbd>
+                <Kbd>Shift</Kbd>
+                <Kbd>B</Kbd>
+              </KbdGroup>
+            </span>
+          }
+        />
+      </Group>
       <Group title="Focus">
         <SwitchRow
           title="Focus mode"
