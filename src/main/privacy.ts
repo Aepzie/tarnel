@@ -3,8 +3,10 @@ import type { PermissionKind, PermissionRequest, Space } from '../shared/types';
 import { applyFingerprintHeaders } from './fingerprint/headers';
 import { applyIdentityHeaders } from './identity/headers';
 import { registrableDomain } from './net/domain';
-import { addWebRequestStage, STAGE_ORDER } from './net/dispatcher';
-import { getSettings } from './settings';
+import { cleanUrl } from '../shared/url-clean';
+import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from './net/dispatcher';
+import { trimReferrer } from './net/referrer';
+import { getSettings, onSettingsChanged } from './settings';
 
 export { registrableDomain } from './net/domain';
 
@@ -228,6 +230,77 @@ function topFrameUrl(details: { frame?: Electron.WebFrameMain | null; webContent
   return details.referrer || undefined;
 }
 
+// ---------------------------------------------------------------------------
+// Tracking parameters and referrers
+// ---------------------------------------------------------------------------
+
+type StrippedListener = (webContentsId: number, count: number) => void;
+let strippedListener: StrippedListener | null = null;
+
+/** Called with the tab's webContents id and the number of tracking parameters removed from a navigation. */
+export function onTrackingStripped(listener: StrippedListener): void {
+  strippedListener = listener;
+}
+
+function notifyStripped(webContentsId: number, count: number): void {
+  try {
+    strippedListener?.(webContentsId, count);
+  } catch {
+    /* counting must never break navigation */
+  }
+}
+
+/** Cleans a URL the user is about to copy or open (no-op when the setting is off). */
+export function cleanUserUrl(url: string): string {
+  return getSettings().removeTrackingParams ? cleanUrl(url).url : url;
+}
+
+function applyReferrerTrim(requestUrl: string, headers: Record<string, string>): void {
+  for (const name of Object.keys(headers)) {
+    if (name.toLowerCase() !== 'referer') continue;
+    const trimmed = trimReferrer(headers[name], requestUrl);
+    if (trimmed === null) delete headers[name];
+    else headers[name] = trimmed;
+  }
+}
+
+function urlCleanStage(details: Electron.OnBeforeRequestListenerDetails): Electron.CallbackResponse | void {
+  if (details.resourceType !== 'mainFrame' || details.method !== 'GET') return;
+  const cleaned = cleanUrl(details.url);
+  // cleanUrl is idempotent, so the redirected request comes back unchanged: no loop.
+  if (cleaned.removed.length === 0 || cleaned.url === details.url) return;
+  if (details.webContentsId) notifyStripped(details.webContentsId, cleaned.removed.length);
+  return { redirectURL: cleaned.url };
+}
+
+/**
+ * The stage exists only while the setting is on: with it (and Ghostery, and DNR) off, no
+ * onBeforeRequest listener is installed at all, so sub-resources never cross into JS for it.
+ */
+function syncUrlCleanStage(session: Session): void {
+  if (getSettings().removeTrackingParams) addWebRequestStage(session, 'beforeRequest', 'url-clean', STAGE_ORDER.urlClean, urlCleanStage);
+  else removeWebRequestStage(session, 'beforeRequest', 'url-clean');
+}
+
+const urlCleanSessions = new Set<WeakRef<Session>>();
+let urlCleanWatched = false;
+let urlCleanEnabled: boolean | null = null;
+
+function watchUrlCleanSetting(): void {
+  if (urlCleanWatched) return;
+  urlCleanWatched = true;
+  urlCleanEnabled = getSettings().removeTrackingParams;
+  onSettingsChanged((settings) => {
+    if (settings.removeTrackingParams === urlCleanEnabled) return;
+    urlCleanEnabled = settings.removeTrackingParams;
+    for (const ref of urlCleanSessions) {
+      const session = ref.deref();
+      if (session) syncUrlCleanStage(session);
+      else urlCleanSessions.delete(ref);
+    }
+  });
+}
+
 const configured = new WeakSet<Session>();
 
 export function applyPrivacy(session: Session, space: Space): void {
@@ -269,8 +342,13 @@ export function applyPrivacy(session: Session, space: Space): void {
   // WebUSB / WebHID / Web Serial: always denied.
   session.setDevicePermissionHandler(() => false);
 
+  syncUrlCleanStage(session);
+  urlCleanSessions.add(new WeakRef(session));
+  watchUrlCleanSetting();
+
   addWebRequestStage(session, 'beforeSendHeaders', 'privacy', STAGE_ORDER.privacy, (details, headers) => {
     const settings = getSettings();
+    if (settings.trimReferrers) applyReferrerTrim(details.url, headers);
     if (settings.sendDoNotTrack) {
       headers['DNT'] = '1';
       headers['Sec-GPC'] = '1';

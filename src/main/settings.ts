@@ -10,6 +10,8 @@ const BOOLEAN_KEYS = [
   'httpsOnly',
   'blockThirdPartyCookies',
   'sendDoNotTrack',
+  'removeTrackingParams',
+  'trimReferrers',
   'restoreSession',
   'sidebarCollapsed',
   'autoHideToolbar',
