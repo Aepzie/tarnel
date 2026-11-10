@@ -11,16 +11,12 @@ import { Fader, formatVolume } from './Fader';
 import { Knob } from './Knob';
 import { StereoMeter } from './LevelMeter';
 import { mixerPanel, toggleSolo, updateTab } from './mixer-store';
+import { routingNote } from './routing-note';
 
 export const formatBalance = (balance: number): string => {
   const amount = Math.round(Math.abs(balance) * 100);
   if (amount === 0) return 'Centre';
   return `${balance < 0 ? 'L' : 'R'} ${amount}`;
-};
-
-const ROUTING_NOTE: Partial<Record<MixerRouting, string>> = {
-  partial: 'Volume only',
-  idle: 'No sound yet',
 };
 
 interface ChannelStripProps {
@@ -68,7 +64,7 @@ function StripButton({ label, pressed, tone, onClick, children }: {
  */
 export const ChannelStrip = memo(function ChannelStrip({ tab, settings, routing, spaceColor, selected, soloed }: ChannelStripProps) {
   const reduce = useReducedMotion();
-  const note = ROUTING_NOTE[routing];
+  const note = routingNote(routing, tab.audible);
   const name = tab.title || hostOf(tab.url) || 'Tab';
 
   const jump = (): void => {
@@ -124,8 +120,11 @@ export const ChannelStrip = memo(function ChannelStrip({ tab, settings, routing,
       <span className="mt-1.5 w-full truncate text-center text-[11px] leading-tight font-medium tracking-tight text-foreground/90" title={tab.title}>
         {name}
       </span>
-      <span className={cn('w-full truncate text-center text-[10px] leading-tight', note ? 'text-amber-300/80 light:text-amber-600' : 'text-zinc-500')}>
-        {note ?? hostOf(tab.url)}
+      <span
+        className={cn('w-full truncate text-center text-[10px] leading-tight', note?.tone === 'warn' ? 'text-amber-300/80 light:text-amber-600' : 'text-zinc-500')}
+        title={note?.long}
+      >
+        {note?.short ?? hostOf(tab.url)}
       </span>
 
       <div className="mt-2.5 flex flex-col items-center gap-0.5">
