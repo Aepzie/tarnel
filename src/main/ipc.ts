@@ -29,6 +29,7 @@ import { regenerateFingerprint } from './fingerprint';
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate, openReleasePage, watchUpdates } from './updater';
 import { resolveInput, resolveInputDetailed } from './url';
 import { registerSyncIpc, remoteTabSuggestions } from './sync/loader';
+import { registerImportIpc } from './import';
 import { registerSplitIpc } from './split-ipc';
 import { setTabMediaDeviceFromChrome } from './audio-devices';
 import { registerMixerIpc } from './audio-mixer';
@@ -391,4 +392,5 @@ export function registerIpc(): void {
   registerExtensionIpc(handleChrome, handlePages);
   registerSyncIpc(handlePages);
   registerSafetyIpc(handlePages);
+  registerImportIpc(handlePages);
 }
