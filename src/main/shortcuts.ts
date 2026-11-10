@@ -57,6 +57,10 @@ function handle(input: Input): boolean {
   const mod = isMac ? input.meta : input.control;
   const { shift, alt, code, key } = input;
 
+  if (key === 'Escape' && shift && !mod && !alt) {
+    if (!input.isAutoRepeat) sendCommand('task-manager');
+    return true;
+  }
   if (key === 'Escape') {
     if (isHtmlFullscreen()) {
       withActive((id) => {

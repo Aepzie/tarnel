@@ -271,6 +271,7 @@ export type UICommand =
   | 'toggle-sidebar'
   | 'new-space'
   | 'audio-mixer'
+  | 'task-manager'
   | 'escape';
 
 export const SPACE_COLORS: readonly SpaceColor[] = [
