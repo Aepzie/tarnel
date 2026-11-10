@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Address-bar prefetch: resting on a URL suggestion for 150 ms fetches the page into the cache through the Space's session, so cacheable pages open almost instantly (291 ms → 25 ms on a local test). https only, never search pages, Burner Spaces or VPN-routed tabs, 1 at a time and 3 per minute. Settings → Performance → "Preload pages from the address bar" (on by default)
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
