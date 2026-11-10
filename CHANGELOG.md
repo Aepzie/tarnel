@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Secure DNS (DNS-over-HTTPS) in Settings → Privacy: Off, Automatic (upgrade when the system resolver supports it), Cloudflare, Quad9, Mullvad, Mullvad with ad blocking, NextDNS (configuration ID) or a custom `https://` template. "Strict" fails lookups instead of falling back to plain DNS. Applies live to every Space at once (Electron's resolver is process-global); Spaces behind a proxy or MantelVPN keep resolving through the proxy
+
 ## [0.6.0] - 2026-11-10
 
 ### Added

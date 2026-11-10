@@ -12,6 +12,7 @@ import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
+import { initSecureDns } from './dns';
 import { initSleeper, stopSleeper } from './perf/sleeper';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, setPermissionPrompter } from './privacy';
@@ -111,6 +112,7 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     applyGlobalUserAgent();
+    initSecureDns();
     setPermissionPrompter(chromePermissionPrompter);
     electronSession.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     initSpaces();
