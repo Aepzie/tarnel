@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Horizontal tab strip: the active tab is now a normal tab with the same width as the others instead of a wide address bar; widths only change when tabs are added or removed. The address, connection security and blocked-request count appear in the omnibox when you click the active tab.
+
+### Fixed
+
+- The active tab (and the focused pane of a split) can be closed with its close button, which is always visible on it; middle-click closes any tab.
+
 ## [0.4.1] - 2026-11-10
 
 ### Fixed

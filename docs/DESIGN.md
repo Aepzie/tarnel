@@ -29,7 +29,7 @@ src/renderer/
 ┌ window (Win11: Mica/Acrylic backdrop shows through — desktop is visible, blurred) ─────────────┐
 │  8px                                                                                           │
 │  ╭─ Top Island (h-11, rounded-2xl, glass) ─────────────────────────────────────────────────╮   │
-│  │ ◀ ▶ ⟳ │ [● Space ▾] │  tab  tab  [ ACTIVE TAB = omnibox: 🔒 github.com/vela… ]  tab  + │ ⚡ 412MB │ – ▢ ✕ │
+│  │ ◀ ▶ ⟳ │ [● Space ▾] │  tab  tab  [▣ Active tab ✕]  tab  tab  +  │ ⚡ 412MB │ – ▢ ✕ │
 │  ╰──────────────────────────────────────────────────────────────────────────────────────────╯   │
 │  8px                                                                                           │
 │  ╭─ Page Island (WebContentsView, radius 12) ──────────────────────────────────────────────╮   │
@@ -41,9 +41,11 @@ src/renderer/
 ```
 
 * The island bar is a drag region (`-webkit-app-region: drag`); every interactive child is `no-drag`.
-* **Tabs as pills**: inactive tab = favicon + short title (max ~160px, min ~36px when crowded = favicon only).
-  The **active tab is the omnibox**: wider (min 280px, grows), shows lock/space dot + host in bold + path muted.
-  Clicking it morphs (shared `layoutId`) into the command palette.
+* **Tabs as pills**: favicon + short title. All unpinned tabs share one width (max 200px), shrinking evenly as tabs
+  are added; below ~56px they collapse to favicon only (36px). Pinned tabs are always favicon only. Activation never
+  changes a width. The active tab gets a raised fill and an always-visible close button (others show it on hover;
+  middle-click closes any tab). Clicking the active tab morphs its fill (shared `layoutId`) into the command palette,
+  which shows the page's security state, host and blocked-request count next to the address.
 * **Focus mode** (`settings.autoHideToolbar`, toggle Ctrl+Shift+S): island slides up & fades out, page island
   takes full height (8px margins). Hovering the top 6px edge slides the island back in as an overlay.
 * `#viewport` is a transparent placeholder measured with ResizeObserver → `vela.ui.setContentBounds`.
@@ -71,7 +73,7 @@ src/renderer/
 * Active tab indicator / hover highlight: shared `layoutId` pill that glides between tabs.
 * Palette: from active tab via `layoutId="omnibox"`; content fades in with blur(6px)→0, y -6→0; backdrop fade.
 * Menus/popovers: scale 0.96→1, opacity, origin-aware (Radix `--radix-*-transform-origin`).
-* Loading: 2px accent bar under active tab with shimmering indeterminate gradient.
+* Loading: accent spinner ring around the tab's favicon (vertical omnibox: 2px shimmering bar).
 * Space switch: accent color crossfades (CSS transition on `--accent-space` via @property), tab list slides x ±12px.
 * Micro: buttons `active:scale-[0.96]`, hover bg fade 120ms. Everything honors `prefers-reduced-motion` (`useReducedMotion`).
 
