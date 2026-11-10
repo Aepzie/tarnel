@@ -117,7 +117,7 @@ export const vpn = {
   },
   /** Mock activation: any well-formed key passes after a fake check. Resolves to an error or null. */
   async activate(key: string): Promise<string | null> {
-    if (!LICENSE_PATTERN.test(key)) return `Keys look like MNTL-XXXX-XXXX-XXXX (letters and digits).`;
+    if (!LICENSE_PATTERN.test(key)) return 'Not a valid key. Use the format MNTL-XXXX-XXXX-XXXX.';
     emit({ checking: true });
     await new Promise((resolve) => window.setTimeout(resolve, CHECK_MS));
     emit({ checking: false, license: { key, activatedAt: Date.now() } }, true);

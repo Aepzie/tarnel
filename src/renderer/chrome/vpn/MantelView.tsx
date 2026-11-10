@@ -87,7 +87,7 @@ function LicenseForm() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.28, ease: ease.out }}
             >
-              That doesn't look like a license key. {error}
+              {error}
             </motion.p>
           ) : (
             <motion.p key="hint" id={hintId} className="px-1 text-[11.5px] text-muted-foreground" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -166,10 +166,10 @@ function AccountCard({ license }: { license: VpnLicense }) {
           Premium
           <span className="vpn-badge rounded-full px-1.5 py-px text-[9.5px] font-semibold tracking-wide">Partner</span>
         </p>
-        <p className="text-[11.5px] text-muted-foreground tabular-nums">
-          {term.daysLeft} days left · until {dateFormat.format(term.expiresAt)}
+        <p className="text-[11.5px] text-muted-foreground tabular-nums">{term.daysLeft} days left</p>
+        <p className="truncate text-[11px] text-muted-foreground/80 tabular-nums" title={maskLicense(license.key)}>
+          Expires {dateFormat.format(term.expiresAt)} · <span className="font-mono text-[10.5px]">{license.key.slice(-4)}</span>
         </p>
-        <p className="font-mono text-[10.5px] text-muted-foreground/70">{maskLicense(license.key)}</p>
       </div>
       <button
         type="button"
@@ -275,7 +275,7 @@ function ConnectedStats() {
   const traffic = mockTraffic(seconds, hash(state.activeServerId ?? ''));
   return (
     <motion.div
-      className="grid grid-cols-2 gap-1.5"
+      className="grid w-full grid-cols-2 gap-1.5"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}

@@ -8,7 +8,7 @@ import { useVpn, vpn } from './vpn-store';
 function LoadBar({ load }: { load: number }) {
   const tone = load >= 70 ? 'bg-red-400' : load >= 50 ? 'bg-amber-400' : 'bg-emerald-400';
   return (
-    <span aria-hidden className="h-1 w-8 overflow-hidden rounded-full bg-foreground/10">
+    <span aria-hidden title={`${load}% load`} className="h-1 w-8 overflow-hidden rounded-full bg-foreground/10">
       <span className={cn('block h-full rounded-full', tone)} style={{ width: `${load}%` }} />
     </span>
   );
@@ -17,7 +17,7 @@ function LoadBar({ load }: { load: number }) {
 const rowClass =
   'group flex h-10 w-full items-center gap-2.5 rounded-[9px] pr-1 pl-2 text-left outline-none transition-colors duration-100 hover:bg-accent focus-visible:bg-accent focus-visible:ring-1 focus-visible:ring-ring/60';
 
-function ServerRow({ server, selected, favorite }: { server: VpnServer; selected: boolean; favorite: boolean }) {
+function ServerRow({ server, selected, favorite, showFlag }: { server: VpnServer; selected: boolean; favorite: boolean; showFlag: boolean }) {
   return (
     <li className="relative flex items-center">
       <button
@@ -28,7 +28,7 @@ function ServerRow({ server, selected, favorite }: { server: VpnServer; selected
         aria-label={`${server.city}, ${server.country}, ${server.ping} milliseconds, ${server.load}% load`}
         className={cn(rowClass, 'pr-9', selected && 'bg-space/10')}
       >
-        <Flag code={server.countryCode} />
+        {showFlag ? <Flag code={server.countryCode} /> : <span aria-hidden className="w-5 shrink-0" />}
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{server.city}</span>
         <LoadBar load={server.load} />
         <span className="w-12 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{server.ping} ms</span>
@@ -111,7 +111,7 @@ export function ServerPicker() {
           />
         </label>
       </div>
-      <div ref={listRef} className="h-[380px] max-h-[calc(100vh-200px)] overflow-y-auto overscroll-contain px-1.5 pb-2 [scrollbar-color:color-mix(in_oklab,var(--foreground)_16%,transparent)_transparent] [scrollbar-width:thin]">
+      <div ref={listRef} className="h-[380px] max-h-[calc(100vh-200px)] overflow-y-auto overscroll-contain px-1.5 pb-2 [scrollbar-gutter:stable] [scrollbar-color:color-mix(in_oklab,var(--foreground)_16%,transparent)_transparent] [scrollbar-width:thin]">
         <ul aria-label="Servers">
           {!needle && (
             <li>
@@ -139,7 +139,7 @@ export function ServerPicker() {
             <>
               <GroupLabel>Favorites</GroupLabel>
               {favorites.map((server) => (
-                <ServerRow key={`fav-${server.id}`} server={server} selected={state.serverId === server.id} favorite />
+                <ServerRow key={`fav-${server.id}`} server={server} selected={state.serverId === server.id} favorite showFlag />
               ))}
             </>
           )}
@@ -148,7 +148,7 @@ export function ServerPicker() {
               <ul aria-label={country}>
                 <GroupLabel code={servers[0]?.countryCode}>{country}</GroupLabel>
                 {servers.map((server) => (
-                  <ServerRow key={server.id} server={server} selected={state.serverId === server.id} favorite={state.favorites.includes(server.id)} />
+                  <ServerRow key={server.id} server={server} selected={state.serverId === server.id} favorite={state.favorites.includes(server.id)} showFlag={false} />
                 ))}
               </ul>
             </li>
