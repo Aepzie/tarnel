@@ -16,6 +16,7 @@ const BOOLEAN_KEYS = [
   'updateAutoCheck',
   'updateAutoDownload',
   'updatePrerelease',
+  'warnDangerousSites',
 ] as const satisfies readonly (keyof Settings)[];
 
 const listeners = new Set<(settings: Settings) => void>();

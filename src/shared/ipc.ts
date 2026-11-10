@@ -371,6 +371,29 @@ export interface VelaChromeAPI {
   };
 }
 
+/** Phishing & malware protection (vela:// pages only). */
+export const SAFETY_IPC = {
+  status: 'pages:safety-status',
+  proceed: 'pages:safety-proceed',
+} as const;
+
+export interface SafetyStatus {
+  enabled: boolean;
+  /** Entries (hosts + URLs) currently loaded. */
+  entries: number;
+  /** Newest successful list download, epoch ms; null before the first one. */
+  updatedAt: number | null;
+  sources: { name: string; license: string; entries: number }[];
+}
+
+export interface VelaPagesAPI {
+  safety: {
+    status(): Promise<SafetyStatus>;
+    /** Allowlist the URL's host until Vela quits (warning page → "Proceed anyway"). */
+    proceed(url: string): Promise<void>;
+  };
+}
+
 /** Per-tab media devices (chrome only). */
 export const AUDIO_IPC = {
   setDevice: 'chrome:tab-set-media-device',

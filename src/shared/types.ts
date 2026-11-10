@@ -190,6 +190,8 @@ export interface Settings {
   updateAutoDownload: boolean;
   /** Offer pre-releases (e.g. 0.3.0-beta.1). */
   updatePrerelease: boolean;
+  /** Warn before opening sites on the local phishing / malware blocklists. */
+  warnDangerousSites: boolean;
 }
 
 export interface Suggestion {
@@ -303,6 +305,7 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,
+  warnDangerousSites: true,
 };
 
 /** Where an installed extension came from. */
