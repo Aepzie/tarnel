@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { BrowserState, PerfStats, Settings, Space, TabGroup, TabState, UICommand } from '@shared/types';
 import { DEFAULT_SETTINGS } from '@shared/types';
+import { isLoneStartPage } from '@shared/tab-close';
 
 /* ------------------------------------------------------------------------------------------------
  * Single IPC subscription for the browser chrome. Components select slices with the hooks below.
@@ -118,6 +119,11 @@ function sameGroups(a: TabGroup[], b: TabGroup[]): boolean {
 /** Tab groups of the active space in display order. Stable while no group changed. */
 export function useSpaceGroups(): TabGroup[] {
   return useBrowserSlice((s) => s.groups.filter((g) => g.spaceId === s.activeSpaceId), sameGroups);
+}
+
+/** False for the start page that is the only tab of its space (main ignores closing it). */
+export function useTabClosable(tab: TabState): boolean {
+  return useBrowserSlice((s) => !isLoneStartPage(tab, s.tabs));
 }
 
 export function useActiveTab(): TabState | undefined {
