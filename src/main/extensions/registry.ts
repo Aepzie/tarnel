@@ -1,4 +1,4 @@
-import type { ExtensionSource, ExtensionSpaces, Space, SpaceId } from '../../shared/types';
+import type { ExtensionSiteAccess, ExtensionSource, ExtensionSpaces, Space, SpaceId } from '../../shared/types';
 import { createStore, type JsonStore } from '../store';
 
 /**
@@ -18,6 +18,8 @@ export interface InstalledExtension {
   spaces: ExtensionSpaces;
   pinned: boolean;
   installedAt: number;
+  siteAccess: ExtensionSiteAccess;
+  sites: string[];
 }
 
 interface RegistryFile {
@@ -25,6 +27,20 @@ interface RegistryFile {
 }
 
 export const EXTENSION_ID = /^[a-p]{32}$/;
+const SITE_ACCESS: readonly ExtensionSiteAccess[] = ['all', 'sites', 'click'];
+const MAX_SITES = 100;
+/** 'click' extensions whose button was clicked this launch (never persisted). */
+const armed = new Set<string>();
+
+/** "https://www.example.com/path" / "*.example.com" → "example.com"-style host entries; junk dropped. */
+export function cleanSites(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const hosts = value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/[/?#].*$/, '').replace(/^\*\./, ''))
+    .filter((host) => /^[a-z0-9.-]{1,253}(:\d{1,5})?$/.test(host));
+  return [...new Set(hosts)].slice(0, MAX_SITES);
+}
 
 let store: JsonStore<RegistryFile> | null = null;
 const listeners = new Set<() => void>();
@@ -54,6 +70,8 @@ function normalize(entry: InstalledExtension): InstalledExtension {
     spaces,
     pinned: entry.pinned === true,
     installedAt: typeof entry.installedAt === 'number' ? entry.installedAt : Date.now(),
+    siteAccess: SITE_ACCESS.includes(entry.siteAccess) ? entry.siteAccess : 'all',
+    sites: cleanSites(entry.sites),
   };
 }
 
@@ -110,6 +128,7 @@ export function patchInstalled(id: string, patch: Partial<InstalledExtension>): 
 }
 
 export function removeInstalled(id: string): void {
+  armed.delete(id);
   requireStore().update((file) => ({ extensions: file.extensions.filter((entry) => entry.id !== id) }));
   emit();
 }
@@ -118,9 +137,26 @@ export function removeInstalled(id: string): void {
  * Chromium refuses extensions in in-memory sessions, so Burner Spaces never run them;
  * otherwise an enabled extension runs in every Space ('all') or exactly the listed ones.
  */
-export function runsIn(entry: InstalledExtension, space: Space): boolean {
+export function allowedIn(entry: InstalledExtension, space: Space): boolean {
   if (space.ephemeral || !entry.enabled) return false;
   return entry.spaces === 'all' || entry.spaces.includes(space.id);
+}
+
+/** Allowed in the Space and, for 'click' site access, already clicked this launch. */
+export function runsIn(entry: InstalledExtension, space: Space): boolean {
+  return allowedIn(entry, space) && (entry.siteAccess !== 'click' || armed.has(entry.id));
+}
+
+export function isArmed(id: string): boolean {
+  return armed.has(id);
+}
+
+export function arm(id: string): void {
+  armed.add(id);
+}
+
+export function disarm(id: string): void {
+  armed.delete(id);
 }
 
 export function wantedIn(space: Space): InstalledExtension[] {

@@ -95,6 +95,32 @@ export function forgetSpacePermissions(spaceId: SpaceId): void {
   });
 }
 
+const SITE_PERMISSION_KEYS = ['media:video', 'media:audio', 'geolocation', 'notifications'] as const;
+export type SitePermissionKey = (typeof SITE_PERMISSION_KEYS)[number];
+
+/** Remembered answers (this session's and persisted) for one origin, for the site info panel. */
+export function listOriginDecisions(scope: PermissionScope, origin: string): { key: SitePermissionKey; allowed: boolean }[] {
+  const out: { key: SitePermissionKey; allowed: boolean }[] = [];
+  for (const key of SITE_PERMISSION_KEYS) {
+    const allowed = lookup(scope, `${origin}|${key}`);
+    if (allowed !== undefined) out.push({ key, allowed });
+  }
+  return out;
+}
+
+/** Forget one remembered answer so the site has to ask again. */
+export function resetOriginDecision(scope: PermissionScope, origin: string, key: string): void {
+  if (!(SITE_PERMISSION_KEYS as readonly string[]).includes(key)) throw new TypeError('Invalid permission');
+  const full = `${origin}|${key}`;
+  sessionDecisions.get(scope.session)?.delete(full);
+  if (scope.ephemeral || getStore().get()[scope.spaceId]?.[full] === undefined) return;
+  getStore().update((current) => {
+    const space = { ...(current[scope.spaceId] ?? {}) };
+    delete space[full];
+    return { ...current, [scope.spaceId]: space };
+  });
+}
+
 function dedupeKey(scope: PermissionScope, request: Omit<PermissionRequest, 'id'>): string {
   const media = request.mediaTypes ? [...request.mediaTypes].sort().join(',') : '';
   return `${scope.spaceId}|${request.origin}|${request.permission}|${media}`;

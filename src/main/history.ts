@@ -269,3 +269,18 @@ export function clearHistory(): void {
   s.set([]);
   clearFavicons();
 }
+
+/** Removes entries last visited at or after `since` (ms epoch). Returns how many were removed. */
+export function deleteHistorySince(since: number): number {
+  const s = getStore();
+  let removed = 0;
+  for (const [key, entry] of byUrl) {
+    if (entry.lastVisit < since) continue;
+    byUrl.delete(key);
+    removed += 1;
+  }
+  if (removed === 0) return 0;
+  topSitesCache = null;
+  s.set([...byUrl.values()]);
+  return removed;
+}

@@ -1,13 +1,13 @@
 import { app, ipcMain, webContents as allWebContents, type IpcMainEvent, type Session, type WebContents } from 'electron';
 import { availableParallelism, totalmem } from 'node:os';
 import { join } from 'node:path';
-import { FINGERPRINT_CONFIG_CHANNEL, type FingerprintConfig } from '../../shared/fingerprint';
+import { FINGERPRINT_CONFIG_CHANNEL, languageList, resolveTimezone, type FingerprintConfig } from '../../shared/fingerprint';
 import type { Space, SpaceId } from '../../shared/types';
-import { registrableDomain } from '../privacy';
-import { getSpace, listSpaces, onSessionCreated, onSessionRemoved, onSpacesChanged } from '../spaces';
+import { acceptLanguages, cleanUserAgent, registrableDomain } from '../privacy';
+import { getSpace, listSpaces, onSessionCreated, onSessionRemoved, onSpacesChanged, routedCountryOf } from '../spaces';
 import { setHeaderProfile } from './headers';
 import { deriveWords, pruneSeeds, regenerateSeed, seedFor } from './seeds';
-import { answerServiceWorkers, protectWorkersOf } from './workers';
+import { answerServiceWorkers, protectWorkersOf, type EmulationSettings, type WorkerGuard } from './workers';
 
 const PRELOAD = join(__dirname, '..', 'preload', 'fingerprint.js');
 const WORKER_PRELOAD = join(__dirname, '..', 'preload', 'fingerprint-worker.js');
@@ -23,7 +23,7 @@ interface SessionEntry {
 
 const entries = new Map<Session, SessionEntry>();
 /** Tabs and popups whose dedicated/shared workers are being patched → stop function. */
-const workerGuards = new Map<WebContents, () => void>();
+const workerGuards = new Map<WebContents, WorkerGuard>();
 /** WebContents types that host web pages of a Space (not DevTools, extension pages, offscreen). */
 const PAGE_TYPES = new Set(['window', 'browserView', 'webview']);
 
@@ -96,7 +96,12 @@ function configForUrl(session: Session, url: string): FingerprintConfig | null {
   const site = siteOf(url);
   if (site === null) return null;
   const seed = seedFor(space);
-  return { strict: space.fingerprint === 'strict', key: deriveWords(seed, `site:${site}`), ...hardwareFor(seed) };
+  return {
+    strict: space.fingerprint === 'strict',
+    key: deriveWords(seed, `site:${site}`),
+    ...hardwareFor(seed),
+    languages: space.language ? languageList(space.language) : null,
+  };
 }
 
 /**
@@ -121,6 +126,30 @@ function applyWebRtc(wc: WebContents): void {
   }
 }
 
+/** Timezone and ICU locale for the pages of `session` (the system's unless the Space overrides them). */
+function emulationFor(session: Session): EmulationSettings {
+  const entry = entries.get(session);
+  const space = entry ? getSpace(entry.spaceId) : undefined;
+  if (!isProtected(space)) return { timezone: null, locale: null };
+  let country: string | null = null;
+  try {
+    country = routedCountryOf(session);
+  } catch {
+    country = null;
+  }
+  return { timezone: resolveTimezone(space.timezone, space.fingerprint === 'strict', country), locale: space.language || null };
+}
+
+/** Accept-Language follows the Space language, so it matches navigator.languages. */
+function applyAcceptLanguage(session: Session, language: string | null): void {
+  const wanted = language ? languageList(language).join(',') : acceptLanguages();
+  try {
+    if (wanted) session.setUserAgent(cleanUserAgent(session.getUserAgent()), wanted);
+  } catch {
+    /* session gone */
+  }
+}
+
 /** Starts or stops patching the workers of a page WebContents to match its Space's protection. */
 function syncWorkerGuard(wc: WebContents): void {
   if (wc.isDestroyed()) return;
@@ -130,17 +159,25 @@ function syncWorkerGuard(wc: WebContents): void {
   if (wanted === !!stop) return;
   if (stop) {
     workerGuards.delete(wc);
-    stop();
+    stop.stop();
+    refreshSiblings(wc.session);
     return;
   }
-  const guard = protectWorkersOf(wc, configForUrl);
+  const session = wc.session;
+  const guard = protectWorkersOf(wc, configForUrl, () => emulationFor(session));
   if (!guard) return;
   workerGuards.set(wc, guard);
   wc.once('destroyed', () => {
     if (workerGuards.get(wc) !== guard) return;
     workerGuards.delete(wc);
-    guard();
+    guard.stop();
+    refreshSiblings(session);
   });
+}
+
+/** A renderer shared by several tabs loses its timezone override with the tab that set it: re-claim it. */
+function refreshSiblings(session: Session): void {
+  for (const [wc, guard] of workerGuards) if (wc.session === session) guard.refresh();
 }
 
 function unregister(session: Session, entry: SessionEntry): void {
@@ -160,9 +197,11 @@ function sync(session: Session, entry: SessionEntry): void {
       filePath: WORKER_PRELOAD,
     });
     setHeaderProfile(session, { strict: space.fingerprint === 'strict', memory: hardwareFor(seedFor(space)).memory });
+    applyAcceptLanguage(session, space.language || null);
   } else {
     unregister(session, entry);
     setHeaderProfile(session, null);
+    applyAcceptLanguage(session, null);
   }
 }
 
@@ -172,6 +211,7 @@ function syncAll(): void {
     applyWebRtc(wc);
     syncWorkerGuard(wc);
   }
+  for (const guard of workerGuards.values()) guard.refresh();
   pruneSeeds(new Set(listSpaces().map((space) => space.id)));
 }
 
