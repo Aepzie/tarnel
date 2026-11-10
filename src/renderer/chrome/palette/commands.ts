@@ -6,6 +6,7 @@ import { groupActiveTab } from '../tabs/groups/group-ui';
 import { splitCommands } from '../split/split-commands';
 import { audioCommands } from '../audio/audio-commands';
 import { mixerCommands } from '../mixer/mixer-commands';
+import { vpnCommands } from '../vpn/vpn-commands';
 
 export interface PaletteCommand {
   id: string;
@@ -98,6 +99,7 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
   commands.push(...tabGroupCommands({ settings, state }));
   commands.push(...splitCommands(state));
   commands.push(...mixerCommands());
+  commands.push(...vpnCommands());
   commands.push(...audioCommands(state));
   if (activeTabId !== null) {
     commands.push({
