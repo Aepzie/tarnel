@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Bookmarks, per Space: star next to the address in the command palette or Ctrl+D bookmarks the page and opens a small editor (name, folder, remove). Every Space has "Bookmarks bar" and "Other bookmarks"; Burner Spaces keep bookmarks in memory only.
+- Optional bookmarks bar under the toolbar (Settings → Appearance → Show bookmarks bar, Ctrl+Shift+B), with folder dropdowns, an overflow menu and drag to reorder.
+- vela://bookmarks: folder tree, search, add, edit, delete, drag and drop, and "Import bookmarks…".
+- Bookmarks appear in address-bar suggestions and the command palette ("Bookmarks", "Bookmark this page", "Toggle bookmarks bar").
+
 ## [0.7.1] - 2026-11-10
 
 First published build of the 0.7 line (the v0.7.0 tag was never released because its macOS packaging failed in CI).
