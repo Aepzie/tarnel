@@ -1,23 +1,19 @@
 import { memo, useRef, type MouseEvent, type PointerEvent, type Ref } from 'react';
 import { AnimatePresence, Reorder, motion, useReducedMotion, type Transition } from 'motion/react';
-import { CompassIcon, InfoIcon, LockIcon, SearchIcon, ShieldIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+import { CompassIcon, InfoIcon, LockIcon, SearchIcon, ShieldIcon, TriangleAlertIcon } from 'lucide-react';
 import type { TabState } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { spring } from '@/lib/motion';
 import { addressSeed, formatCount, settle, vela } from '@/lib/vela';
 import { ui } from '../ui-store';
 import { TabAudioButton } from '../audio/TabAudioButton';
-import { Favicon } from './Favicon';
 import { TabContextMenu } from './TabContextMenu';
+import { ACTIVE_TAB_SURFACE, TabFace, tabTooltip } from './TabFace';
 
 export const PILL_MIN = 36;
-export const PILL_MAX = 184;
-/** Below this inactive pills only show the favicon. */
+export const PILL_MAX = 200;
+/** Below this pills only show the favicon. */
 export const PILL_ICON_ONLY = 56;
-/** The omnibox yields space until inactive pills reach this width. */
-export const PILL_COMFORT = 112;
-export const OMNI_MIN = 256;
-export const OMNI_MAX = 520;
 
 const INSTANT: Transition = { duration: 0 };
 
@@ -48,14 +44,14 @@ export interface TabItemProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-interface Address {
+export interface Address {
   host: string;
   path: string;
   internal: boolean;
   empty: boolean;
 }
 
-function parseAddress(tab: TabState): Address {
+export function parseAddress(tab: TabState): Address {
   const url = tab.url;
   if (!url || url.startsWith('vela://newtab') || url === 'about:blank') return { host: '', path: '', internal: false, empty: true };
   if (url.startsWith('vela://')) return { host: tab.title || url, path: '', internal: true, empty: false };
@@ -70,7 +66,7 @@ function parseAddress(tab: TabState): Address {
   }
 }
 
-function SecurityIcon({ tab, address }: { tab: TabState; address: Address }) {
+export function SecurityIcon({ tab, address }: { tab: TabState; address: Address }) {
   const cls = 'size-[15px] shrink-0';
   if (address.empty) return <SearchIcon className={cn(cls, 'text-zinc-400 light:text-zinc-500')} strokeWidth={1.75} />;
   if (address.internal) return <CompassIcon className={cn(cls, 'text-space')} strokeWidth={1.75} />;
@@ -79,7 +75,7 @@ function SecurityIcon({ tab, address }: { tab: TabState; address: Address }) {
   return <InfoIcon className={cn(cls, 'text-zinc-400 light:text-zinc-500')} strokeWidth={1.75} />;
 }
 
-function BlockedBadge({ count, reduced }: { count: number; reduced: boolean }) {
+export function BlockedBadge({ count, reduced }: { count: number; reduced: boolean }) {
   return (
     <AnimatePresence initial={false}>
       {count > 0 && (
@@ -162,6 +158,14 @@ export function LoadingBar({ show, reduced }: { show: boolean; reduced: boolean 
   );
 }
 
+/** Raised fill of the active tab; hands `layoutId="omnibox"` to the palette while it is open. */
+export function ActiveSurface({ paletteOpen, reduced }: { paletteOpen: boolean; reduced: boolean }) {
+  if (paletteOpen) {
+    return <span className="absolute inset-0 rounded-[10px] bg-white/[0.03] ring-1 ring-white/[0.06] light:bg-black/[0.03] light:ring-black/[0.05]" />;
+  }
+  return <motion.span layoutId="omnibox" transition={reduced ? INSTANT : spring.snappy} style={{ borderRadius: 10 }} className={ACTIVE_TAB_SURFACE} />;
+}
+
 /** Group membership line under a tab; bridges the 4px gap to the next tab unless it ends the group. */
 function GroupUnderline({ color, end, reduced }: { color: string; end: boolean; reduced: boolean }) {
   return (
@@ -176,13 +180,17 @@ function GroupUnderline({ color, end, reduced }: { color: string; end: boolean; 
   );
 }
 
-/** One tab: an inactive pill, or — when active — the omnibox. Memoized on the fields it renders. */
+/**
+ * One tab pill. Active and inactive tabs share the same width (Chrome-style); the active one gets a
+ * raised fill that morphs into the palette, and an always-visible close button. Memoized on the
+ * fields it renders.
+ */
 function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, onDragEnd, width, compact = false, groupColor, groupEnd = false, ref }: TabItemProps) {
   const reduced = !!useReducedMotion();
   const dragged = useRef(false);
-  const iconOnly = !active && (tab.pinned || compact);
-  const minWidth = active ? OMNI_MIN : PILL_MIN;
-  const maxWidth = active ? OMNI_MAX : iconOnly ? PILL_MIN : PILL_MAX;
+  const iconOnly = tab.pinned || compact;
+  const minWidth = PILL_MIN;
+  const maxWidth = iconOnly ? PILL_MIN : PILL_MAX;
   const sized = width !== undefined;
   const targetWidth = iconOnly ? PILL_MIN : width;
   const layoutTransition = reduced ? INSTANT : spring.snappy;
@@ -226,7 +234,7 @@ function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, 
         tabIndex={active ? 0 : -1}
         data-tab-id={tab.id}
         data-omnibox={active ? '' : undefined}
-        title={active ? undefined : label}
+        title={tabTooltip(tab, active)}
         initial={reduced ? false : { opacity: 0, scale: 0.92, width: 0, minWidth: 0 }}
         animate={
           sized
@@ -257,79 +265,22 @@ function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, 
         className={cn(
           'group/tab no-drag relative flex h-8 shrink-0 cursor-default items-center rounded-[10px] outline-none select-none',
           'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ring)]',
-          sized ? 'shrink-0' : active ? 'grow' : 'shrink',
+          sized ? 'shrink-0' : 'shrink',
         )}
       >
         {groupColor && <GroupUnderline color={groupColor} end={groupEnd} reduced={reduced} />}
-        {active ? (
-          <>
-            {paletteOpen ? (
-              <span className="absolute inset-0 rounded-[10px] bg-white/[0.03] ring-1 ring-white/[0.06] light:bg-black/[0.03] light:ring-black/[0.05]" />
-            ) : (
-              <motion.span
-                layoutId="omnibox"
-                transition={reduced ? INSTANT : spring.snappy}
-                style={{ borderRadius: 10 }}
-                className={OMNIBOX_SURFACE}
-              />
-            )}
-            <OmniboxContent tab={tab} reduced={reduced} paletteOpen={paletteOpen} />
-            <LoadingBar show={tab.loading} reduced={reduced} />
-          </>
-        ) : (
-          <>
-            {hovered && (
-              <motion.span
-                layoutId="tab-hover"
-                className="absolute inset-0 bg-accent"
-                style={{ borderRadius: 10 }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={reduced ? INSTANT : { ...spring.snappy, opacity: { duration: 0.12 } }}
-              />
-            )}
-            <span className={cn('relative z-10 flex min-w-0 flex-1 items-center gap-2', iconOnly ? 'justify-center' : 'pr-1 pl-2.5')}>
-              <span className="relative inline-flex size-4 shrink-0 items-center justify-center">
-                <Favicon src={tab.favicon} url={tab.url} title={tab.title} asleep={tab.asleep} />
-                {tab.loading && (
-                  <span className="absolute -inset-1 animate-spin rounded-full border-[1.5px] border-transparent border-t-space [animation-duration:0.8s]" />
-                )}
-              </span>
-              {!iconOnly && (
-                <>
-                  <span
-                    className={cn(
-                      'min-w-0 flex-1 overflow-hidden py-1 text-[12.5px] leading-none tracking-tight whitespace-nowrap text-zinc-400 transition-colors duration-150',
-                      '[mask-image:linear-gradient(to_right,#000_calc(100%-16px),transparent)] group-hover/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-36px),transparent_calc(100%-20px))]',
-                      'group-hover/tab:text-zinc-100 light:text-zinc-600 light:group-hover/tab:text-zinc-900',
-                      tab.asleep && 'text-zinc-500 light:text-zinc-500',
-                    )}
-                  >
-                    {tab.title || 'New Tab'}
-                  </span>
-                  <AudioButton tab={tab} className="transition-[margin,background-color,color] group-hover/tab:mr-6" />
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    aria-label="Close tab"
-                    className={cn(
-                      'absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 opacity-0 transition-[opacity,background-color,color] duration-150',
-                      'group-hover/tab:opacity-100 group-focus-visible/tab:opacity-100 hover:bg-white/10 hover:text-zinc-100 active:scale-[0.92]',
-                      'light:text-zinc-500 light:hover:bg-black/[0.07] light:hover:text-zinc-900',
-                    )}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      settle(vela().tabs.close(tab.id));
-                    }}
-                  >
-                    <XIcon className="size-3.5" strokeWidth={2} />
-                  </button>
-                </>
-              )}
-            </span>
-          </>
+        {active && <ActiveSurface paletteOpen={paletteOpen} reduced={reduced} />}
+        {!active && hovered && (
+          <motion.span
+            layoutId="tab-hover"
+            className="absolute inset-0 bg-accent"
+            style={{ borderRadius: 10 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={reduced ? INSTANT : { ...spring.snappy, opacity: { duration: 0.12 } }}
+          />
         )}
+        <TabFace tab={tab} active={active} iconOnly={iconOnly} />
       </Reorder.Item>
     </TabContextMenu>
   );
