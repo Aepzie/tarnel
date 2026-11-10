@@ -11,6 +11,7 @@ import { DownloadsButton } from '../downloads/DownloadsButton';
 import { ExtensionsButton } from '../extensions/ExtensionsButton';
 import { UpdateChip } from '../update/UpdateChip';
 import { MixerButton } from '../mixer/MixerButton';
+import { VpnButton } from '../vpn/VpnButton';
 import { NavButtons } from './NavButtons';
 import { CaptionButtons, TrafficLights } from './WindowControls';
 import { useIslandReveal } from './useIslandReveal';
@@ -118,6 +119,7 @@ export function TopIsland() {
           </>
         )}
         <div className="no-drag flex shrink-0 items-center gap-1">
+          <VpnButton />
           <ExtensionsButton />
           <UpdateChip />
           <DownloadsButton />
