@@ -14,6 +14,7 @@ import { FindBar } from './find/FindBar';
 import { CommandPalette } from './palette/CommandPalette';
 import { PermissionPrompt } from './permissions/PermissionPrompt';
 import { VerticalIsland } from './vertical/VerticalIsland';
+import { TaskManager } from './task-manager/TaskManager';
 
 /**
  * Browser chrome root. Layout: floating top island, optional find strip, page viewport; in the
@@ -86,6 +87,7 @@ export function App() {
         </div>
         <PermissionPrompt />
         <CommandPalette />
+        <TaskManager />
       </LayoutGroup>
     </TooltipProvider>
   );

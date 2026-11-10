@@ -155,6 +155,23 @@ processes shared with another awake tab count as 0). Tabs restored asleep at lau
 measured; they are estimated from the average awake web-page renderer (the UI renderer excluded,
 80 MB fallback).
 
+### Task manager
+
+`Shift+Esc`, the palette ("Task manager") or the activity button in the perf popover open a per-process
+breakdown (`src/main/perf/task-manager.ts`, pure mapping in `src/shared/task-manager.ts`). It costs
+nothing while closed: the chrome asks for one snapshot per second only while the panel is open.
+
+Each snapshot is one `app.getAppMetrics()` call mapped by OS pid: a tab owns its page renderer plus
+out-of-process iframes (`webContents.getOSProcessId()`, `mainFrame.framesInSubtree[].osProcessId`),
+the Vela UI renderer gets its own row, and Browser, GPU and utility processes (Network, Audio, Storage
+service…) are listed by type and service name. Same-site tabs can share a renderer: each row then shows
+the whole process, marked "shared", while the footer totals count every process once. Extension
+background pages are mapped by pid; MV3 service workers only expose Chromium's render-process id, so
+they are matched to the remaining unowned renderers by creation order only when the counts agree
+(otherwise those show as "Renderer (spare or extension)"). Per-process network rates are not exposed by
+Electron and are not shown. "End process" calls `forcefullyCrashRenderer()`, so the tab shows its crash
+page (background tabs reload when next activated).
+
 ## Memory: measured
 
 Windows 11, Electron 45 (Chromium 156), isolated profile with the ad-block engine cached, window

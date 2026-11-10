@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Task manager (`Shift+Esc`, palette "Task manager", or the activity button in the perf popover): CPU and private memory per tab (favicon, Space colour, active / playing / background / asleep / crashed), per extension, the Vela interface, Browser, GPU and utility services (Network, Audio…), with sortable columns, totals and Sleep / End process / Go to tab. Live once a second while open; nothing runs while it is closed
 - Settings → Privacy → "Remove tracking parameters" (on by default): click and share trackers (utm_*, fbclid, gclid, msclkid, igshid, mc_eid, HubSpot/Marketo ids, Spotify/YouTube `si`, Twitter/X `ref_src`, …) are stripped from pages you open, addresses you type and links you copy. A curated list that leaves affiliate tags such as Amazon `tag` alone; removed parameters count towards the tab's blocked badge
 - Settings → Privacy → "Trim referrers" (on by default): other sites only receive the origin you came from, never the full page address, even when a page asks for more; nothing is sent when going from HTTPS to HTTP
 - Release pipeline is ready for code signing: Windows via Azure Trusted Signing or a PFX certificate, macOS via Developer ID with notarization (hardened runtime + entitlements for camera, microphone, location and security keys). It switches on automatically once the secrets in docs/RELEASING.md are added; without them releases stay unsigned as before

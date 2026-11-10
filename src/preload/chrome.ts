@@ -3,6 +3,7 @@ import { AUDIO_IPC, EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } f
 import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
+import { TASK_MANAGER_IPC } from '../shared/task-manager';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -155,6 +156,10 @@ const api: VelaChromeAPI = {
     disconnect: () => invoke(VPN_IPC.disconnect),
     routeTab: (tabId, country) => invoke(VPN_IPC.routeTab, tabId, country),
     onState: (cb) => subscribe(VPN_IPC.changed, cb),
+  },
+  taskManager: {
+    snapshot: () => invoke(TASK_MANAGER_IPC.snapshot),
+    endProcess: (tabId) => invoke(TASK_MANAGER_IPC.endProcess, tabId),
   },
 };
 

@@ -27,6 +27,7 @@ import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } 
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
+import type { TaskSnapshot } from './task-manager';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -430,5 +431,15 @@ export interface VelaChromeAPI {
     /** Routes one tab through a MantelVPN country (own partition), or back to its Space with null. */
     routeTab(tabId: number, country: string | null): Promise<VpnResult>;
     onState(cb: (state: VpnState) => void): Unsubscribe;
+  };
+}
+
+/** Task manager (chrome only). Channels live in TASK_MANAGER_IPC (shared/task-manager.ts). */
+export interface VelaChromeAPI {
+  taskManager: {
+    /** Per-tab / extension / service CPU and memory; poll only while the panel is open. */
+    snapshot(): Promise<TaskSnapshot>;
+    /** Crash the tab's renderer (shows the crash page). */
+    endProcess(tabId: number): Promise<void>;
   };
 }
