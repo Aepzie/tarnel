@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-10
+
 ### Added
 - MantelVPN integration: the VPN panel shows the official Mantel mark and brand green, signs in with the 16-digit Mantel account number (grouped in fours, pastes with spaces or dashes work), shows the real paid-until date and the live Mantel location list. Connect routes the active Space through an account-scoped Mantel HTTP proxy on the chosen location (proxy password answered by Vela, other Spaces stay direct; the Space's previous proxy comes back on disconnect, sign-out or restart). The account number and proxy passwords are stored only with OS-encrypted safeStorage. When Mantel is unreachable the panel falls back to clearly marked preview data
 - VPN panel (preview, not yet connected to a real VPN): MantelVPN partner card with license activation, account expiry, server picker and a simulated connection; Mullvad and Proton VPN listed as coming soon
@@ -175,7 +177,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Aepzie/vela/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Aepzie/vela/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Aepzie/vela/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Aepzie/vela/compare/v0.2.1...v0.3.0
