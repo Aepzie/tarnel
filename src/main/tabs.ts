@@ -725,8 +725,8 @@ export function setTabVpn(id: number, country: string | null): void {
   destroyView(tab, true);
   tab.vpn = next;
   tab.blockedCount = 0;
+  if (hadView || wasOnScreen) wake(tab);
   if (wasOnScreen) showActive();
-  else if (hadView) wake(tab);
   scheduleEmit();
 }
 

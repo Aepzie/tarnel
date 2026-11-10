@@ -37,8 +37,8 @@ export function TabFlag({ tab, className }: { tab: TabState; className?: string 
       aria-hidden
       data-vpn-flag={tab.vpn}
       className={cn(
-        'pointer-events-none absolute inset-0 overflow-hidden rounded-[10px] bg-[length:9rem_100%] bg-left bg-no-repeat opacity-30 light:opacity-35',
-        '[mask-image:linear-gradient(to_right,#000_0,rgb(0_0_0/0.6)_3.5rem,transparent_9rem)]',
+        'pointer-events-none absolute inset-0 overflow-hidden rounded-[10px] bg-[length:7rem_100%] bg-left bg-no-repeat opacity-30 light:opacity-35',
+        '[mask-image:linear-gradient(to_right,#000_0,rgb(0_0_0/0.6)_3rem,transparent_7rem)]',
         !url && 'bg-foreground/10',
         className,
       )}

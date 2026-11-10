@@ -4,7 +4,7 @@
  * fine detail (stars, emblems); colours follow the official values. Unknown codes return null.
  */
 
-const svg = (body: string): string => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">${body}</svg>`;
+const svg = (body: string): string => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" preserveAspectRatio="none">${body}</svg>`;
 const rows = (...colors: string[]): string =>
   svg(colors.map((color, index) => `<rect y="${(480 / colors.length) * index}" width="640" height="${480 / colors.length + 1}" fill="${color}"/>`).join(''));
 const columns = (...colors: string[]): string =>
