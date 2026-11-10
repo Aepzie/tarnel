@@ -7,6 +7,7 @@ import { addressSeed, settle, vela } from '@/lib/vela';
 import { ui } from '../ui-store';
 import { ActiveSurface, PILL_MAX, PILL_MIN } from './TabItem';
 import { TabFace, tabTooltip } from './TabFace';
+import { TabFlag } from '../vpn/TabFlag';
 import { TabContextMenu } from './TabContextMenu';
 import type { SplitUnit } from './groups/units';
 
@@ -160,6 +161,7 @@ function Segment({ tab, active, width, compact, first, paletteOpen, reduced, dra
         }}
       >
         {active && <ActiveSurface paletteOpen={paletteOpen} reduced={reduced} />}
+        <TabFlag tab={tab} />
         <TabFace tab={tab} active={active} iconOnly={compact} />
       </motion.div>
     </TabContextMenu>
@@ -177,6 +179,7 @@ function sameTab(x: TabState, y: TabState): boolean {
       x.audible === y.audible &&
       x.muted === y.muted &&
       x.micActive === y.micActive &&
+      x.vpn === y.vpn &&
       !x.devices === !y.devices &&
       x.blockedCount === y.blockedCount &&
       x.secure === y.secure &&

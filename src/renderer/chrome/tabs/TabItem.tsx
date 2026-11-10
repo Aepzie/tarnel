@@ -9,6 +9,7 @@ import { ui } from '../ui-store';
 import { TabAudioButton } from '../audio/TabAudioButton';
 import { TabContextMenu } from './TabContextMenu';
 import { ACTIVE_TAB_SURFACE, TabFace, tabTooltip } from './TabFace';
+import { TabFlag } from '../vpn/TabFlag';
 
 export const PILL_MIN = 36;
 export const PILL_MAX = 200;
@@ -280,6 +281,7 @@ function TabItemImpl({ tab, active, hovered, paletteOpen, onHover, onDragStart, 
             transition={reduced ? INSTANT : { ...spring.snappy, opacity: { duration: 0.12 } }}
           />
         )}
+        <TabFlag tab={tab} />
         <TabFace tab={tab} active={active} iconOnly={iconOnly} />
       </Reorder.Item>
     </TabContextMenu>
@@ -304,6 +306,7 @@ function same(a: TabItemProps, b: TabItemProps): boolean {
     x.audible !== y.audible ||
     x.muted !== y.muted ||
     x.micActive !== y.micActive ||
+    x.vpn !== y.vpn ||
     !x.devices !== !y.devices ||
     x.pinned !== y.pinned ||
     x.spaceId !== y.spaceId

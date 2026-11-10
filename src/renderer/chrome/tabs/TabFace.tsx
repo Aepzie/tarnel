@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { settle, vela } from '@/lib/vela';
 import { TabAudioButton } from '../audio/TabAudioButton';
 import { Favicon } from './Favicon';
+import { withVpnLabel } from '../vpn/TabFlag';
 
 /** Resting fill of the active tab in the horizontal strip; morphs into the palette via `layoutId="omnibox"`. */
 export const ACTIVE_TAB_SURFACE = cn(
@@ -107,7 +108,7 @@ export function TabFace({ tab, active, iconOnly }: TabFaceProps) {
 
 /** Tooltip for a tab: title, plus host and blocked requests for the active one. */
 export function tabTooltip(tab: TabState, active: boolean): string {
-  const label = tab.title || tab.url || 'New Tab';
+  const label = withVpnLabel(tab.title || tab.url || 'New Tab', tab);
   if (!active) return label;
   const lines = [label];
   if (tab.url && !tab.url.startsWith('vela://newtab') && tab.url !== 'about:blank') lines.push(tab.url);
