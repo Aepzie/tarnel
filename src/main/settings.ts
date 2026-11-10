@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS, FRAME_RATE_MODES, NEWTAB_HEROES, type FrameRateMode, type NewtabHero, type SearchEngine, type Settings, type TabLayout, type ThemeMode, type WindowMaterial } from '../shared/types';
+import { nextDnsTemplate, SECURE_DNS_MODES, validateDohTemplate, type SecureDnsMode } from '../shared/doh';
 import { createStore, type JsonStore } from './store';
 
 const SEARCH_ENGINES: readonly SearchEngine[] = ['duckduckgo', 'google', 'brave', 'startpage', 'ecosia'];
@@ -10,12 +11,15 @@ const BOOLEAN_KEYS = [
   'httpsOnly',
   'blockThirdPartyCookies',
   'sendDoNotTrack',
+  'removeTrackingParams',
+  'trimReferrers',
   'restoreSession',
   'sidebarCollapsed',
   'autoHideToolbar',
   'updateAutoCheck',
   'updateAutoDownload',
   'updatePrerelease',
+  'secureDnsStrict',
 ] as const satisfies readonly (keyof Settings)[];
 
 const listeners = new Set<(settings: Settings) => void>();
@@ -38,6 +42,9 @@ function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>
   for (const key of BOOLEAN_KEYS) {
     if (typeof patch[key] === 'boolean') next[key] = patch[key];
   }
+  if (SECURE_DNS_MODES.includes(patch.secureDns as SecureDnsMode)) next.secureDns = patch.secureDns as SecureDnsMode;
+  if (patch.secureDnsNextDns === '' || nextDnsTemplate(patch.secureDnsNextDns)) next.secureDnsNextDns = (patch.secureDnsNextDns as string).trim();
+  if (patch.secureDnsTemplate === '' || validateDohTemplate(patch.secureDnsTemplate)) next.secureDnsTemplate = (patch.secureDnsTemplate as string).trim();
   next.sleepAfterMinutes = clampInt(patch.sleepAfterMinutes, 0, 240) ?? next.sleepAfterMinutes;
   next.sidebarWidth = clampInt(patch.sidebarWidth, 180, 420) ?? next.sidebarWidth;
   return next;

@@ -7,6 +7,7 @@ import { splitCommands } from '../split/split-commands';
 import { audioCommands } from '../audio/audio-commands';
 import { mixerCommands } from '../mixer/mixer-commands';
 import { vpnCommands } from '../vpn/vpn-commands';
+import { taskManagerCommands } from '../task-manager/task-manager-commands';
 
 export interface PaletteCommand {
   id: string;
@@ -100,6 +101,7 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
   commands.push(...splitCommands(state));
   commands.push(...mixerCommands());
   commands.push(...vpnCommands());
+  commands.push(...taskManagerCommands());
   commands.push(...audioCommands(state));
   if (activeTabId !== null) {
     commands.push({

@@ -4,6 +4,7 @@ import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
 import { SITE_IPC } from '../shared/site-data';
+import { TASK_MANAGER_IPC } from '../shared/task-manager';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -162,6 +163,10 @@ const api: VelaChromeAPI = {
     clear: (tabId) => invoke(SITE_IPC.clear, tabId),
     resetPermission: (tabId, key) => invoke(SITE_IPC.resetPermission, tabId, key),
     setOnClose: (tabId, action) => invoke(SITE_IPC.setOnClose, tabId, action),
+  },
+  taskManager: {
+    snapshot: () => invoke(TASK_MANAGER_IPC.snapshot),
+    endProcess: (tabId) => invoke(TASK_MANAGER_IPC.endProcess, tabId),
   },
 };
 

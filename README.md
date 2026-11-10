@@ -30,8 +30,11 @@ A minimal Chromium-based desktop browser with sandboxed multi-session Spaces.
 | Windows (portable) | [`Vela-0.1.0-portable-x64.exe`](https://github.com/Aepzie/vela/releases/latest) — no install, runs from a USB stick |
 | macOS / Linux | `.dmg`, `.AppImage` and `.deb` builds are produced by CI and attached to the [same release page](https://github.com/Aepzie/vela/releases/latest) |
 
-Builds are not code-signed yet. On Windows, SmartScreen may show a warning on first launch — click
-**More info → Run anyway**. macOS Gatekeeper may warn as well.
+Builds are not code-signed yet (the release pipeline signs automatically once certificates are added —
+see [docs/RELEASING.md](docs/RELEASING.md)). Until then, Windows SmartScreen may show a warning on first
+launch — click **More info → Run anyway**. On macOS, right-click the app → **Open** the first time, or
+allow it under **System Settings → Privacy & Security**. Every release lists SHA-256 checksums in
+`SHA256SUMS.txt`.
 
 **Updates:** the Windows installer and the Linux AppImage update themselves — new versions download in the
 background and install when you restart Vela (or click **Update ready · Restart** in the toolbar). The portable
@@ -144,6 +147,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 | `Ctrl+Shift+D`            | Split view on / off                 |
 | `Ctrl+Shift+N`            | New Burner space                    |
 | `Ctrl+Shift+M`            | Audio mixer                         |
+| `Shift+Esc`               | Task manager                        |
 | `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab             |
 | `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Zoom in / out / reset          |

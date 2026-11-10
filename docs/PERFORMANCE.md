@@ -40,10 +40,23 @@ processes. On ad-heavy news and recipe sites this typically cuts page weight and
 microseconds per request (the engine is a compact pre-compiled matcher).
 
 - **Instant startup:** the compiled engine is cached as a binary in `userData/adblock-engine.bin`
-  and deserialized in milliseconds. Launch never waits on the network.
-- **Background refresh:** if the cache is older than 24 h, a fresh engine is fetched (through
-  Chromium's network stack, so proxies apply), written atomically (tmp + rename), and hot-swapped
-  into every Space.
+  and deserialized in milliseconds. Launch never waits on the network. The file starts with a key
+  header (`perf/adblock-cache.ts`: Ghostery `ENGINE_VERSION` + library version + list set), so a
+  library upgrade or list change is a cache miss, not a deserialize error.
+- **Measured** (Ghostery 2.20.3, prebuilt ads + tracking, ~6.9 MB cache; Node, same code path):
+  cold start without cache = network build **0.75–1.3 s** (median ~1.0 s); warm start from cache =
+  read + header check + deserialize **20–38 ms** (median ~30 ms). The main process logs which path
+  it took: `[adblock] engine ready from cache|network in N ms`.
+- **Ready before the first request:** each new session gates `whenSessionReady()` (via
+  `gateSessionReady`, which now combines gates from several hooks) on the first engine, so a
+  restored tab's first page load is already filtered. Warm, that wait is the ~30 ms above. Cold
+  (first run / unusable cache) the gate is capped at 3 s; past that, pages load unblocked until the
+  engine arrives and is applied to every session. Adblock off never gates.
+- **Background refresh:** whenever the engine is older than 24 h (checked at launch and hourly
+  while running), a fresh engine is fetched (through Chromium's network stack, so proxies apply),
+  written atomically (tmp + rename), and hot-swapped into every Space in one synchronous step.
+  Only one refresh runs at a time.
+- **Corrupt cache:** an unreadable or foreign cache file is deleted and rebuilt from the network.
 - **Cosmetic filtering** (hiding leftover ad slots) runs through the library's preload, registered
   with `session.registerPreloadScript`. It only needs `ipcRenderer`, so it works in sandboxed tabs.
 - **Fail-open:** offline first run, corrupt cache, CDN outage → browsing continues unblocked.
@@ -141,6 +154,23 @@ memory of the renderer processes only that tab used (its page process plus out-o
 processes shared with another awake tab count as 0). Tabs restored asleep at launch were never
 measured; they are estimated from the average awake web-page renderer (the UI renderer excluded,
 80 MB fallback).
+
+### Task manager
+
+`Shift+Esc`, the palette ("Task manager") or the activity button in the perf popover open a per-process
+breakdown (`src/main/perf/task-manager.ts`, pure mapping in `src/shared/task-manager.ts`). It costs
+nothing while closed: the chrome asks for one snapshot per second only while the panel is open.
+
+Each snapshot is one `app.getAppMetrics()` call mapped by OS pid: a tab owns its page renderer plus
+out-of-process iframes (`webContents.getOSProcessId()`, `mainFrame.framesInSubtree[].osProcessId`),
+the Vela UI renderer gets its own row, and Browser, GPU and utility processes (Network, Audio, Storage
+service…) are listed by type and service name. Same-site tabs can share a renderer: each row then shows
+the whole process, marked "shared", while the footer totals count every process once. Extension
+background pages are mapped by pid; MV3 service workers only expose Chromium's render-process id, so
+they are matched to the remaining unowned renderers by creation order only when the counts agree
+(otherwise those show as "Renderer (spare or extension)"). Per-process network rates are not exposed by
+Electron and are not shown. "End process" calls `forcefullyCrashRenderer()`, so the tab shows its crash
+page (background tabs reload when next activated).
 
 ## Memory: measured
 
