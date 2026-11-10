@@ -767,6 +767,19 @@ index.ts     initExtensions() wiring + registerExtensionIpc() (registered from i
   to narrow content-script matches or host permissions per session; doing it would mean loading a rewritten
   copy of the extension (changes unpacked IDs) — the UI says so and points to On click / Spaces.
 
+* **Marketplace (`vela://extensions`).** A renderer page (`src/renderer/pages/extensions/`, served by the
+  generic `vela://<host>` mapping in `protocol.ts`) over the existing `velaPages.extensions` bridge — no new IPC.
+  `src/shared/extension-catalog.ts` is a hand-curated list (CWS ID, name, category, permission note; every ID
+  checked against its store listing; no bundled logos — uninstalled entries get a letter tile, installed ones
+  the icon read from the downloaded manifest). Install = `install(id)` → `ExtensionReview` dialog →
+  `confirmInstall`, i.e. the same staged permission review as Settings. "Search the Chrome Web Store" opens
+  `chromewebstore.google.com/search/<q>` in a new tab. The store's own "Add to Chrome" button is **not** wired:
+  `electron-chrome-web-store`'s `installChromeWebStore()` would install straight into a session, bypassing
+  Vela's registry, Spaces and review. Instead the top island shows an **Add to Vela** pill while the active tab
+  is a store detail page (`storeDetailId`), which opens `vela://extensions/#install=<id>` and runs the review
+  flow there. Entry points: that pill, "Browse extensions" in the puzzle popover, Settings → Extensions and the
+  palette command "Extensions store". Shared review/permission UI lives in `src/renderer/components/extensions.tsx`.
+
 ### declarativeNetRequest (`src/main/extensions/dnr/*`)
 
 Electron 45 compiles in the `chrome.declarativeNetRequest` bindings but nothing behind them evaluates rules, so
