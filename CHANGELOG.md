@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Release pipeline is ready for code signing: Windows via Azure Trusted Signing or a PFX certificate, macOS via Developer ID with notarization (hardened runtime + entitlements for camera, microphone, location and security keys). It switches on automatically once the secrets in docs/RELEASING.md are added; without them releases stay unsigned as before
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
