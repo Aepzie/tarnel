@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Content blocking is ready before the first page loads: new sessions wait for the cached engine (~30 ms warm; capped at 3 s on a first run without cache). The cached engine is now versioned by Ghostery version and list set, a corrupt or outdated cache is rebuilt, and a long-running browser refreshes its lists every 24 h instead of only at launch.
 
+### Security
+- Windows downloads carry the Mark-of-the-Web (`Zone.Identifier`: internet zone plus source and referrer URL, URLs omitted for burner Spaces and blob/data downloads), so SmartScreen, Defender and Office Protected View treat them like Chrome downloads
+- Packaged builds flip Electron fuses: no `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` or `--inspect`; app code only from an integrity-checked `app.asar`; cookies encrypted at rest with the OS key. Existing plaintext cookies stay readable and are encrypted as they are rewritten; going back to 0.6.0 or older afterwards logs you out of sites
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
