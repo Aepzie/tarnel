@@ -15,7 +15,7 @@ import { initFrameRate } from './perf/frame-rate';
 import { initSecureDns } from './dns';
 import { initSleeper, stopSleeper } from './perf/sleeper';
 import { chromePermissionPrompter } from './permissions';
-import { applyGlobalUserAgent, setPermissionPrompter } from './privacy';
+import { applyGlobalUserAgent, onTrackingStripped, setPermissionPrompter } from './privacy';
 import { VELA_SCHEME, registerVelaProtocol } from './protocol';
 import { getSettings, onSettingsChanged } from './settings';
 import { attachShortcuts } from './shortcuts';
@@ -130,6 +130,9 @@ if (!app.requestSingleInstanceLock()) {
     });
     initExtensions();
     onBlocked((wcId) => noteBlocked(wcId));
+    onTrackingStripped((wcId, count) => {
+      for (let i = 0; i < count; i += 1) noteBlocked(wcId);
+    });
 
     onTabWebContents((wc, tabId) => {
       attachShortcuts(wc);

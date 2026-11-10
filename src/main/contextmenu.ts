@@ -1,4 +1,5 @@
 import { Menu, clipboard, type MenuItemConstructorOptions, type WebContents } from 'electron';
+import { cleanUserUrl } from './privacy';
 import { getSettings } from './settings';
 import { getSpace, listSpaces } from './spaces';
 import { createTab, getTabSpaceId } from './tabs';
@@ -33,7 +34,7 @@ export function attachContextMenu(wc: WebContents, tabId: number): void {
               },
             })),
         },
-        { label: 'Copy link address', click: () => clipboard.writeText(link) },
+        { label: 'Copy link address', click: () => clipboard.writeText(cleanUserUrl(link)) },
       );
     }
 

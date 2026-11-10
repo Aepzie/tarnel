@@ -173,6 +173,10 @@ export interface Settings {
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
+  /** Strip click/share tracking parameters (src/shared/url-clean.ts) from top-level navigations and copied links. */
+  removeTrackingParams: boolean;
+  /** Cross-site requests send only the origin as Referer; none on https → http. */
+  trimReferrers: boolean;
   restoreSession: boolean;
   /** Vertical tab layout: the tab island is collapsed to icons only. */
   sidebarCollapsed: boolean;
@@ -302,6 +306,8 @@ export const DEFAULT_SETTINGS: Settings = {
   httpsOnly: true,
   blockThirdPartyCookies: true,
   sendDoNotTrack: true,
+  removeTrackingParams: true,
+  trimReferrers: true,
   restoreSession: true,
   sidebarCollapsed: false,
   sidebarWidth: 240,

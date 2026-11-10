@@ -126,6 +126,16 @@ export function Privacy() {
           description="Ask sites not to sell or share your data."
           setting="sendDoNotTrack"
         />
+        <SwitchRow
+          title="Remove tracking parameters"
+          description="Strip click and share trackers like utm_ and fbclid from links you open or copy."
+          setting="removeTrackingParams"
+        />
+        <SwitchRow
+          title="Trim referrers"
+          description="Other sites only learn which site you came from, never the page."
+          setting="trimReferrers"
+        />
       </Group>
       <SecureDns />
       <Group title="History">
