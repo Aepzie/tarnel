@@ -31,6 +31,8 @@ import { registerSplitIpc } from './split-ipc';
 import { setTabMediaDeviceFromChrome } from './audio-devices';
 import { registerMixerIpc } from './audio-mixer';
 import { registerVpnIpc } from './vpn';
+import { registerSiteDataIpc } from './site-data';
+import { registerTaskManagerIpc } from './perf/task-manager';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -324,6 +326,8 @@ export function registerIpc(): void {
   handleChrome(AUDIO_IPC.setDevice, (id, slot, choice) => setTabMediaDeviceFromChrome(int(id), slot, choice));
   registerMixerIpc(handleChrome);
   registerVpnIpc(handleChrome);
+  registerSiteDataIpc(handleChrome, handlePages);
+  registerTaskManagerIpc(handleChrome);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());

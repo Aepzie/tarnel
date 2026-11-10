@@ -389,10 +389,15 @@ function forgetSession(key: string): void {
 /** Extra work a new session must finish before pages load (e.g. extensions). Must never reject. */
 const readyGates = new Map<string, Promise<void>>();
 
-/** Delay whenSessionReady() for this Space until `gate` settles. Call from an onSessionCreated hook. */
+/**
+ * Delay whenSessionReady() for this Space until `gate` settles. Call from an onSessionCreated hook.
+ * Gates from several hooks (adblock engine, extensions) combine: the session waits for all of them.
+ */
 export function gateSessionReady(id: SpaceId, gate: Promise<void>): void {
   const key = hookKey && hookKey.spaceId === id ? hookKey.key : id;
-  readyGates.set(key, gate.catch(() => undefined));
+  const previous = readyGates.get(key);
+  const settled = gate.catch(() => undefined);
+  readyGates.set(key, previous ? Promise.all([previous, settled]).then(() => undefined) : settled);
 }
 
 function emitSessionRemoved(ses: Session): void {
