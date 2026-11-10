@@ -20,22 +20,21 @@ export function StatusDot({ status, className }: { status: VpnStatus; className?
   );
 }
 
-/** Placeholder MantelVPN mark (two nested mantle arcs) until the partner supplies artwork. */
+/** Official MantelVPN mark (mantelvpn.com/icon.svg, copy in ./assets/mantel.svg), inlined. */
 export function MantelMark({ className }: { className?: string }) {
   return (
-    <span aria-hidden className={cn('vpn-mark grid size-8 shrink-0 place-items-center rounded-[9px]', className)}>
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
-        <path d="M5 18V11a7 7 0 0 1 14 0v7" />
-        <path d="M9.5 18v-6a2.5 2.5 0 0 1 5 0v6" opacity={0.75} />
-      </svg>
-    </span>
+    <svg aria-hidden viewBox="0 0 24 24" className={cn('vpn-mark size-8 shrink-0', className)}>
+      <rect width="24" height="24" rx="7" fill="#18181b" />
+      <path d="M7 16.5V8.2c0-.5.6-.8 1-.4l4 3.7 4-3.7c.4-.4 1-.1 1 .4v8.3" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="16.6" r="1.4" fill="#089868" />
+    </svg>
   );
 }
 
 export function PreviewChip() {
   return (
     <span
-      title="Preview: no VPN connection is made. Real provider integration comes in a later version."
+      title="Preview: Mantel is not reachable, so servers and the connection are simulated. No traffic is routed."
       className="rounded-full bg-foreground/[0.06] px-1.5 py-px text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
     >
       Preview

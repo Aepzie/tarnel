@@ -221,14 +221,14 @@
     0 8px 28px -14px rgb(0 0 0 / 0.2);
 }
 
-/* VPN preview: MantelVPN partner card. One quiet accent; the only motion is a short highlight that
-   travels along the hairline border. */
+/* VPN: MantelVPN partner card. One quiet accent, Mantel's brand green (#089868, lifted a little on
+   dark for contrast); the only motion is a short highlight that travels along the hairline border. */
 :root {
-  --vpn-accent: #d6bd8a;
+  --vpn-accent: #2bb383;
 }
 
 :root.light {
-  --vpn-accent: #8c6d32;
+  --vpn-accent: #089868;
 }
 
 @property --vpn-angle {
@@ -263,9 +263,8 @@
 }
 
 .vpn-mark {
-  color: var(--background);
-  background: var(--vpn-accent);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent);
 }
 
 .vpn-badge {
