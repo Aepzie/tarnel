@@ -6,7 +6,7 @@ import { useBrowserSlice, useSpaceGroups, useSpaceTabs } from '@/hooks/browser';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { SPACE_HEX, settle, vela } from '@/lib/vela';
-import { ui, useChromeUI } from '../ui-store';
+import { useChromeUI } from '../ui-store';
 import { TabItem } from './TabItem';
 import { useScrollFade } from './use-scroll-fade';
 import { computeTabWidths } from './tab-widths';
@@ -22,7 +22,6 @@ const noop = (): void => {};
 
 async function newTab(): Promise<void> {
   await vela().tabs.create({ active: true });
-  ui.openPalette('current');
 }
 
 /** Keep a local order while dragging; fall back to main's order otherwise. */

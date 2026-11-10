@@ -120,10 +120,7 @@ function handle(input: Input): boolean {
 
   switch (code) {
     case 'KeyT':
-      return once(() => {
-        createTab({ spaceId: getActiveSpaceId(), active: true });
-        sendCommand('command-palette');
-      });
+      return once(() => createTab({ spaceId: getActiveSpaceId(), active: true }));
     case 'KeyH':
       return once(openHistory);
     case 'KeyY':

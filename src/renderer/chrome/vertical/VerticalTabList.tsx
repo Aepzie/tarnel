@@ -6,7 +6,6 @@ import { useBrowserSlice, useSpaceGroups, useSpaceTabs } from '@/hooks/browser';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { SPACE_HEX, settle, vela } from '@/lib/vela';
-import { ui } from '../ui-store';
 import { useEditingGroup } from '../tabs/groups/group-ui';
 import { useUnitDrag } from '../tabs/groups/use-unit-drag';
 import { PinnedGrid } from './PinnedGrid';
@@ -17,7 +16,6 @@ import { useSpaceSplits } from '../split/split-state';
 
 async function newTab(): Promise<void> {
   await vela().tabs.create({ active: true });
-  ui.openPalette('current');
 }
 
 /** Top/bottom edge fades while the list has hidden content in that direction. */

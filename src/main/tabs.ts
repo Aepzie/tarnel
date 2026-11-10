@@ -471,7 +471,8 @@ export function activateTab(id: number): void {
   const wc = wake(tab);
   if (Math.abs(wc.getZoomFactor() - tab.zoom) > 0.001) wc.setZoomFactor(tab.zoom);
   showActive();
-  if (!isInternalUrl(tab.url)) wc.focus();
+  // The start page owns its search box, so it takes keyboard focus like a web page (unless the palette is up).
+  if (!isInternalUrl(tab.url) || (tab.url.startsWith(NEWTAB_URL) && !windowLayer.isOverlayOpen())) wc.focus();
   scheduleEmit();
 }
 

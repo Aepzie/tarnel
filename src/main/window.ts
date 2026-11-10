@@ -380,6 +380,10 @@ export function setContentBounds(bounds: ContentBounds): void {
   layout();
 }
 
+export function isOverlayOpen(): boolean {
+  return overlayOpen;
+}
+
 export function setOverlay(open: boolean): void {
   overlayOpen = open;
   if (!win || win.isDestroyed()) return;
