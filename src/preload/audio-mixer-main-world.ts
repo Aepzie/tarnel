@@ -66,9 +66,13 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
     wired: Stage[];
     meter: Meter | null;
     metering: boolean;
+    /** Page nodes redirected into `input` (page contexts only): the chain carries sound while one is connected. */
+    inputs: Set<AudioNode>;
   }
   interface Routed {
     source: AudioNode;
+    /** The node that feeds the chain (or the bridge): source, stream gain or capture fade. */
+    out: AudioNode;
     /** MediaStream elements only: page volume / mute / pause, since the element itself is muted. */
     gain: GainNode | null;
     stream: MediaStream | null;
@@ -114,6 +118,7 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
   const SMOOTHING = 0.015;
   const IDLE_SUSPEND_MS = 10_000;
   const METER_IDLE_MS = 1_500;
+  const CAPTURE_FADE_S = 0.03;
   const FFT_SIZE = 4096;
   const SPECTRUM_BINS = 16;
 
@@ -135,45 +140,71 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
 
   const nativeToString = realm.Function.prototype.toString;
   const sources = new WeakMap<object, string>();
+  /**
+   * Installed live, the realm may already carry page/blocker patches: a `toString` proxy that recurses
+   * forever (seen on YouTube with the blocker's scriptlets) must not abort the install.
+   */
+  const sourceOf = (real: Method | Getter | Setter, fallbackName: string): string => {
+    try {
+      return apply(nativeToString, real, []) as string;
+    } catch {
+      return `function ${fallbackName}() { [native code] }`;
+    }
+  };
   const disguise = <T extends Method | Getter | Setter>(fake: T, real: Method | Getter | Setter): T => {
-    defineProperty(fake, 'name', { value: real.name, configurable: true });
-    defineProperty(fake, 'length', { value: real.length, configurable: true });
-    sources.set(fake, apply(nativeToString, real, []) as string);
+    let name = '';
+    try {
+      name = String(real.name);
+      defineProperty(fake, 'name', { value: real.name, configurable: true });
+      defineProperty(fake, 'length', { value: real.length, configurable: true });
+    } catch {
+      /* exotic function object: keep the fake's own name */
+    }
+    sources.set(fake, sourceOf(real, name));
     return fake;
   };
   const wrapMethod = (proto: object | undefined, name: string, make: (original: Method) => Method): void => {
-    const descriptor = proto ? getDescriptor(proto, name) : undefined;
-    if (!proto || !descriptor || typeof descriptor.value !== 'function') return;
-    const original = descriptor.value as Method;
-    const impl = make(original);
-    const fake = ({
-      [name](this: unknown, ...args: unknown[]): unknown {
-        return apply(impl, this, args);
-      },
-    })[name]!;
-    defineProperty(proto, name, { ...descriptor, value: disguise(fake, original) });
+    try {
+      const descriptor = proto ? getDescriptor(proto, name) : undefined;
+      if (!proto || !descriptor || typeof descriptor.value !== 'function') return;
+      const original = descriptor.value as Method;
+      const impl = make(original);
+      const fake = ({
+        [name](this: unknown, ...args: unknown[]): unknown {
+          return apply(impl, this, args);
+        },
+      })[name]!;
+      defineProperty(proto, name, { ...descriptor, value: disguise(fake, original) });
+    } catch {
+      /* non-configurable or exotic: leave this one native */
+    }
   };
-  const wrapAccessor = (proto: object | undefined, name: string, makeGet: (original: Getter) => Getter, makeSet: (original: Setter) => Setter): void => {
-    const descriptor = proto ? getDescriptor(proto, name) : undefined;
-    if (!proto || !descriptor || typeof descriptor.get !== 'function' || typeof descriptor.set !== 'function') return;
-    const get = makeGet(descriptor.get as Getter);
-    const set = makeSet(descriptor.set as Setter);
-    const fake = getDescriptor(
-      {
-        get [name](): unknown {
-          return apply(get, this, []);
+  const wrapAccessor = (proto: object | undefined, name: string, makeGet: (original: Getter) => Getter, makeSet: ((original: Setter) => Setter) | null): void => {
+    try {
+      const descriptor = proto ? getDescriptor(proto, name) : undefined;
+      if (!proto || !descriptor || typeof descriptor.get !== 'function') return;
+      if (makeSet && typeof descriptor.set !== 'function') return;
+      const get = makeGet(descriptor.get as Getter);
+      const set = makeSet ? makeSet(descriptor.set as Setter) : (descriptor.set as Setter | undefined);
+      const fake = getDescriptor(
+        {
+          get [name](): unknown {
+            return apply(get, this, []);
+          },
+          set [name](value: unknown) {
+            if (set) apply(set, this, [value]);
+          },
         },
-        set [name](value: unknown) {
-          apply(set, this, [value]);
-        },
-      },
-      name,
-    )!;
-    defineProperty(proto, name, {
-      ...descriptor,
-      get: disguise(fake.get as Getter, descriptor.get as Getter),
-      set: disguise(fake.set as Setter, descriptor.set as Setter),
-    });
+        name,
+      )!;
+      defineProperty(proto, name, {
+        ...descriptor,
+        get: disguise(fake.get as Getter, descriptor.get as Getter),
+        set: makeSet ? disguise(fake.set as Setter, descriptor.set as Setter) : descriptor.set,
+      });
+    } catch {
+      /* non-configurable or exotic: leave this one native */
+    }
   };
 
   wrapMethod(realm.Function.prototype, 'toString', (original) =>
@@ -366,7 +397,7 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
     const output = new GainNode(context);
     connect(input, output);
     connect(output, destination);
-    const chain: Chain = { context, input, output, stages: null, wired: [], meter: null, metering: false };
+    const chain: Chain = { context, input, output, stages: null, wired: [], meter: null, metering: false, inputs: new Set() };
     applyChain(chain);
     return chain;
   };
@@ -605,11 +636,23 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
       // Already captured elsewhere (another realm's context): leave it alone.
       return markPartial(element);
     }
-    connect(source, target.chain.input);
+    const playingNow = !read(pausedOf, element, true);
+    let out: AudioNode = source;
+    // Already playing (a live install): the sound jumps from the native output to the processing context,
+    // whose latency differs; a short fade-in turns that seam into an inaudible dip instead of a click.
+    if (playingNow && isRunning(target.context)) {
+      const fade = new GainNode(target.context, { gain: 0 });
+      const now = read(timeOf, target.context, 0);
+      fade.gain.setValueAtTime(0, now);
+      fade.gain.linearRampToValueAtTime(1, now + CAPTURE_FADE_S);
+      connect(source, fade);
+      out = fade;
+    }
+    connect(out, target.chain.input);
     unmarkPartial(element);
-    routed.set(element, { source, gain: null, stream: null, engaged: true, bridge: null });
+    routed.set(element, { source, out, gain: null, stream: null, engaged: true, bridge: null });
     watch(element);
-    if (!read(pausedOf, element, true)) started(element);
+    if (playingNow) started(element);
   };
 
   const captureStream = (element: Media, stream: MediaStream): void => {
@@ -630,7 +673,7 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
     connect(source, gain);
     connect(gain, target.chain.input);
     unmarkPartial(element);
-    routed.set(element, { source, gain, stream, engaged: false, bridge: null });
+    routed.set(element, { source, out: gain, gain, stream, engaged: false, bridge: null });
     watch(element);
     if (!read(pausedOf, element, true)) started(element);
     pendingEngage.add(element);
@@ -707,10 +750,47 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
     if (target instanceof MediaClass) safely(() => consider(target));
   };
 
+  /** Shadow roots seen being attached (closed ones included): media events do not leave them. */
+  const shadowRoots = new Set<WeakRef<ShadowRoot>>();
+  const watchRoot = (root: ShadowRoot): void => {
+    shadowRoots.add(new WeakRefClass(root));
+    listen(root, 'play', onMediaEvent, true);
+    listen(root, 'playing', onMediaEvent, true);
+  };
+
+  /** Playing media in the document and in every reachable shadow root (open ones, and those attached since install). */
   const sweep = (): void => {
-    for (const element of realm.document.querySelectorAll('audio, video')) {
-      if (element instanceof MediaClass && !read(pausedOf, element, true)) consider(element);
+    const roots: (Document | ShadowRoot)[] = [realm.document];
+    const seen = new WeakSet<object>();
+    for (const ref of shadowRoots) {
+      const root = ref.deref();
+      if (root) roots.push(root);
+      else shadowRoots.delete(ref);
     }
+    for (let i = 0; i < roots.length && i < 4096; i++) {
+      const root = roots[i]!;
+      if (seen.has(root)) continue;
+      seen.add(root);
+      for (const element of root.querySelectorAll('*')) {
+        if (element instanceof MediaClass) {
+          if (!read(pausedOf, element, true)) consider(element);
+        } else if (element.shadowRoot) {
+          roots.push(element.shadowRoot);
+        }
+      }
+    }
+  };
+
+  /**
+   * Media nobody can find (detached `new Audio()`, closed shadow roots) that was already playing at a
+   * live install: players poll `currentTime`, so the first read of a playing, unknown element routes it.
+   */
+  const noticed = new WeakSet<Media>();
+  const notice = (element: Media): void => {
+    if (noticed.has(element) || !current) return;
+    if (read(pausedOf, element, true)) return;
+    noticed.add(element);
+    safely(() => consider(element));
   };
 
   // ---- patches ----------------------------------------------------------------
@@ -725,6 +805,26 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
         });
       }
       return apply(original, this, args);
+    },
+  );
+
+  wrapAccessor(
+    mediaProto,
+    'currentTime',
+    (original) =>
+      function (this: unknown) {
+        if (this instanceof MediaClass && !routed.has(this)) notice(this);
+        return apply(original, this, []);
+      },
+    null,
+  );
+
+  const ElementClass = realm.Element;
+  wrapMethod(ElementClass?.prototype, 'attachShadow', (original) =>
+    function (this: unknown, ...args: unknown[]) {
+      const root = apply(original, this, args) as ShadowRoot;
+      safely(() => watchRoot(root));
+      return root;
     },
   );
 
@@ -807,9 +907,8 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
       if (entry && processing && context !== processing.context && context instanceof ContextClass) {
         if (!entry.bridge) {
           entry.bridge = apply(createStreamDestination, processing.context, []) as MediaStreamAudioDestinationNode;
-          const out = entry.gain ?? entry.source;
-          disconnect(out);
-          connect(out, entry.bridge);
+          disconnect(entry.out);
+          connect(entry.out, entry.bridge);
         }
         return apply(createStreamSource, context, [entry.bridge.stream]);
       }
@@ -836,7 +935,7 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
         ) as object;
       },
     });
-    sources.set(proxy, apply(nativeToString, SourceClass, []) as string);
+    sources.set(proxy, sourceOf(SourceClass as unknown as Method, 'MediaElementAudioSourceNode'));
     defineProperty(realm, 'MediaElementAudioSourceNode', { ...sourceDescriptor, value: proxy });
   }
 
@@ -848,6 +947,7 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
         const chain = chainForDestination(target);
         if (chain) {
           apply(original, this, [chain.input, ...args.slice(1)]);
+          if (this instanceof NodeClass) chain.inputs.add(this);
           return target;
         }
       }
@@ -858,11 +958,19 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
   wrapMethod(nodeProto, 'disconnect', (original) =>
     function (this: unknown, ...args: unknown[]) {
       const target = args[0];
+      if (this instanceof NodeClass && (args.length === 0 || typeof target === 'number')) {
+        const node = this;
+        safely(() => {
+          for (const chain of pageChainList) chain.inputs.delete(node);
+        });
+      }
       const context = target instanceof DestinationClass ? read<BaseAudioContext | null>(contextOfNode, target, null) : null;
       const chain = context ? pageChains.get(context) : undefined;
       if (!chain) return apply(original, this, args);
       try {
-        return apply(original, this, [chain.input, ...args.slice(1)]);
+        const result = apply(original, this, [chain.input, ...args.slice(1)]);
+        if (this instanceof NodeClass) chain.inputs.delete(this);
+        return result;
       } catch {
         // Connected before the engine was installed: disconnect the real destination.
         return apply(original, this, args);
@@ -877,13 +985,22 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
 
   let meterTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const routing = (chains: Chain[]): RealmAudioReport['routing'] => {
+  /** What is being processed right now: neutral or nothing playing through a chain → idle. */
+  const routing = (): RealmAudioReport['routing'] => {
+    if (!current) return 'idle';
     for (const ref of partialRefs) {
       const element = ref.deref();
       if (!element || !partial.has(element)) partialRefs.delete(ref);
       else if (!read(pausedOf, element, true)) return 'partial';
     }
-    return chains.length > 0 ? 'full' : 'idle';
+    for (const element of playing) {
+      if (read(pausedOf, element, true)) stopped(element);
+    }
+    if (playing.size > 0) return 'full';
+    for (const chain of pageChainList) {
+      if (chain.inputs.size > 0 && isRunning(chain.context)) return 'full';
+    }
+    return 'idle';
   };
 
   const handle: MixerEngineHandle = {
@@ -902,7 +1019,7 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
     },
     report(levels) {
       const chains = allChains();
-      const report: RealmAudioReport = { routing: routing(chains) };
+      const report: RealmAudioReport = { routing: routing() };
       if (!levels) return report;
       if (meterTimer !== null) clearTimer(meterTimer);
       meterTimer = setTimer(() => {
@@ -931,6 +1048,45 @@ export function mixTabAudio(initial: TabAudioSettings | null): boolean {
         if (processing) void processing.context.destination;
       });
     },
+    owns(element) {
+      return element instanceof MediaClass && (routed.has(element) || pageCaptured.has(element));
+    },
+    adopt(nodes, media) {
+      let found = 0;
+      if (!current) return found;
+      safely(() => {
+        for (const element of Array.isArray(media) ? media : []) {
+          if (!(element instanceof MediaClass) || routed.has(element) || read(pausedOf, element, true)) continue;
+          consider(element);
+          if (routed.has(element) || partial.has(element)) found++;
+        }
+        for (const node of Array.isArray(nodes) ? nodes : []) {
+          if (!(node instanceof NodeClass) || node instanceof DestinationClass) continue;
+          const context = read<BaseAudioContext | null>(contextOfNode, node, null);
+          if (!context || !(context instanceof ContextClass) || context === processing?.context) continue;
+          if (pageChains.get(context)?.output === node) continue;
+          const destination = context.destination;
+          const outputs = node.numberOfOutputs;
+          for (let output = 0; output < outputs; output++) {
+            // Throws unless this output feeds the destination: a probe and the move in one step.
+            try {
+              apply(nativeDisconnect, node, [destination, output]);
+            } catch {
+              continue;
+            }
+            const chain = chainForDestination(destination);
+            if (!chain) {
+              connect(node, destination, output);
+              continue;
+            }
+            connect(node, chain.input, output);
+            chain.inputs.add(node);
+            found++;
+          }
+        }
+      });
+      return found;
+    },
   };
   defineProperty(realm, KEY, { value: Object.freeze(handle) });
 
@@ -950,6 +1106,12 @@ export function updateTabAudio(settings: TabAudioSettings | null): boolean {
 export function reportTabAudio(levels: boolean): RealmAudioReport | null {
   const handle = (globalThis as unknown as Record<symbol, MixerEngineHandle | undefined>)[Symbol.for('vela.mixer')];
   return handle ? handle.report(levels) : null;
+}
+
+/** Main → frame (DevTools protocol `callFunctionOn`, `this` unused): hand heap-queried nodes/media to the engine. */
+export function adoptTabAudio(nodes: unknown, media: unknown): number {
+  const handle = (globalThis as unknown as Record<symbol, MixerEngineHandle | undefined>)[Symbol.for('vela.mixer')];
+  return handle ? handle.adopt(nodes, media) : -1;
 }
 
 /** Main → frame: let a live audio-devices route steer the processing context. */

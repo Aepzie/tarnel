@@ -243,8 +243,9 @@ to that API, plus the existing tab mute (`tabs.toggleMute`) and per-tab devices 
   grid; with the EQ off a dashed ghost shows the bands. Handles are `role="slider"` (Up/Down ±1 dB, Shift ±0.5,
   PageUp/Down ±3, Left/Right/Home/End move between bands, Delete/double-click reset). Editing a band turns the EQ on
   and clears `preset`.
-* **Routing**: `partial` → the detail header says only volume applies to some audio (strip: "Volume only");
-  `idle` → "No sound yet". Spectrum only for `full`.
+* **Routing** (`routing-note.ts`): `partial` → the detail header says only volume applies to some audio (strip:
+  "Volume only"); `reload` → "Reload to apply" + a Reload button; `idle` on an audible tab → nothing (it is playing,
+  just unprocessed); "No sound yet" only when the tab is not audible. Spectrum for `full` and audible `idle`.
 * **Devices**: the detail pane reuses `chrome/audio` (`useDeviceSections` + `selectDevice`), no own enumeration.
 * **Dev mock** (`mock.ts`): when `mixer.get()` rejects with "No handler registered" (no engine in main), the store
   swaps in a simulated engine for the first N tabs (localStorage `vela:mixer-mock-tabs`, default 3) with animated
@@ -263,7 +264,17 @@ in `src/shared/audio-mixer.ts`, chrome API `vela.mixer`. Desktop only. Mute stay
   (`vela:mixer-engine`) and runs `src/preload/audio-mixer-main-world.ts` in the main world before page scripts.
   Documents already loaded get the same function via `WebFrameMain.executeJavaScript` in every frame (cross-origin
   iframes included); later changes only call the installed handle's `update()` (coalesced to one push per 16 ms).
-  Neutral settings switch installed engines to bypass; new documents of the tab then get nothing.
+  Neutral settings switch installed engines to bypass; new documents of the tab then get nothing. A live install
+  survives a realm whose `Function.prototype.toString` is already patched and broken (YouTube with the blocker's
+  scriptlets recurses forever): every patch is installed independently and falls back to a synthetic native source.
+* **Already playing at a live install**: media found by the sweep (document + open shadow roots) is captured at
+  once, with a 30 ms fade-in on the captured path so the latency jump is a dip, not a click; media nobody can find
+  (detached, closed shadow roots) is caught on its first `currentTime` read, and shadow roots attached later are
+  watched. When the tab is audible with settings and its engines still process nothing, main runs a one-shot
+  *adoption* per document (`adopt.ts`): over the tab's DevTools protocol client (reused if fingerprint protection
+  holds it, otherwise attached/detached) `Runtime.queryObjects` lists every `AudioNode` and media element of the top
+  document's main world; the engine moves each node output feeding a realtime destination into its chain
+  (`disconnect(destination, output)` is the probe) and routes playing media.
 * **Graph** (one chain per realtime AudioContext): `input → [mono] → [balance] → [bass lowshelf] → [EQ peaking Q 1.41,
   bands ≠ 0] → [compressor −24 dB/3:1/knee 24] → [volume] → [limiter → soft clip] → output → destination`. Only the
   stages the settings need are wired; the limiter (20:1 at −3 dBFS, attack 2 ms, its automatic makeup gain cancelled)
@@ -284,16 +295,24 @@ in `src/shared/audio-mixer.ts`, chrome API `vela.mixer`. Desktop only. Mute stay
   processing context instead of an exception.
 * **Audio devices**: the processing context reads `destination` through the (possibly patched) prototype getter, so
   the per-tab output route steers it; a live route change pokes engines (`touch()`) so it follows too.
-* **Routing / levels**: main asks engine frames for their routing (`report(false)`) on media start/pause and audible
-  changes. While the chrome watches (`watchLevels(true)`), main polls every engine frame of each audible tab every
+* **Routing / levels**: engines report what they process right now: `full` (routed media playing or a page chain
+  with connected inputs), `partial`, else `idle` (also always at neutral). Main asks engine frames (`report(false)`)
+  on media start/pause and audible changes; an audible tab with settings whose engines stay `idle` (after a 750 ms
+  settle window, a 3 s grace after it last processed sound, and the adoption) becomes `reload`. While the chrome watches (`watchLevels(true)`), main polls every engine frame of each audible tab every
   50 ms (`report(true)`: L/R peak from 4096-sample analysers after the chain, 16 log bins 20 Hz–20 kHz mapped from
   −90…−10 dB); results are validated, max-merged per tab and pushed as `TabAudioLevel[]`. Analysers are connected
-  only while being read (disconnected 1.5 s after the last read); audible tabs without an engine report 0 and `[]`.
+  only while being read (disconnected 1.5 s after the last read). Media the engine does not own (untouched tabs,
+  partial elements) is metered by a level tap (`audio-mixer-tap-main-world.ts`): `captureStream()` copies into a
+  context with no output (nothing rerouted), installed only in frames with playing media (all frames rescanned each
+  second), released when watching stops and self-released 2 s after its last read. Page AudioContexts of untouched
+  tabs are not metered.
   Watching stops when the chrome navigates or crashes.
 * **Cost**: unused → no preload, nothing in pages. Measured (Windows 11, one tab playing a WAV): +0.6 % of one core in
   the renderer for a single stage, +1.6 % with every stage, +0.2–0.3 % in the audio service.
-* **Limits**: page AudioContexts connected before a live (non-preload) install, detached `new Audio()` already
-  playing at that moment and shadow-DOM media are not routed until reload / their next `play()`; an element captured
+* **Limits**: adoption only covers the top frame's main world (subframes, incl. cross-origin embeds, fall back to
+  `reload` for pre-existing AudioContext connections), skips tabs whose protocol client is unavailable, and walks the
+  heap once (a few ms to ~100 ms); untouched-tab meters miss page AudioContexts and media the tap cannot copy
+  (cross-origin without CORS, encrypted); an element captured
   with a readable source that later switches to a cross-origin no-CORS source plays silent until reload; captured
   elements ignore a page-chosen `setSinkId` (MediaStream elements are released instead); the bridge node is a
   `MediaStreamAudioSourceNode`, not a `MediaElementAudioSourceNode`. Patched functions report native `toString`, but

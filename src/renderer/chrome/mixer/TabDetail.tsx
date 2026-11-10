@@ -1,24 +1,20 @@
 import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { InfoIcon, RotateCcwIcon } from 'lucide-react';
+import { InfoIcon, RotateCcwIcon, RotateCwIcon } from 'lucide-react';
 import { EQ_PRESETS, isNeutralAudio, type EqPresetId, type MixerRouting, type TabAudioSettings } from '@shared/audio-mixer';
 import type { TabState } from '@shared/types';
 import { Switch } from '@/components/ui/switch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { hostOf } from '@/lib/vela';
+import { hostOf, settle } from '@/lib/vela';
 import { Favicon } from '../tabs/Favicon';
 import { BassBoost } from './BassBoost';
 import { DevicePickers } from './DevicePickers';
 import { EqGraph } from './EqGraph';
 import { resetTab, settingsOf, updateTab } from './mixer-store';
+import { routingNote } from './routing-note';
 
 const PRESET_IDS = Object.keys(EQ_PRESETS) as EqPresetId[];
-
-const ROUTING_NOTES: Partial<Record<MixerRouting, string>> = {
-  partial: 'Some audio on this page can only be adjusted in volume',
-  idle: 'No sound yet · changes apply once it plays',
-};
 
 function SectionLabel({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
@@ -44,7 +40,7 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint: st
 /** Detail pane of the selected channel: EQ, presets, bass boost, mono / compressor, devices. */
 export function TabDetail({ tab, settings, routing }: { tab: TabState; settings: TabAudioSettings; routing: MixerRouting }) {
   const reduce = useReducedMotion();
-  const note = ROUTING_NOTES[routing];
+  const note = routingNote(routing, tab.audible);
   const neutral = isNeutralAudio(settings) && settings.preset === 'flat';
 
   const setBand = (index: number, gain: number): void => {
@@ -69,14 +65,31 @@ export function TabDetail({ tab, settings, routing }: { tab: TabState; settings:
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] leading-tight font-semibold tracking-tight text-foreground">{tab.title || hostOf(tab.url)}</span>
           {note ? (
-            <span role="note" className="flex items-center gap-1 truncate text-[11px] leading-tight text-amber-300/85 light:text-amber-700" title={note}>
-              <InfoIcon className="size-3 shrink-0" strokeWidth={2} />
-              <span className="truncate">{note}</span>
+            <span
+              role="note"
+              className={cn(
+                'flex items-center gap-1 truncate text-[11px] leading-tight',
+                note.tone === 'warn' ? 'text-amber-300/85 light:text-amber-700' : 'text-zinc-500',
+              )}
+              title={note.long}
+            >
+              {note.tone === 'warn' && <InfoIcon className="size-3 shrink-0" strokeWidth={2} />}
+              <span className="truncate">{note.long}</span>
             </span>
           ) : (
             <span className="block truncate text-[11px] leading-tight text-zinc-500">{hostOf(tab.url)}</span>
           )}
         </span>
+        {note?.reload && (
+          <button
+            type="button"
+            onClick={() => settle(window.vela.tabs.reload(tab.id))}
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-medium text-amber-200/90 transition-[background-color,color] duration-150 outline-none hover:bg-amber-300/[0.12] hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] light:text-amber-700 light:hover:bg-amber-500/10"
+          >
+            <RotateCwIcon className="size-3.5" strokeWidth={1.75} />
+            Reload
+          </button>
+        )}
         <button
           type="button"
           disabled={neutral}
@@ -100,7 +113,7 @@ export function TabDetail({ tab, settings, routing }: { tab: TabState; settings:
           Equalizer
         </SectionLabel>
         <div className="mt-1 h-[172px] rounded-xl bg-foreground/[0.025] ring-1 ring-foreground/[0.06] ring-inset">
-          <EqGraph tabId={tab.id} settings={settings} onBand={setBand} live={routing === 'full'} />
+          <EqGraph tabId={tab.id} settings={settings} onBand={setBand} live={routing === 'full' || (tab.audible && routing === 'idle')} />
         </div>
         <div role="radiogroup" aria-label="Equalizer preset" className="mt-2 flex flex-wrap gap-1">
           {PRESET_IDS.map((id) => {

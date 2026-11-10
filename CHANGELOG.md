@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Audio mixer: a tab that is playing but was never adjusted no longer says "No sound yet"; it shows live meters
+  while the mixer is open.
+- Audio mixer: the first change on a YouTube video that is already playing now applies immediately. Before, the
+  live install crashed on the page's patched `Function.prototype.toString` and nothing was processed until reload.
+- Audio mixer: sound that was already playing when the first change came in (a running page AudioContext, a
+  detached `new Audio()`, media inside a shadow root) is now taken over live. If it still can't be reached, the
+  mixer says "Reload to apply" and offers a reload button instead of failing without a message.
+- Audio mixer: the routing status now follows playback starting and stopping and goes back to neutral when the
+  settings are reset.
+
 ## [0.4.0] - 2026-11-10
 
 ### Added

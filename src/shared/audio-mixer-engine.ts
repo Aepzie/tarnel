@@ -23,4 +23,19 @@ export interface MixerEngineHandle {
   report(levels: boolean): RealmAudioReport;
   /** Re-reads the processing context's `destination`, so a live audio-devices route steers it too. */
   touch(): void;
+  /** True when the element's audio already reaches a chain (the level tap then leaves it alone). */
+  owns(element: unknown): boolean;
+  /**
+   * Live install, sound already playing out of reach: main hands over every AudioNode and media
+   * element of the realm (found with the DevTools protocol's heap query). Nodes feeding a realtime
+   * destination are moved into the chain, playing media are routed. Returns how many were taken over.
+   */
+  adopt(nodes: unknown, media: unknown): number;
+}
+
+/** Installed under `Symbol.for('vela.mixer-tap')` while the mixer panel meters a tab without processing. */
+export interface MixerTapHandle {
+  /** Levels of the media the engine does not own; `found` = this realm has playing media to meter. */
+  read(): RealmAudioReport & { found: boolean };
+  release(): void;
 }
