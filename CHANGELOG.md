@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Extensions store at `vela://extensions`: a curated, privacy-first catalog (uBlock Origin Lite, Privacy Badger, Bitwarden, Proton Pass, Dark Reader, SponsorBlock, React DevTools and more) with install, enable/disable, options and remove, an Installed view, a filter and a "Search the Chrome Web Store" shortcut. Every install still goes through the permission review.
+- "Add to Vela" button in the toolbar while a Chrome Web Store extension page is open.
+- "Browse extensions" in the extensions menu and Settings → Extensions, and an "Extensions store" palette command.
+
 ## [0.7.1] - 2026-11-10
 
 First published build of the 0.7 line (the v0.7.0 tag was never released because its macOS packaging failed in CI).
