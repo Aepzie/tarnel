@@ -7,7 +7,7 @@ import { formatBytesMB, formatCount, velaPages } from '@/lib/vela';
 import { AnimatedNumber } from '../components/brand';
 import { Segmented, type SegmentOption } from '../components/controls';
 import { FrameRateGroup } from '../components/frame-rate';
-import { Group, Row, SectionHeader } from '../components/layout';
+import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 
 const SLEEP_OPTIONS: readonly SegmentOption<string>[] = [
@@ -149,6 +149,11 @@ export function Performance() {
             />
           </Row>
         )}
+        <SwitchRow
+          title="Preload pages from the address bar"
+          setting="preloadPages"
+          description="Fetch the suggested page while you hover or arrow to it, so it opens faster."
+        />
       </Group>
 
       <FrameRateGroup />

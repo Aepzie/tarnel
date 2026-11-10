@@ -1,3 +1,5 @@
+import type { SecureDnsMode } from './doh';
+
 export type SpaceId = string;
 
 export type SpaceColor =
@@ -20,6 +22,10 @@ export interface Space {
   proxy: string;
   /** Per-space fingerprint protection. Burner spaces default to 'strict'. */
   fingerprint: FingerprintLevel;
+  /** Timezone pages see (protected Spaces only); see TIMEZONE_* in shared/fingerprint. Missing = automatic. */
+  timezone?: string;
+  /** Language pages see (protected Spaces only); '' or missing = system. */
+  language?: string;
   createdAt: number;
 }
 
@@ -32,6 +38,8 @@ export interface SpaceInput {
   ephemeral: boolean;
   proxy?: string;
   fingerprint?: FingerprintLevel;
+  timezone?: string;
+  language?: string;
 }
 
 export interface TabState {
@@ -180,6 +188,10 @@ export interface Settings {
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
+  /** Strip click/share tracking parameters (src/shared/url-clean.ts) from top-level navigations and copied links. */
+  removeTrackingParams: boolean;
+  /** Cross-site requests send only the origin as Referer; none on https → http. */
+  trimReferrers: boolean;
   restoreSession: boolean;
   /** Vertical tab layout: the tab island is collapsed to icons only. */
   sidebarCollapsed: boolean;
@@ -199,6 +211,20 @@ export interface Settings {
   updateAutoDownload: boolean;
   /** Offer pre-releases (e.g. 0.3.0-beta.1). */
   updatePrerelease: boolean;
+  /** Prefetch the top address-bar URL suggestion while the user lingers on it (docs/PERFORMANCE.md). */
+  preloadPages: boolean;
+  /** Panic button also deletes history entries visited in the last 15 minutes. */
+  panicClearRecentHistory: boolean;
+  /** Warn before opening sites on the local phishing / malware blocklists. */
+  warnDangerousSites: boolean;
+  /** DNS-over-HTTPS resolver. Process-global (Electron's host resolver), not per Space. */
+  secureDns: SecureDnsMode;
+  /** Fail lookups instead of falling back to plain DNS when DoH fails (Chromium "secure" mode). */
+  secureDnsStrict: boolean;
+  /** NextDNS configuration ID or DoH URL; always valid or ''. */
+  secureDnsNextDns: string;
+  /** Custom DoH URI template; always valid or ''. */
+  secureDnsTemplate: string;
 }
 
 export interface Suggestion {
@@ -284,6 +310,7 @@ export type UICommand =
   | 'toggle-sidebar'
   | 'new-space'
   | 'audio-mixer'
+  | 'task-manager'
   | 'escape';
 
 export const SPACE_COLORS: readonly SpaceColor[] = [
@@ -308,6 +335,8 @@ export const DEFAULT_SETTINGS: Settings = {
   httpsOnly: true,
   blockThirdPartyCookies: true,
   sendDoNotTrack: true,
+  removeTrackingParams: true,
+  trimReferrers: true,
   restoreSession: true,
   sidebarCollapsed: false,
   sidebarWidth: 240,
@@ -319,6 +348,13 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,
+  preloadPages: true,
+  panicClearRecentHistory: false,
+  warnDangerousSites: true,
+  secureDns: 'off',
+  secureDnsStrict: false,
+  secureDnsNextDns: '',
+  secureDnsTemplate: '',
 };
 
 /** Where an installed extension came from. */
@@ -326,6 +362,37 @@ export type ExtensionSource = 'store' | 'unpacked';
 
 /** 'all' = every non-burner Space, including ones created later; otherwise exactly these Spaces. */
 export type ExtensionSpaces = 'all' | SpaceId[];
+
+export type PermissionRisk = 'low' | 'medium' | 'high';
+
+/** One requested permission in plain language. */
+export interface ExtensionPermission {
+  id: string;
+  label: string;
+  risk: PermissionRisk;
+}
+
+/**
+ * Where an extension may act. 'all' = what its manifest asks for; 'sites' = only the listed hosts
+ * (content scripts are not narrowed yet, see docs); 'click' = not loaded until its toolbar button is
+ * clicked (per launch).
+ */
+export type ExtensionSiteAccess = 'all' | 'sites' | 'click';
+
+/** Pending install: shown to the user before anything is added. */
+export interface ExtensionReview {
+  token: string;
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  source: ExtensionSource;
+  icon: string | null;
+  permissions: ExtensionPermission[];
+  risk: PermissionRisk;
+  /** Re-loading an unpacked folder that is already installed. */
+  update: boolean;
+}
 
 export interface ExtensionInfo {
   id: string;
@@ -342,12 +409,21 @@ export interface ExtensionInfo {
   hasOptions: boolean;
   /** Last load failure (e.g. unpacked folder moved); cleared on the next successful load. */
   error: string | null;
+  permissions: ExtensionPermission[];
+  risk: PermissionRisk;
+  siteAccess: ExtensionSiteAccess;
+  /** Hosts for siteAccess 'sites'. */
+  sites: string[];
+  /** siteAccess 'click' and its button was clicked in this launch. */
+  armed: boolean;
 }
 
 export interface ExtensionPatch {
   enabled?: boolean;
   spaces?: ExtensionSpaces;
   pinned?: boolean;
+  siteAccess?: ExtensionSiteAccess;
+  sites?: string[];
 }
 
 /** Toolbar action state of one extension for the active tab. */

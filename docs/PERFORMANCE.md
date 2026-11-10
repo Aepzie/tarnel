@@ -71,10 +71,23 @@ processes. On ad-heavy news and recipe sites this typically cuts page weight and
 microseconds per request (the engine is a compact pre-compiled matcher).
 
 - **Instant startup:** the compiled engine is cached as a binary in `userData/adblock-engine.bin`
-  and deserialized in milliseconds. Launch never waits on the network.
-- **Background refresh:** if the cache is older than 24 h, a fresh engine is fetched (through
-  Chromium's network stack, so proxies apply), written atomically (tmp + rename), and hot-swapped
-  into every Space.
+  and deserialized in milliseconds. Launch never waits on the network. The file starts with a key
+  header (`perf/adblock-cache.ts`: Ghostery `ENGINE_VERSION` + library version + list set), so a
+  library upgrade or list change is a cache miss, not a deserialize error.
+- **Measured** (Ghostery 2.20.3, prebuilt ads + tracking, ~6.9 MB cache; Node, same code path):
+  cold start without cache = network build **0.75–1.3 s** (median ~1.0 s); warm start from cache =
+  read + header check + deserialize **20–38 ms** (median ~30 ms). The main process logs which path
+  it took: `[adblock] engine ready from cache|network in N ms`.
+- **Ready before the first request:** each new session gates `whenSessionReady()` (via
+  `gateSessionReady`, which now combines gates from several hooks) on the first engine, so a
+  restored tab's first page load is already filtered. Warm, that wait is the ~30 ms above. Cold
+  (first run / unusable cache) the gate is capped at 3 s; past that, pages load unblocked until the
+  engine arrives and is applied to every session. Adblock off never gates.
+- **Background refresh:** whenever the engine is older than 24 h (checked at launch and hourly
+  while running), a fresh engine is fetched (through Chromium's network stack, so proxies apply),
+  written atomically (tmp + rename), and hot-swapped into every Space in one synchronous step.
+  Only one refresh runs at a time.
+- **Corrupt cache:** an unreadable or foreign cache file is deleted and rebuilt from the network.
 - **Cosmetic filtering** (hiding leftover ad slots) runs through the library's preload, registered
   with `session.registerPreloadScript`. It only needs `ipcRenderer`, so it works in sandboxed tabs.
 - **Fail-open:** offline first run, corrupt cache, CDN outage → browsing continues unblocked.
@@ -96,6 +109,36 @@ Restored tabs come back **asleep**: only the active tab gets a renderer at launc
 ### 6. Preconnect on intent
 Hovering or arrowing onto an address-bar suggestion preconnects (DNS + TCP + TLS) to that origin, so
 by the time you press Enter the handshake — often 100–300 ms on mobile networks — is already done.
+
+**Address-bar prefetch** (`src/main/perf/prerender.ts`, Settings → Performance → "Preload pages from
+the address bar", on by default). When the selection rests on a URL suggestion for 150 ms, Vela opens
+two sockets to the origin and fetches the main document once (GET, `Sec-Purpose: prefetch`) through
+the Space's own session, into the HTTP cache. Nothing is rendered and no script runs, so a wrong guess
+costs one request. Guard rails: https only (plain http only on loopback, for local testing); never
+search-engine pages; never in a Burner Space or when the active tab is routed through MantelVPN (the
+request would leave the tunnel); one prefetch in flight, at most 3 per minute, the same URL at most
+once a minute, 2 MB / 10 s cap.
+
+It only pays off when the document is cacheable. Local test server with 250 ms server latency,
+median of 5 navigations (palette → Enter to `pageshow`):
+
+| Document | No prefetch | Prefetched |
+|---|---|---|
+| `Cache-Control: max-age=60` | 291 ms | 25 ms (server hit once — navigation served from cache) |
+| no cache headers | 287 ms | 274 ms (server hit twice — no gain beyond the warm connection) |
+
+Most HTML is `no-cache`, so on the real web the main win is still the warm connection; the extra GET
+is the cost. Chromium's real prerender / NoStatePrefetch and Speculation Rules can't be driven from
+the browser UI in Electron, which is why this uses a plain cached fetch.
+
+**Back/forward cache: not available in Electron 45.** Tested A → B → Back on a local page with
+`--enable-features=BackForwardCache`: `pageshow.persisted` stays `false` and Chromium reports
+`BackForwardCacheDisabledForDelegate` (Electron's `WebContentsDelegate` does not opt in to bfcache —
+only an Electron change can), plus `UnloadHandlerExistsInMainFrame` from an isolated-world listener that
+is not in Vela's source (the page's main world has none; Vela's preloads register no
+`unload`/`beforeunload`), most likely Electron's renderer init. The flag is therefore not set: it buys
+nothing and changes BrowsingInstance swapping. Back navigation to a same-origin page measured ~30 ms
+median either way (normal HTTP-cache reload).
 
 ### 7. Chromium switches (`src/main/perf/flags.ts`)
 Only switches that are stable and safe on every GPU. Launch with `VELA_NO_FLAGS=1` to skip all of
@@ -176,6 +219,23 @@ memory of the renderer processes only that tab used (its page process plus out-o
 processes shared with another awake tab count as 0). Tabs restored asleep at launch were never
 measured; they are estimated from the average awake web-page renderer (the UI renderer excluded,
 80 MB fallback).
+
+### Task manager
+
+`Shift+Esc`, the palette ("Task manager") or the activity button in the perf popover open a per-process
+breakdown (`src/main/perf/task-manager.ts`, pure mapping in `src/shared/task-manager.ts`). It costs
+nothing while closed: the chrome asks for one snapshot per second only while the panel is open.
+
+Each snapshot is one `app.getAppMetrics()` call mapped by OS pid: a tab owns its page renderer plus
+out-of-process iframes (`webContents.getOSProcessId()`, `mainFrame.framesInSubtree[].osProcessId`),
+the Vela UI renderer gets its own row, and Browser, GPU and utility processes (Network, Audio, Storage
+service…) are listed by type and service name. Same-site tabs can share a renderer: each row then shows
+the whole process, marked "shared", while the footer totals count every process once. Extension
+background pages are mapped by pid; MV3 service workers only expose Chromium's render-process id, so
+they are matched to the remaining unowned renderers by creation order only when the counts agree
+(otherwise those show as "Renderer (spare or extension)"). Per-process network rates are not exposed by
+Electron and are not shown. "End process" calls `forcefullyCrashRenderer()`, so the tab shows its crash
+page (background tabs reload when next activated).
 
 ## Memory: measured
 

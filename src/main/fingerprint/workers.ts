@@ -22,6 +22,18 @@ import { protectMainWorld } from '../../preload/fingerprint-main-world';
 
 export type ConfigLookup = (session: Session, url: string) => FingerprintConfig | null;
 
+/** Timezone / ICU locale a tab's renderers use; null fields = the system's. */
+export interface EmulationSettings {
+  timezone: string | null;
+  locale: string | null;
+}
+
+export interface WorkerGuard {
+  stop: () => void;
+  /** Re-applies the current emulation settings (Space changed, or another tab released a shared renderer). */
+  refresh: () => void;
+}
+
 type CdpParams = Record<string, unknown>;
 
 interface TargetInfo {
@@ -56,7 +68,7 @@ function patchExpression(config: FingerprintConfig): string {
  * until the returned function is called. Returns null if the tab's debugger is unavailable (another
  * client owns it): workers then stay unpatched, like before.
  */
-export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => void) | null {
+export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup, emulation: () => EmulationSettings): WorkerGuard | null {
   const client = wc.debugger;
   if (client.isAttached()) return null;
   try {
@@ -87,9 +99,24 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
    * commands in order, so workers are resumed right away (patch, auto-attach, resume).
    */
   const watchAndResume = (child: string): void => {
+    emulate(child);
     const resume = (): void => send('Runtime.runIfWaitingForDebugger', {}, child);
     client.sendCommand('Target.setAutoAttach', AUTO_ATTACH, child).then(resume, resume);
   };
+
+  /**
+   * Native timezone / locale override (Emulation domain): Chromium applies it to the renderer
+   * process, so the page, its same-process iframes and every dedicated worker of that process agree,
+   * including Date, Intl and toLocale*. Out-of-process iframes get it on their own session. The
+   * override is process-wide: a second tab sharing the renderer gets "already in effect" (same
+   * Space, same value), and refresh() re-claims it when the owning tab goes away.
+   */
+  const emulate = (sessionId?: string): void => {
+    const settings = emulation();
+    send('Emulation.setTimezoneOverride', { timezoneId: settings.timezone ?? '' }, sessionId);
+    send('Emulation.setLocaleOverride', settings.locale ? { locale: settings.locale } : {}, sessionId);
+  };
+  const frameSessions = new Set<string>();
 
   const onAttached = (params: CdpParams, parentSession: string | undefined): void => {
     const child = params.sessionId as string;
@@ -100,6 +127,7 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
       send('Target.setAutoAttach', AUTO_ATTACH, child);
       send('Runtime.runIfWaitingForDebugger', {}, child);
     } else if (target.type === 'iframe' || target.type === 'page') {
+      frameSessions.add(child);
       watchAndResume(child);
     } else {
       send('Runtime.runIfWaitingForDebugger', {}, child);
@@ -148,6 +176,7 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
         const target = params.targetInfo as TargetInfo;
         if (target.type === 'shared_worker') onSharedWorkerCreated(target);
       } else if (method === 'Target.targetDestroyed') forgetSharedWorker(params.targetId as string);
+      else if (method === 'Target.detachedFromTarget') frameSessions.delete(params.sessionId as string);
     } catch {
       /* never break the tab */
     }
@@ -162,6 +191,7 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
 
   client.on('message', onMessage);
   client.on('detach', release);
+  emulate();
   send('Target.setAutoAttach', AUTO_ATTACH);
   client
     .sendCommand('Target.getTargetInfo')
@@ -171,7 +201,7 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
     })
     .catch(() => undefined);
 
-  return () => {
+  const stop = (): void => {
     release();
     try {
       if (!wc.isDestroyed() && client.isAttached()) client.detach();
@@ -179,6 +209,12 @@ export function protectWorkersOf(wc: WebContents, lookup: ConfigLookup): (() => 
       /* already gone */
     }
   };
+  const refresh = (): void => {
+    if (wc.isDestroyed() || !client.isAttached()) return;
+    emulate();
+    for (const sessionId of frameSessions) emulate(sessionId);
+  };
+  return { stop, refresh };
 }
 
 /**

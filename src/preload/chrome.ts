@@ -1,8 +1,10 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { AUDIO_IPC, EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
+import { AUDIO_IPC, EXTENSION_IPC, IPC, PANIC_IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
+import { SITE_IPC } from '../shared/site-data';
+import { TASK_MANAGER_IPC } from '../shared/task-manager';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -134,6 +136,8 @@ const api: VelaChromeAPI = {
     openOptions: (id) => invoke(X.options, id),
   },
 
+  panic: () => invoke(PANIC_IPC.run),
+
   mediaDevices: {
     set: (tabId, slot, choice) => invoke(AUDIO_IPC.setDevice, tabId, slot, choice),
   },
@@ -155,6 +159,16 @@ const api: VelaChromeAPI = {
     disconnect: () => invoke(VPN_IPC.disconnect),
     routeTab: (tabId, country) => invoke(VPN_IPC.routeTab, tabId, country),
     onState: (cb) => subscribe(VPN_IPC.changed, cb),
+  },
+  site: {
+    info: (tabId) => invoke(SITE_IPC.info, tabId),
+    clear: (tabId) => invoke(SITE_IPC.clear, tabId),
+    resetPermission: (tabId, key) => invoke(SITE_IPC.resetPermission, tabId, key),
+    setOnClose: (tabId, action) => invoke(SITE_IPC.setOnClose, tabId, action),
+  },
+  taskManager: {
+    snapshot: () => invoke(TASK_MANAGER_IPC.snapshot),
+    endProcess: (tabId) => invoke(TASK_MANAGER_IPC.endProcess, tabId),
   },
 };
 

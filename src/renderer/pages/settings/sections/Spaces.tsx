@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { LANGUAGE_OPTIONS, RegionSelect, TIMEZONE_HINT, TIMEZONE_OPTIONS } from '@/chrome/spaces/FingerprintPicker';
 import { ConfirmActions } from '../components/confirm';
 import { Segmented, Swatches, type SegmentOption } from '../components/controls';
 import { Row, SectionHeader } from '../components/layout';
@@ -166,6 +167,11 @@ function SpaceCard({
     });
   };
 
+  const pickRegion = (patch: Pick<SpaceInput, 'timezone' | 'language'>) => {
+    setFingerprintError(null);
+    save(patch).catch((error) => setFingerprintError(errorText(error, 'Could not change this setting')));
+  };
+
   const hex = SPACE_HEX[color];
 
   return (
@@ -250,6 +256,26 @@ function SpaceCard({
             <Segmented label={`Fingerprint protection for ${space.name}`} value={fingerprint} options={FINGERPRINT_OPTIONS} onChange={pickFingerprint} />
             <FieldError id={`${id}-fingerprint-error`} message={fingerprintError} />
           </div>
+        </Row>
+        <Row title="Timezone" description={TIMEZONE_HINT}>
+          <RegionSelect
+            label={`Timezone for ${space.name}`}
+            value={space.timezone ?? ''}
+            options={TIMEZONE_OPTIONS}
+            disabled={fingerprint === 'off'}
+            onChange={(timezone) => pickRegion({ timezone })}
+            className="w-44"
+          />
+        </Row>
+        <Row title="Language" description="navigator.languages, Intl and Accept-Language for this Space.">
+          <RegionSelect
+            label={`Language for ${space.name}`}
+            value={space.language ?? ''}
+            options={LANGUAGE_OPTIONS}
+            disabled={fingerprint === 'off'}
+            onChange={(language) => pickRegion({ language })}
+            className="w-44"
+          />
         </Row>
       </div>
 

@@ -1,19 +1,23 @@
 import { app, ipcMain, net } from 'electron';
-import { readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { ElectronBlocker, type Request } from '@ghostery/adblocker-electron';
+import { ENGINE_VERSION, ElectronBlocker, type Request } from '@ghostery/adblocker-electron';
+import { cacheKey, decodeCache, encodeCache } from './adblock-cache';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
-import { onSessionRemoved } from '../spaces';
+import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
 import { createStore, type JsonStore } from '../store';
 
 /**
  * Network-level content blocking (Ghostery engine: EasyList + EasyPrivacy + uBO-style lists).
  *
  * Startup path is designed to never wait on the network: the compiled engine is cached as a
- * serialized binary in userData and deserialized in a few ms. If the cache is stale (>24h) a fresh
- * engine is built in the background and hot-swapped into every session. Any failure leaves the
- * browser working, just unblocked.
+ * serialized binary in userData (keyed by Ghostery version + list set, see adblock-cache.ts) and
+ * deserialized in a few ms. Whenever the engine is older than 24h (checked at start and hourly) a
+ * fresh one is built in the background and hot-swapped into every session in one synchronous step,
+ * so no request sees a half-swapped state. New sessions gate whenSessionReady() on the first engine,
+ * so the first page request is already filtered; on a cold first run without cache that gate is
+ * capped (READY_GATE_MAX_MS). Any failure leaves the browser working, just unblocked.
  */
 
 type BlockedListener = (webContentsId: number, url: string) => void;
@@ -22,7 +26,12 @@ interface StatsStore {
 }
 
 const CACHE_FILE = 'adblock-engine.bin';
+const LIST_SET = 'prebuilt-ads-tracking';
 const REFRESH_AFTER_MS = 24 * 60 * 60 * 1000;
+const REFRESH_CHECK_MS = 60 * 60 * 1000;
+// Cold first run (no cache): how long new sessions wait for the network-built engine before pages
+// load unblocked. A warm start resolves in a few ms, far below this.
+const READY_GATE_MAX_MS = 3_000;
 // Retry schedule while no engine could be loaded (offline first run): 30s, 60s, 2m, ... capped at 30m.
 const RETRY_BASE_MS = 30_000;
 const RETRY_MAX_MS = 30 * 60_000;
@@ -39,12 +48,29 @@ let enabled = true;
 let initStarted = false;
 let stats: JsonStore<StatsStore> | null = null;
 let blockedTotal = 0;
+let engineBuiltAt = 0;
+let refreshing = false;
+let markReady: () => void = () => undefined;
+const ready = new Promise<void>((resolve) => {
+  markReady = resolve;
+});
+let readyGate: Promise<void> | null = null;
 const sessions = new Set<Electron.Session>();
 const listeners = new Set<BlockedListener>();
 
 function cachePath(): string {
   return path.join(app.getPath('userData'), CACHE_FILE);
 }
+
+function libraryVersion(): string {
+  try {
+    return (require('@ghostery/adblocker-electron/package.json') as { version: string }).version;
+  } catch {
+    return 'unknown';
+  }
+}
+
+const CACHE_KEY = cacheKey({ engineVersion: ENGINE_VERSION, libraryVersion: libraryVersion(), lists: LIST_SET });
 
 /** `net.fetch` honours the system / Chromium proxy configuration, unlike Node's global fetch. */
 function fetchImpl(url: string): Promise<Response> {
@@ -54,24 +80,34 @@ function fetchImpl(url: string): Promise<Response> {
 async function writeCache(engine: ElectronBlocker): Promise<void> {
   const file = cachePath();
   const tmp = `${file}.tmp`;
-  await writeFile(tmp, engine.serialize());
+  await writeFile(tmp, encodeCache(CACHE_KEY, engine.serialize()));
   await rename(tmp, file); // atomic: a crash mid-write never leaves a truncated engine behind
 }
 
-async function loadFromCache(): Promise<{ engine: ElectronBlocker; ageMs: number } | null> {
+async function loadFromCache(): Promise<{ engine: ElectronBlocker; builtAt: number } | null> {
+  const file = cachePath();
+  let bytes: Buffer;
+  let builtAt: number;
   try {
-    const file = cachePath();
-    const [info, bytes] = await Promise.all([stat(file), readFile(file)]);
-    // Throws on corrupt data or on a serialization-format bump after a library upgrade.
-    const engine = ElectronBlocker.deserialize(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
-    return { engine, ageMs: Date.now() - info.mtimeMs };
+    [{ mtimeMs: builtAt }, bytes] = await Promise.all([stat(file), readFile(file)]);
   } catch {
+    return null; // no cache yet
+  }
+  try {
+    const body = decodeCache(CACHE_KEY, new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+    if (!body) throw new Error('cache was built by another library version or list set');
+    // Throws on corrupt data; Ghostery also checks its own ENGINE_VERSION.
+    return { engine: ElectronBlocker.deserialize(body), builtAt };
+  } catch (err) {
+    console.warn('[adblock] discarding unusable engine cache; rebuilding', err);
+    await unlink(file).catch(() => undefined);
     return null;
   }
 }
 
 async function loadFromNetwork(): Promise<ElectronBlocker> {
   const engine = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetchImpl);
+  engineBuiltAt = Date.now();
   await writeCache(engine).catch(() => undefined); // caching is an optimisation, not a requirement
   return engine;
 }
@@ -185,6 +221,7 @@ function install(engine: ElectronBlocker): void {
   attachEvents(engine);
   blocker = engine;
   applyAll();
+  markReady();
 }
 
 function scheduleRetry(delayMs: number): void {
@@ -198,11 +235,19 @@ function scheduleRetry(delayMs: number): void {
 }
 
 async function refreshInBackground(): Promise<void> {
+  if (refreshing) return;
+  refreshing = true;
   try {
     install(await loadFromNetwork());
   } catch (err) {
     console.warn('[adblock] background refresh failed; keeping cached engine', err);
+  } finally {
+    refreshing = false;
   }
+}
+
+function refreshIfStale(): void {
+  if (blocker && Date.now() - engineBuiltAt > REFRESH_AFTER_MS) void refreshInBackground();
 }
 
 export async function initAdblock(): Promise<void> {
@@ -229,16 +274,30 @@ export async function initAdblock(): Promise<void> {
     if (blocker) disableIn(blocker, session);
   });
 
+  // First page loads of every new session wait for the engine (capped for the cold, uncached case).
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, READY_GATE_MAX_MS).unref());
+  readyGate = Promise.race([ready, timeout]);
+  onSessionCreated((_session, space) => {
+    if (enabled && !blocker && readyGate) gateSessionReady(space.id, readyGate);
+  });
+
+  setInterval(refreshIfStale, REFRESH_CHECK_MS).unref();
+
+  const startedAt = performance.now();
   try {
     const cached = await loadFromCache();
     if (cached) {
+      engineBuiltAt = cached.builtAt;
       install(cached.engine);
-      if (cached.ageMs > REFRESH_AFTER_MS) void refreshInBackground();
+      console.info(`[adblock] engine ready from cache in ${Math.round(performance.now() - startedAt)} ms`);
+      refreshIfStale();
       return;
     }
     install(await loadFromNetwork());
+    console.info(`[adblock] engine ready from network in ${Math.round(performance.now() - startedAt)} ms`);
   } catch (err) {
     // Offline first run or CDN outage: browse unblocked rather than fail.
+    markReady();
     console.warn('[adblock] engine unavailable, continuing without blocking; will retry', err);
     scheduleRetry(RETRY_BASE_MS);
   }

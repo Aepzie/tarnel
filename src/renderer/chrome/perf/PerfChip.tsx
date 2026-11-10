@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Check, Cpu, Gauge, Layers, Leaf, Moon, Settings2, ShieldCheck } from 'lucide-react';
+import { Activity, Check, Cpu, Gauge, Layers, Leaf, Moon, Settings2, ShieldCheck } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useOverlayPresence } from '@/hooks/overlay';
 import { shallowEqual, useBrowserSlice, usePerf } from '@/hooks/browser';
@@ -8,6 +8,7 @@ import { formatBytesMB, formatCount, settle, vela } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { GLASS_SURFACE } from '../spaces/surface';
+import { taskManager } from '../task-manager/task-manager-store';
 import { AnimatedNumber } from './AnimatedNumber';
 import { SPARK_SAMPLES, Sparkline } from './Sparkline';
 
@@ -202,6 +203,18 @@ export function PerfChip() {
                 )}
               </motion.span>
             </AnimatePresence>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              taskManager.open();
+            }}
+            aria-label="Open task manager"
+            title="Task manager (Shift Esc)"
+            className="grid size-8 place-items-center rounded-[10px] text-muted-foreground transition-[background-color,color,transform] duration-150 outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]"
+          >
+            <Activity className="size-3.5" strokeWidth={1.75} />
           </button>
           <button
             type="button"
