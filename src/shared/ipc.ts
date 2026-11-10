@@ -23,10 +23,12 @@ import type {
   UICommand,
   UpdateStatus,
 } from './types';
-import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } from './types';
+import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionReview, ExtensionsState } from './types';
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
+import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
+import type { TaskSnapshot } from './task-manager';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -358,7 +360,18 @@ export const EXTENSION_IPC = {
   reload: 'pages:extension-reload',
   remove: 'pages:extension-remove',
   pageOptions: 'pages:extension-options',
+  confirmInstall: 'pages:extension-confirm-install',
+  cancelInstall: 'pages:extension-cancel-install',
 } as const;
+
+export const PANIC_IPC = {
+  run: 'chrome:panic',
+} as const;
+
+/** Panic button: wipe Burners, mute, drop VPN routes, hide the window. See src/main/panic.ts. */
+export interface VelaChromeAPI {
+  panic(): Promise<void>;
+}
 
 export interface VelaChromeAPI {
   extensions: {
@@ -368,6 +381,29 @@ export interface VelaChromeAPI {
     activate(id: string, anchor: ExtensionAnchor, kind?: 'click' | 'contextmenu'): Promise<void>;
     setPinned(id: string, pinned: boolean): Promise<void>;
     openOptions(id: string): Promise<void>;
+  };
+}
+
+/** Phishing & malware protection (vela:// pages only). */
+export const SAFETY_IPC = {
+  status: 'pages:safety-status',
+  proceed: 'pages:safety-proceed',
+} as const;
+
+export interface SafetyStatus {
+  enabled: boolean;
+  /** Entries (hosts + URLs) currently loaded. */
+  entries: number;
+  /** Newest successful list download, epoch ms; null before the first one. */
+  updatedAt: number | null;
+  sources: { name: string; license: string; entries: number }[];
+}
+
+export interface VelaPagesAPI {
+  safety: {
+    status(): Promise<SafetyStatus>;
+    /** Allowlist the URL's host until Vela quits (warning page → "Proceed anyway"). */
+    proceed(url: string): Promise<void>;
   };
 }
 
@@ -386,10 +422,14 @@ export interface VelaChromeAPI {
 export interface VelaPagesAPI {
   extensions: {
     list(): Promise<ExtensionInfo[]>;
-    /** Chrome Web Store URL or 32-letter extension ID. */
-    install(input: string): Promise<ExtensionInfo>;
-    /** Opens a folder picker; null when cancelled. */
-    loadUnpacked(): Promise<ExtensionInfo | null>;
+    /** Chrome Web Store URL or 32-letter extension ID. Downloads and stages it for review. */
+    install(input: string): Promise<ExtensionReview>;
+    /** Opens a folder picker and stages the folder for review; null when cancelled. */
+    loadUnpacked(): Promise<ExtensionReview | null>;
+    /** Adds a reviewed extension. */
+    confirmInstall(token: string): Promise<ExtensionInfo>;
+    /** Drops a staged extension (deletes downloaded store files). */
+    cancelInstall(token: string): Promise<void>;
     update(id: string, patch: ExtensionPatch): Promise<ExtensionInfo>;
     reload(id: string): Promise<ExtensionInfo>;
     remove(id: string): Promise<void>;
@@ -430,5 +470,44 @@ export interface VelaChromeAPI {
     /** Routes one tab through a MantelVPN country (own partition), or back to its Space with null. */
     routeTab(tabId: number, country: string | null): Promise<VpnResult>;
     onState(cb: (state: VpnState) => void): Unsubscribe;
+  };
+}
+
+/** Site info popover (chrome) and site-data-on-close policies (Settings → Privacy). Channels live in SITE_IPC (shared/site-data.ts). */
+export interface VelaChromeAPI {
+  site: {
+    /** Connection, cookies, storage, permissions and close policy of a tab's site; null for non-web pages. */
+    info(tabId: number): Promise<SiteInfo | null>;
+    /** Deletes the site's cookies and storage in the tab's Space. */
+    clear(tabId: number): Promise<SiteInfo | null>;
+    /** Forgets a remembered permission answer so the site has to ask again. */
+    resetPermission(tabId: number, key: SitePermissionKey): Promise<SiteInfo | null>;
+    /** Per-site "keep" / "delete when Vela closes"; null falls back to the Space default. */
+    setOnClose(tabId: number, action: SiteCloseAction | null): Promise<SiteInfo | null>;
+  };
+}
+
+export interface SpaceSiteDataPolicy {
+  spaceId: SpaceId;
+  name: string;
+  color: string;
+  policy: SiteDataPolicy;
+}
+
+export interface VelaPagesAPI {
+  siteData: {
+    /** Close policies of every persistent Space (burner Spaces are always wiped). */
+    list(): Promise<SpaceSiteDataPolicy[]>;
+    set(spaceId: SpaceId, policy: SiteDataPolicy): Promise<SpaceSiteDataPolicy[]>;
+  };
+}
+
+/** Task manager (chrome only). Channels live in TASK_MANAGER_IPC (shared/task-manager.ts). */
+export interface VelaChromeAPI {
+  taskManager: {
+    /** Per-tab / extension / service CPU and memory; poll only while the panel is open. */
+    snapshot(): Promise<TaskSnapshot>;
+    /** Crash the tab's renderer (shows the crash page). */
+    endProcess(tabId: number): Promise<void>;
   };
 }

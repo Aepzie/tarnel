@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Check, Flame, FolderOpen, Plus, Puzzle, RotateCw, Settings2, Trash } from 'lucide-react';
-import type { ExtensionInfo, ExtensionPatch, ExtensionSpaces, Space } from '@shared/types';
+import { AlertCircle, Check, Flame, FolderOpen, Plus, Puzzle, RotateCw, Settings2, ShieldAlert, Trash } from 'lucide-react';
+import type {
+  ExtensionInfo,
+  ExtensionPatch,
+  ExtensionPermission,
+  ExtensionReview,
+  ExtensionSiteAccess,
+  ExtensionSpaces,
+  PermissionRisk,
+  Space,
+} from '@shared/types';
 import { cn } from '@/lib/utils';
 import { ease, rise, spring } from '@/lib/motion';
 import { SPACE_HEX, velaPages } from '@/lib/vela';
@@ -43,7 +52,116 @@ function InlineError({ message }: { message: string | null }) {
   );
 }
 
-function ExtensionIcon({ extension, muted }: { extension: ExtensionInfo; muted: boolean }) {
+const chip =
+  'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ring-1 ring-inset outline-none transition-[background-color,color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] disabled:pointer-events-none';
+
+const RISK_DOT: Record<PermissionRisk, string> = {
+  high: 'bg-destructive',
+  medium: 'bg-amber-500',
+  low: 'bg-muted-foreground/40',
+};
+
+const RISK_LABEL: Record<PermissionRisk, string> = { high: 'High risk', medium: 'Medium risk', low: 'Low risk' };
+
+function PermissionList({ permissions }: { permissions: ExtensionPermission[] }) {
+  if (permissions.length === 0) {
+    return <p className="text-xs leading-5 text-muted-foreground">No special permissions.</p>;
+  }
+  return (
+    <ul className="flex flex-col gap-1">
+      {permissions.map((permission) => (
+        <li key={permission.id} className="flex items-start gap-2 text-xs leading-5">
+          <span aria-hidden className={cn('mt-[7px] size-1.5 shrink-0 rounded-full', RISK_DOT[permission.risk])} />
+          <span className="min-w-0 flex-1">{permission.label}</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">{RISK_LABEL[permission.risk]}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function HighRiskBadge({ risk }: { risk: PermissionRisk }) {
+  if (risk !== 'high') return null;
+  return (
+    <Badge variant="outline" title="Can read or control a lot of what you do" className="shrink-0 gap-1 text-[10.5px] text-destructive">
+      <ShieldAlert className="size-3" strokeWidth={2} aria-hidden />
+      High access
+    </Badge>
+  );
+}
+
+const SITE_ACCESS: { value: ExtensionSiteAccess; label: string }[] = [
+  { value: 'all', label: 'On all sites' },
+  { value: 'sites', label: 'On specific sites' },
+  { value: 'click', label: 'On click' },
+];
+
+function siteAccessHelp(extension: ExtensionInfo): string {
+  if (extension.siteAccess === 'click') {
+    return extension.armed
+      ? 'Running until Vela restarts. Reload a page to let it act there.'
+      : 'Stays off until you click its toolbar button (once per launch).';
+  }
+  if (extension.siteAccess === 'sites') {
+    return 'Saved for these sites. Its content scripts still follow the manifest, so use On click or Spaces for a hard limit.';
+  }
+  return 'Runs everywhere its manifest allows.';
+}
+
+function SitesEditor({ sites, onSave }: { sites: string[]; onSave: (next: string[]) => void }) {
+  const [text, setText] = useState(sites.join(', '));
+  useEffect(() => setText(sites.join(', ')), [sites]);
+  const commit = (): void => {
+    const next = text.split(/[\s,]+/).filter(Boolean);
+    if (next.join(',') !== sites.join(',')) onSave(next);
+  };
+  return (
+    <Input
+      value={text}
+      spellCheck={false}
+      aria-label="Sites"
+      placeholder="example.com, github.com"
+      onChange={(event) => setText(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') commit();
+      }}
+      className="h-8 w-72 rounded-lg font-mono text-xs md:text-xs"
+    />
+  );
+}
+
+function SiteAccessPicker({ extension, onSave }: { extension: ExtensionInfo; onSave: (patch: ExtensionPatch) => void }) {
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <div role="radiogroup" aria-label="Site access" className="flex flex-wrap justify-end gap-1.5">
+        {SITE_ACCESS.map((option) => {
+          const on = extension.siteAccess === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              disabled={!extension.enabled}
+              onClick={() => onSave({ siteAccess: option.value })}
+              className={cn(
+                chip,
+                on ? 'bg-accent text-foreground ring-border' : 'text-muted-foreground ring-border/60 hover:bg-accent hover:text-foreground',
+                !extension.enabled && 'opacity-50',
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      {extension.siteAccess === 'sites' && <SitesEditor sites={extension.sites} onSave={(sites) => onSave({ sites })} />}
+    </div>
+  );
+}
+
+function ExtensionIcon({ extension, muted }: { extension: { icon: string | null }; muted: boolean }) {
   return (
     <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-muted ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]">
       {extension.icon ? (
@@ -80,9 +198,6 @@ function SpacePicker({
     const next = current.includes(space.id) ? current.filter((id) => id !== space.id) : [...current, space.id];
     onChange(next.length === regular.length ? 'all' : next);
   };
-
-  const chip =
-    'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ring-1 ring-inset outline-none transition-[background-color,color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] disabled:pointer-events-none';
 
   return (
     <div role="group" aria-label="Spaces" className="flex max-w-80 flex-wrap justify-end gap-1.5">
@@ -207,6 +322,7 @@ function ExtensionCard({
                 Unpacked
               </Badge>
             )}
+            <HighRiskBadge risk={extension.risk} />
           </div>
           {extension.description && (
             <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{extension.description}</p>
@@ -246,6 +362,13 @@ function ExtensionCard({
             onChange={(next) => save({ spaces: next })}
           />
         </Row>
+        <Row title="Site access" description={siteAccessHelp(extension)} className="items-start">
+          <SiteAccessPicker extension={extension} onSave={save} />
+        </Row>
+        <div className="px-4 py-3">
+          <p className="mb-1.5 text-[13px] leading-5 font-medium">Permissions</p>
+          <PermissionList permissions={extension.permissions} />
+        </div>
         <Row title="Pin to toolbar" description="Show its button in the top island." htmlFor={`${id}-pinned`}>
           <Switch id={`${id}-pinned`} checked={extension.pinned} onCheckedChange={(pinned) => save({ pinned })} />
         </Row>
@@ -305,8 +428,9 @@ function InstallCard({ onInstalled }: { onInstalled: (extension: ExtensionInfo) 
   const { markSaved } = useSettings();
   const id = useId();
   const [input, setInput] = useState('');
-  const [busy, setBusy] = useState<'store' | 'unpacked' | null>(null);
+  const [busy, setBusy] = useState<'store' | 'unpacked' | 'confirm' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [review, setReview] = useState<ExtensionReview | null>(null);
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -315,8 +439,7 @@ function InstallCard({ onInstalled }: { onInstalled: (extension: ExtensionInfo) 
     setBusy('store');
     setError(null);
     try {
-      onInstalled(await velaPages().extensions.install(value));
-      markSaved();
+      setReview(await velaPages().extensions.install(value));
       setInput('');
     } catch (failure) {
       setError(errorText(failure, 'Could not add the extension'));
@@ -331,16 +454,37 @@ function InstallCard({ onInstalled }: { onInstalled: (extension: ExtensionInfo) 
     setError(null);
     try {
       const loaded = await velaPages().extensions.loadUnpacked();
-      if (loaded) {
-        onInstalled(loaded);
-        markSaved();
-      }
+      if (loaded) setReview(loaded);
     } catch (failure) {
       setError(errorText(failure, 'Could not load the folder'));
     } finally {
       setBusy(null);
     }
   };
+
+  const confirm = async (): Promise<void> => {
+    if (!review || busy) return;
+    setBusy('confirm');
+    setError(null);
+    try {
+      onInstalled(await velaPages().extensions.confirmInstall(review.token));
+      markSaved();
+      setReview(null);
+    } catch (failure) {
+      setError(errorText(failure, 'Could not add the extension'));
+      setReview(null);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const cancel = (): void => {
+    if (!review) return;
+    void velaPages().extensions.cancelInstall(review.token).catch(() => undefined);
+    setReview(null);
+  };
+
+  if (review) return <ReviewCard review={review} busy={busy === 'confirm'} onConfirm={() => void confirm()} onCancel={cancel} />;
 
   return (
     <motion.form variants={rise} onSubmit={(event) => void submit(event)} autoComplete="off" className={cn(cardClass, 'mb-6')}>
@@ -393,6 +537,51 @@ function InstallCard({ onInstalled }: { onInstalled: (extension: ExtensionInfo) 
         </Button>
       </footer>
     </motion.form>
+  );
+}
+
+function ReviewCard({
+  review,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  review: ExtensionReview;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const verb = review.update ? 'Reload' : 'Add';
+  return (
+    <motion.section {...cardMotion} aria-label={`Review ${review.name}`} className={cn(cardClass, 'mb-6')}>
+      <header className="flex items-center gap-3 px-4 pt-4 pb-3">
+        <ExtensionIcon extension={review} muted={false} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="truncate text-[15px] leading-6 font-semibold tracking-tight">
+              {verb} “{review.name}”?
+            </h2>
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{review.version}</span>
+            <HighRiskBadge risk={review.risk} />
+          </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {review.source === 'store' ? 'From the Chrome Web Store.' : 'Unpacked folder.'} It will be able to:
+          </p>
+        </div>
+      </header>
+      <div className="px-4 pb-4">
+        <PermissionList permissions={review.permissions} />
+      </div>
+      <footer className="flex items-center justify-end gap-2 border-t border-border bg-muted/40 px-2 py-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={busy} className="h-8 rounded-lg px-3 text-xs active:scale-[0.96]">
+          Cancel
+        </Button>
+        <Button type="button" size="sm" onClick={onConfirm} disabled={busy} autoFocus className="h-8 gap-1.5 rounded-lg px-3 text-xs active:scale-[0.96]">
+          {busy ? <RotateCw className="size-3.5 motion-safe:animate-spin" strokeWidth={2} aria-hidden /> : <Check className="size-3.5" strokeWidth={2} aria-hidden />}
+          {busy ? 'Adding…' : `${verb} extension`}
+        </Button>
+      </footer>
+    </motion.section>
   );
 }
 

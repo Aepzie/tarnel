@@ -249,11 +249,23 @@ export function protectMainWorld(config: FingerprintConfig): void {
     wrapMethod(realm.CanvasRenderingContext2D?.prototype, 'getImageData', readback);
     wrapMethod(realm.OffscreenCanvasRenderingContext2D?.prototype, 'getImageData', readback);
 
+    const fontMask = config.strict ? fontMasker(realm) : null;
     const textNoise = new WeakMap<object, number>();
     const measure = (original: Method): Method =>
       function (this: unknown, ...args: unknown[]) {
-        const metrics = apply(original, this, args) as TextMetrics;
-        const font = (this as CanvasRenderingContext2D).font;
+        const context = this as CanvasRenderingContext2D;
+        const font = context.font;
+        const masked = fontMask && typeof font === 'string' ? fontMask(font, realm.document?.fonts ?? (realm as unknown as { fonts?: unknown }).fonts) : null;
+        let metrics: TextMetrics;
+        if (masked === null) metrics = apply(original, this, args) as TextMetrics;
+        else {
+          context.font = masked;
+          try {
+            metrics = apply(original, this, args) as TextMetrics;
+          } finally {
+            context.font = font;
+          }
+        }
         const h = mix(hashString(`${String(args[0])}\u0000${font}`), k2);
         textNoise.set(metrics, 1 + ((h & 0xff) - 127.5) * 1e-7);
         return metrics;
@@ -331,6 +343,11 @@ export function protectMainWorld(config: FingerprintConfig): void {
     const navigatorProto: object | undefined = (realm.Navigator ?? workerNavigator)?.prototype;
     wrapGetter(navigatorProto, 'hardwareConcurrency', constant(config.cores));
     wrapGetter(navigatorProto, 'deviceMemory', constant(config.memory));
+    if (config.languages && config.languages.length > 0) {
+      const languages = Object.freeze(realm.Array.from(config.languages));
+      wrapGetter(navigatorProto, 'language', constant(languages[0]));
+      wrapGetter(navigatorProto, 'languages', constant(languages));
+    }
 
     const battery = (realm as unknown as { BatteryManager?: { prototype: object } }).BatteryManager?.prototype;
     wrapGetter(battery, 'charging', constant(true));
@@ -388,6 +405,76 @@ export function protectMainWorld(config: FingerprintConfig): void {
         return child;
       },
     );
+  };
+
+  /**
+   * Strict: installed fonts are a strong identifier, probed by measuring text in a candidate font
+   * (canvas measureText) or asking FontFaceSet.check. Families that are neither generic, nor common
+   * on this platform, nor loaded by the page itself (@font-face / FontFace) are answered as if they
+   * were not installed: they are swapped for a family that never exists, so the browser falls back
+   * exactly like it does for a missing font. Returns null when the font needs no change.
+   */
+  const fontMasker = (realm: Realm): ((font: string, faces: unknown) => string | null) => {
+    const generic = 'serif,sans-serif,monospace,cursive,fantasy,system-ui,ui-serif,ui-sans-serif,ui-monospace,ui-rounded,emoji,math,fangsong,-apple-system,blinkmacsystemfont';
+    const windows =
+      'arial,arial black,bahnschrift,calibri,cambria,cambria math,candara,comic sans ms,consolas,constantia,corbel,courier new,ebrima,franklin gothic medium,gabriola,gadugi,georgia,impact,ink free,javanese text,leelawadee ui,lucida console,lucida sans unicode,malgun gothic,marlett,microsoft himalaya,microsoft jhenghei,microsoft new tai lue,microsoft phagspa,microsoft sans serif,microsoft tai le,microsoft yahei,microsoft yi baiti,mingliu-extb,mongolian baiti,ms gothic,mv boli,myanmar text,nirmala ui,palatino linotype,segoe mdl2 assets,segoe print,segoe script,segoe ui,segoe ui emoji,segoe ui historic,segoe ui symbol,simsun,sitka,sylfaen,symbol,tahoma,times new roman,trebuchet ms,verdana,webdings,wingdings,yu gothic';
+    const mac =
+      'american typewriter,andale mono,arial,arial black,arial narrow,arial rounded mt bold,arial unicode ms,avenir,avenir next,baskerville,big caslon,bradley hand,brush script mt,chalkboard,chalkboard se,chalkduster,charter,cochin,comic sans ms,copperplate,courier,courier new,didot,futura,geneva,georgia,gill sans,helvetica,helvetica neue,herculanum,hoefler text,impact,lucida grande,luminari,marker felt,menlo,microsoft sans serif,monaco,noteworthy,optima,palatino,papyrus,phosphate,rockwell,savoye let,sf pro,sf mono,skia,snell roundhand,tahoma,times,times new roman,trattatello,trebuchet ms,verdana,zapfino';
+    const linux =
+      'dejavu sans,dejavu sans mono,dejavu serif,liberation mono,liberation sans,liberation serif,noto sans,noto serif,noto mono,noto color emoji,ubuntu,ubuntu mono,cantarell,droid sans,freesans,freeserif,freemono,arial,courier new,times new roman';
+    const platform = String((realm.navigator as Navigator | undefined)?.platform ?? '').toLowerCase();
+    const list = platform.startsWith('win') ? windows : platform.startsWith('mac') ? mac : linux;
+    const allowed = new Set(`${generic},${list}`.split(','));
+    const size = /(?:^|\s)(?:[\d.]+[a-z%]+|xx?x?-(?:small|large)|small|medium|large|smaller|larger)(?:\s*\/\s*\S+)?\s+(\S.*)$/i;
+    const faceSet = realm.FontFaceSet?.prototype;
+    const forEachFace = faceSet ? (getDescriptor(faceSet, 'forEach')?.value as Method | undefined) : undefined;
+    const faceProto = realm.FontFace?.prototype;
+    const faceFamily = faceProto ? (getDescriptor(faceProto, 'family')?.get as Getter | undefined) : undefined;
+    const clean = (name: string): string => name.trim().replace(/^["']|["']$/g, '').toLowerCase();
+    const pageFamilies = (faces: unknown): Set<string> => {
+      const names = new Set<string>();
+      if (!faces || !forEachFace || !faceFamily) return names;
+      try {
+        apply(forEachFace, faces, [(face: unknown) => names.add(clean(String(apply(faceFamily, face, []))))]);
+      } catch {
+        /* not a FontFaceSet */
+      }
+      return names;
+    };
+    return (font, faces) => {
+      const match = size.exec(font);
+      const familyList = match?.[1];
+      if (!match || !familyList) return null;
+      let own: Set<string> | null = null;
+      let changed = false;
+      const families = familyList.split(',').map((family) => {
+        const name = clean(family);
+        if (allowed.has(name)) return family;
+        own ??= pageFamilies(faces);
+        if (own.has(name)) return family;
+        changed = true;
+        return '"_"';
+      });
+      if (!changed) return null;
+      return font.slice(0, match.index + match[0].length - familyList.length) + families.join(',');
+    };
+  };
+
+  const protectFonts = (realm: Realm): void => {
+    const mask = fontMasker(realm);
+    wrapMethod(realm.FontFaceSet?.prototype, 'check', (original) =>
+      function (this: unknown, ...args: unknown[]) {
+        const masked = typeof args[0] === 'string' ? mask(args[0], this) : null;
+        if (masked !== null) args[0] = masked;
+        return apply(original, this, args);
+      },
+    );
+    const deny = (): Method =>
+      function () {
+        return realm.Promise.reject(new realm.DOMException('Permission not granted.', 'NotAllowedError'));
+      };
+    wrapMethod(realm, 'queryLocalFonts', deny);
+    wrapMethod(realm.Window?.prototype, 'queryLocalFonts', deny);
   };
 
   /** Strict-only reductions. Workers have no screen, media devices or gamepads; their userAgentData matches the window's. */
@@ -465,6 +552,7 @@ export function protectMainWorld(config: FingerprintConfig): void {
         return [null, null, null, null];
       },
     );
+    protectFonts(realm);
   };
 
   try {

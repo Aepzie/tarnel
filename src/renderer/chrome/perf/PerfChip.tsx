@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { Check, Cpu, Gauge, Layers, Leaf, Moon, Settings2, ShieldCheck } from 'lucide-react';
+import { Activity, Check, Cpu, Gauge, Layers, Leaf, Moon, Settings2, ShieldCheck } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useOverlayPresence } from '@/hooks/overlay';
 import { shallowEqual, useBrowserSlice, usePerf } from '@/hooks/browser';
@@ -8,6 +8,7 @@ import { formatBytesMB, formatCount, settle, vela } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { GLASS_SURFACE } from '../spaces/surface';
+import { taskManager } from '../task-manager/task-manager-store';
 import { AnimatedNumber } from './AnimatedNumber';
 import { SPARK_SAMPLES, Sparkline } from './Sparkline';
 
@@ -19,6 +20,8 @@ const SPARK_WIDTH = 264;
 const SPARK_HEIGHT = 56;
 
 const formatPercent = (value: number): string => `${Math.round(value)}%`;
+/** How long the memory saver notice stays in the chip tooltip and popover. */
+const SAVER_NOTICE_MS = 10 * 60_000;
 
 /** Right-side island chip: live memory readout; opens a glass popover with stats, sparkline and actions. */
 export function PerfChip() {
@@ -48,6 +51,8 @@ export function PerfChip() {
 
   const memory = stats?.totalMemoryMB ?? 0;
   const heavy = memory > HEAVY_MB;
+  const saver = stats?.memorySaver;
+  const saverNotice = saver && saver.freedMB > 0 && Date.now() - saver.at < SAVER_NOTICE_MS ? `Memory saver freed ${formatBytesMB(saver.freedMB)}` : null;
 
   const sleepInactive = async (): Promise<void> => {
     const ids = sleepable;
@@ -69,6 +74,7 @@ export function PerfChip() {
           whileTap={reduce ? undefined : { scale: 0.96 }}
           transition={spring.snappy}
           aria-label={stats ? `Memory ${formatBytesMB(memory)}. Performance details` : 'Performance details'}
+          title={saverNotice ?? undefined}
           className={cn(
             'no-drag group/perf flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] px-2.5 text-[12px] font-medium tracking-tight tabular-nums',
             'transition-colors duration-300 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent',
@@ -153,6 +159,13 @@ export function PerfChip() {
           </Stat>
         </div>
 
+        {saverNotice && (
+          <p className="flex items-center gap-1.5 pt-2 text-[11px] text-muted-foreground">
+            <Leaf className="size-3 shrink-0" strokeWidth={1.75} />
+            {saverNotice}
+          </p>
+        )}
+
         <div className="flex items-center gap-2 pt-3">
           <button
             type="button"
@@ -190,6 +203,18 @@ export function PerfChip() {
                 )}
               </motion.span>
             </AnimatePresence>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              taskManager.open();
+            }}
+            aria-label="Open task manager"
+            title="Task manager (Shift Esc)"
+            className="grid size-8 place-items-center rounded-[10px] text-muted-foreground transition-[background-color,color,transform] duration-150 outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]"
+          >
+            <Activity className="size-3.5" strokeWidth={1.75} />
           </button>
           <button
             type="button"

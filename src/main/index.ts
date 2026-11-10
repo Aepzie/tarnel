@@ -13,11 +13,14 @@ import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
-import { initSleeper, stopSleeper } from './perf/sleeper';
+import { initSleeper, stopSleeper, trackDownloadsForSleep } from './perf/sleeper';
+import { initSecureDns } from './dns';
 import { chromePermissionPrompter } from './permissions';
-import { applyGlobalUserAgent, setPermissionPrompter } from './privacy';
+import { applyGlobalUserAgent, onTrackingStripped, setPermissionPrompter } from './privacy';
 import { VELA_SCHEME, registerVelaProtocol } from './protocol';
+import { attachSafety, initSafety } from './safety';
 import { getSettings, onSettingsChanged } from './settings';
+import { clearSiteDataOnQuit, siteDataClearPending } from './site-data';
 import { attachShortcuts } from './shortcuts';
 import { disposeEphemeralSpaces, getActiveSpaceId, initSpaces, onSessionCreated } from './spaces';
 import { createStore, flushAllStores, type JsonStore } from './store';
@@ -35,6 +38,8 @@ import {
   restoreSession,
   serializeSession,
   sleepTab,
+  freezeTab,
+  tabIdForWebContents,
   type SavedTab,
 } from './tabs';
 import { initUpdater, stopUpdater } from './updater';
@@ -69,6 +74,7 @@ let sessionStore: JsonStore<SavedTab[]> | null = null;
 let quitState: 'running' | 'disposing' | 'done' = 'running';
 let booted = false;
 const DISPOSE_TIMEOUT_MS = 2000;
+const SITE_CLEAR_EXTRA_MS = 3000;
 
 function saveSession(): void {
   if (!booted || !sessionStore) return;
@@ -122,6 +128,7 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     startupMark('ready');
     applyGlobalUserAgent();
+    initSecureDns();
     setPermissionPrompter(chromePermissionPrompter);
     electronSession.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     initSpaces();
@@ -131,14 +138,20 @@ if (!app.requestSingleInstanceLock()) {
     initAudioMixer();
 
     void initAdblock().catch(() => undefined);
+    initSafety();
     initFrameRate();
     onSessionCreated((ses) => {
       registerVelaProtocol(ses);
       attachDownloads(ses);
+      trackDownloadsForSleep(ses);
+      attachSafety(ses);
       enableAdblockForSession(ses);
     });
     initExtensions();
     onBlocked((wcId) => noteBlocked(wcId));
+    onTrackingStripped((wcId, count) => {
+      for (let i = 0; i < count; i += 1) noteBlocked(wcId);
+    });
 
     onTabWebContents((wc, tabId) => {
       attachShortcuts(wc);
@@ -172,6 +185,10 @@ if (!app.requestSingleInstanceLock()) {
       listTabs: listSleepCandidates,
       sleepTab,
       getSleepAfterMinutes: () => getSettings().sleepAfterMinutes,
+      freezeTab,
+      getFreezeAfterMinutes: () => getSettings().freezeAfterMinutes,
+      getMemorySaver: () => ({ mode: getSettings().memorySaver, thresholdGB: getSettings().memorySaverThresholdGB }),
+      tabIdForWebContents,
     });
     initSync();
     initUpdater({
@@ -212,8 +229,14 @@ if (!app.requestSingleInstanceLock()) {
     } catch {
       /* still proceed with quitting */
     }
-    const timeout = new Promise<void>((resolve) => setTimeout(resolve, DISPOSE_TIMEOUT_MS));
-    void Promise.race([disposeEphemeralSpaces().catch(() => undefined), timeout]).finally(() => {
+    // Clearing site data on close (Settings → Privacy) gets extra time; it is bounded all the same.
+    const clearing = booted && siteDataClearPending();
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, DISPOSE_TIMEOUT_MS + (clearing ? SITE_CLEAR_EXTRA_MS : 0)));
+    const work = Promise.all([
+      disposeEphemeralSpaces().catch(() => undefined),
+      clearing ? clearSiteDataOnQuit().catch(() => undefined) : undefined,
+    ]);
+    void Promise.race([work, timeout]).finally(() => {
       quitState = 'done';
       app.quit();
     });

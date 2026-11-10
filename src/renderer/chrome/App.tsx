@@ -14,6 +14,7 @@ import { FindBar } from './find/FindBar';
 import { CommandPalette } from './palette/CommandPalette';
 import { usePermissionQueue } from './permissions/permission-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
+import { TaskManager } from './task-manager/TaskManager';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
@@ -99,6 +100,7 @@ export function App() {
           </Suspense>
         )}
         <CommandPalette />
+        <TaskManager />
       </LayoutGroup>
     </TooltipProvider>
   );

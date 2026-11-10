@@ -1,5 +1,5 @@
 import { app, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { AUDIO_IPC, IPC } from '../shared/ipc';
+import { AUDIO_IPC, IPC, PANIC_IPC } from '../shared/ipc';
 import {
   SPACE_COLORS,
   type ContentBounds,
@@ -14,12 +14,15 @@ import { clearHistory, deleteHistoryEntry, listHistory, suggest, topSites } from
 import { getBlockedTotal } from './perf/adblock';
 import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
+import { getMemorySaverNotice } from './perf/sleeper';
+import { schedulePrefetch } from './perf/prerender';
 import { pageThemeFor } from './page-theme';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
 import * as tabs from './tabs';
 import * as tabGroups from './tab-groups';
-import { getCompletedDownloadPath, getDownloadPath } from './downloads';
+import { getCompletedDownloadPath, getDownloadPath, isDangerousDownload } from './downloads';
+import { registerSafetyIpc } from './safety';
 import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { regenerateFingerprint } from './fingerprint';
@@ -30,6 +33,9 @@ import { registerSplitIpc } from './split-ipc';
 import { setTabMediaDeviceFromChrome } from './audio-devices';
 import { registerMixerIpc } from './audio-mixer';
 import { registerVpnIpc } from './vpn';
+import { panic } from './panic';
+import { registerSiteDataIpc } from './site-data';
+import { registerTaskManagerIpc } from './perf/task-manager';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -189,13 +195,17 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
 function perfStats() {
   const counts = tabs.countTabs();
   const chromePid = getChromeView()?.webContents.getOSProcessId();
-  return collectPerfStats({
-    tabsAwake: counts.awake,
-    tabsAsleep: counts.asleep,
-    blockedTotal: getBlockedTotal(),
-    sleptRendererKB: counts.freedKB,
-    uiRendererPids: chromePid ? [chromePid] : [],
-  });
+  return {
+    ...collectPerfStats({
+      tabsAwake: counts.awake,
+      tabsAsleep: counts.asleep,
+      blockedTotal: getBlockedTotal(),
+      sleptRendererKB: counts.freedKB,
+      uiRendererPids: chromePid ? [chromePid] : [],
+    }),
+    tabsFrozen: counts.frozen,
+    memorySaver: getMemorySaverNotice(),
+  };
 }
 
 function preconnect(rawUrl: unknown): void {
@@ -207,6 +217,7 @@ function preconnect(rawUrl: unknown): void {
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
   getSpaceSession(getActiveSpaceId()).preconnect({ url: url.origin, numSockets: 1 });
+  schedulePrefetch(url.href);
 }
 
 async function removeSpace(id: unknown): Promise<void> {
@@ -258,7 +269,9 @@ export function registerIpc(): void {
   handleChrome(c.tabForward, (id) => tabs.goForward(int(id)));
   handleChrome(c.tabReload, (id, ignoreCache) => tabs.reloadTab(int(id), optBool(ignoreCache) ?? false));
   handleChrome(c.tabStop, (id) => tabs.stopTab(int(id)));
-  handleChrome(c.tabSleep, (id) => tabs.sleepTab(int(id)));
+  handleChrome(c.tabSleep, (id) => {
+    tabs.sleepTab(int(id));
+  });
   handleChrome(c.tabTogglePin, (id) => tabs.togglePin(int(id)));
   handleChrome(c.tabToggleMute, (id) => tabs.toggleMute(int(id)));
   handleChrome(c.tabMove, (id, toIndex) => tabs.moveTab(int(id), int(toIndex, 'index')));
@@ -301,9 +314,10 @@ export function registerIpc(): void {
   handleChrome(c.setContentBounds, (rect) => tabs.setContentBounds(bounds(rect)));
   handleChrome(c.setOverlay, (open) => tabs.setOverlay(optBool(open) ?? false));
   handleChrome(c.downloadOpen, async (id) => {
-    const path = getCompletedDownloadPath(str(id, MAX_ID, 'download id'));
+    const downloadId = str(id, MAX_ID, 'download id');
+    const path = getCompletedDownloadPath(downloadId);
     if (!path) return;
-    if (DANGEROUS_EXT.test(path)) shell.showItemInFolder(path);
+    if (DANGEROUS_EXT.test(path) || isDangerousDownload(downloadId)) shell.showItemInFolder(path);
     else await shell.openPath(path);
   });
   handleChrome(c.downloadShow, (id) => {
@@ -322,6 +336,9 @@ export function registerIpc(): void {
   handleChrome(AUDIO_IPC.setDevice, (id, slot, choice) => setTabMediaDeviceFromChrome(int(id), slot, choice));
   registerMixerIpc(handleChrome);
   registerVpnIpc(handleChrome);
+  handleChrome(PANIC_IPC.run, () => panic());
+  registerSiteDataIpc(handleChrome, handlePages);
+  registerTaskManagerIpc(handleChrome);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
@@ -373,4 +390,5 @@ export function registerIpc(): void {
   }));
   registerExtensionIpc(handleChrome, handlePages);
   registerSyncIpc(handlePages);
+  registerSafetyIpc(handlePages);
 }

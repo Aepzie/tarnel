@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Cpu, Leaf, MemoryStick, Moon, ShieldBan, Zap, type LucideIcon } from 'lucide-react';
-import type { PerfStats } from '@shared/types';
+import type { MemorySaverMode, PerfStats } from '@shared/types';
 import { rise } from '@/lib/motion';
 import { formatBytesMB, formatCount, velaPages } from '@/lib/vela';
 import { AnimatedNumber } from '../components/brand';
 import { Segmented, type SegmentOption } from '../components/controls';
 import { FrameRateGroup } from '../components/frame-rate';
-import { Group, Row, SectionHeader } from '../components/layout';
+import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 
 const SLEEP_OPTIONS: readonly SegmentOption<string>[] = [
@@ -16,6 +16,26 @@ const SLEEP_OPTIONS: readonly SegmentOption<string>[] = [
   { value: '10', label: '10 min' },
   { value: '30', label: '30 min' },
   { value: '60', label: '60 min' },
+];
+
+const FREEZE_OPTIONS: readonly SegmentOption<string>[] = [
+  { value: '0', label: 'Never' },
+  { value: '1', label: '1 min' },
+  { value: '2', label: '2 min' },
+  { value: '5', label: '5 min' },
+];
+
+const SAVER_OPTIONS: readonly SegmentOption<MemorySaverMode>[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'maximum', label: 'Maximum' },
+];
+
+const THRESHOLD_OPTIONS: readonly SegmentOption<string>[] = [
+  { value: '2', label: '2 GB' },
+  { value: '4', label: '4 GB' },
+  { value: '6', label: '6 GB' },
+  { value: '8', label: '8 GB' },
 ];
 
 const POLL_MS = 2000;
@@ -68,7 +88,7 @@ const formatPercent = (n: number): string => `${n.toFixed(1)}%`;
 const formatWhole = (n: number): string => formatCount(Math.round(n));
 
 interface Stat {
-  key: keyof PerfStats;
+  key: 'totalMemoryMB' | 'cpuPercent' | 'savedMemoryMB' | 'tabsAwake' | 'tabsAsleep' | 'blockedTotal';
   label: string;
   icon: LucideIcon;
   format: (n: number) => string;
@@ -108,6 +128,32 @@ export function Performance() {
             onChange={(value) => update({ sleepAfterMinutes: Number(value) })}
           />
         </Row>
+        <Row title="Freeze background tabs" description="Pause timers and scripts in tabs you left, before they sleep. Tabs playing audio, using the mic or camera, in a call or downloading keep running.">
+          <Segmented
+            label="Freeze tabs after"
+            value={String(settings.freezeAfterMinutes)}
+            options={FREEZE_OPTIONS}
+            onChange={(value) => update({ freezeAfterMinutes: Number(value) })}
+          />
+        </Row>
+        <Row title="Memory saver" description="When Vela uses more memory than the limit, sleep the tabs you used least recently. Maximum acts sooner and on more tabs.">
+          <Segmented label="Memory saver" value={settings.memorySaver} options={SAVER_OPTIONS} onChange={(value) => update({ memorySaver: value })} />
+        </Row>
+        {settings.memorySaver !== 'off' && (
+          <Row title="Memory limit" description="Sleep background tabs when Vela uses more than this.">
+            <Segmented
+              label="Memory limit"
+              value={String(settings.memorySaverThresholdGB)}
+              options={THRESHOLD_OPTIONS}
+              onChange={(value) => update({ memorySaverThresholdGB: Number(value) })}
+            />
+          </Row>
+        )}
+        <SwitchRow
+          title="Preload pages from the address bar"
+          setting="preloadPages"
+          description="Fetch the suggested page while you hover or arrow to it, so it opens faster."
+        />
       </Group>
 
       <FrameRateGroup />

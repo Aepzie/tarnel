@@ -13,6 +13,7 @@ import { ui, useChromeUI, type ChromeUIState } from '../ui-store';
 import { buildCommands, rankCommands } from './commands';
 import { classifyInput, preconnectTarget } from './input';
 import { LeadingIcon } from './LeadingIcon';
+import { SiteInfoTrigger } from '../site-info/SiteInfoPanel';
 import { PaletteRow, type PaletteRowModel } from './PaletteRow';
 import { useSuggestions } from './useSuggestions';
 
@@ -379,13 +380,13 @@ function SiteInfo() {
   if (address.empty) return null;
   const security = address.internal ? 'Vela page' : tab.secure ? 'Secure connection' : tab.url.startsWith('http:') ? 'Not secure' : address.host;
   return (
-    <span className="flex shrink-0 items-center gap-1.5" title={security}>
-      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-white/[0.05] px-2 text-[11.5px] text-muted-foreground ring-1 ring-white/[0.06] light:bg-black/[0.035] light:ring-black/[0.06]">
+    <SiteInfoTrigger tabId={tab.id} title={address.internal ? security : `${security} · Site information`}>
+      <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-white/[0.05] px-2 text-[11.5px] text-muted-foreground ring-1 ring-white/[0.06] transition-colors duration-150 hover:bg-white/[0.09] light:bg-black/[0.035] light:ring-black/[0.06] light:hover:bg-black/[0.06]">
         <SecurityIcon tab={tab} address={address} />
         <span className="max-w-[160px] truncate">{address.host}</span>
       </span>
       <BlockedBadge count={tab.blockedCount} reduced={reduce} />
-    </span>
+    </SiteInfoTrigger>
   );
 }
 
