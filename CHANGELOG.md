@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Freeze background tabs (Settings → Performance, default 5 min): idle background tabs are paused with the Page Lifecycle freeze before they sleep, keeping their place but using no CPU; they resume instantly when shown. Tabs playing audio, pinned, using the mic or camera, in a call or downloading keep running
+- Memory saver (Off / Balanced / Maximum) with a memory limit: when Vela uses more than the limit, the least recently used background tabs are slept; the performance chip shows how much it freed
+
+### Changed
+- Background throttling can no longer be switched off by command-line switches; intensive wake-up throttling stays enabled
 - Address-bar prefetch: resting on a URL suggestion for 150 ms fetches the page into the cache through the Space's session, so cacheable pages open almost instantly (291 ms → 25 ms on a local test). https only, never search pages, Burner Spaces or VPN-routed tabs, 1 at a time and 3 per minute. Settings → Performance → "Preload pages from the address bar" (on by default)
 - Per-Space timezone and language (Space dialog and Settings → Spaces): Timezone Automatic / System / UTC / Match VPN country / a fixed zone; Language System / English / others. Timezone and Intl locale use Chromium's native per-tab override (DevTools protocol), so the page, its iframes and its workers report the same zone, offset, `Date` strings and locale; navigator.language(s) and Accept-Language follow the Space language. Automatic means UTC in Strict (the VPN country's zone for routed tabs) and the system zone in Standard.
 - Strict fingerprint protection reduces font enumeration: `measureText` and `document.fonts.check` answer as if fonts outside a common per-platform set (and the page's own web fonts) were not installed; `queryLocalFonts()` is denied.
@@ -22,8 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings → Privacy → "Trim referrers" (on by default): other sites only receive the origin you came from, never the full page address, even when a page asks for more; nothing is sent when going from HTTPS to HTTP
 - Release pipeline is ready for code signing: Windows via Azure Trusted Signing or a PFX certificate, macOS via Developer ID with notarization (hardened runtime + entitlements for camera, microphone, location and security keys). It switches on automatically once the secrets in docs/RELEASING.md are added; without them releases stay unsigned as before
 - Secure DNS (DNS-over-HTTPS) in Settings → Privacy: Off, Automatic (upgrade when the system resolver supports it), Cloudflare, Quad9, Mullvad, Mullvad with ad blocking, NextDNS (configuration ID) or a custom `https://` template. "Strict" fails lookups instead of falling back to plain DNS. Applies live to every Space at once (Electron's resolver is process-global); Spaces behind a proxy or MantelVPN keep resolving through the proxy
-
-### Changed
 - Content blocking is ready before the first page loads: new sessions wait for the cached engine (~30 ms warm; capped at 3 s on a first run without cache). The cached engine is now versioned by Ghostery version and list set, a corrupt or outdated cache is rebuilt, and a long-running browser refreshes its lists every 24 h instead of only at launch.
 
 ### Security

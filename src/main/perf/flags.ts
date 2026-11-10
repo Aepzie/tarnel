@@ -62,4 +62,30 @@ export function applyChromiumFlags(): void {
   // Frame pacing on mixed-refresh Windows setups (Settings → Performance → Frame rate, see frame-rate.ts).
   mergeList('enable-features', [...ENABLE_FEATURES, ...frameRateFeatures()]);
   mergeList('disable-features', DISABLE_FEATURES);
+  keepBackgroundThrottling();
+}
+
+/**
+ * Switches that would defeat background throttling. Hidden tabs must keep Chromium's timer budget
+ * (1 wake-up/s) and intensive wake-up throttling (1 wake-up/min for chained timers after 5 min).
+ */
+const THROTTLING_KILLERS: readonly string[] = [
+  'disable-background-timer-throttling',
+  'disable-renderer-backgrounding',
+  'disable-backgrounding-occluded-windows',
+];
+
+/** Features that must stay on for background tabs (on by default; listed so they stay on). */
+const THROTTLING_FEATURES: readonly string[] = ['IntensiveWakeUpThrottling'];
+
+function keepBackgroundThrottling(): void {
+  for (const name of THROTTLING_KILLERS) {
+    if (app.commandLine.hasSwitch(name)) app.commandLine.removeSwitch(name);
+  }
+  const disabled = app.commandLine.hasSwitch('disable-features')
+    ? app.commandLine.getSwitchValue('disable-features').split(',').filter(Boolean)
+    : [];
+  const kept = disabled.filter((feature) => !THROTTLING_FEATURES.includes(feature.split(':')[0]));
+  if (kept.length !== disabled.length) app.commandLine.appendSwitch('disable-features', kept.join(','));
+  mergeList('enable-features', THROTTLING_FEATURES);
 }

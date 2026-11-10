@@ -170,12 +170,21 @@ export type WindowMaterial = 'mica' | 'acrylic' | 'none';
 export const NEWTAB_HEROES = ['clock', 'clock-seconds', 'logo', 'date', 'greeting', 'minimal'] as const;
 export type NewtabHero = (typeof NEWTAB_HEROES)[number];
 
+/** Memory saver: sleep LRU background tabs while Vela uses more than the threshold. */
+export const MEMORY_SAVER_MODES = ['off', 'balanced', 'maximum'] as const;
+export type MemorySaverMode = (typeof MEMORY_SAVER_MODES)[number];
+
 export interface Settings {
   searchEngine: SearchEngine;
   theme: ThemeMode;
   adblock: boolean;
   /** Minutes of inactivity before a background tab is put to sleep. 0 = never. */
   sleepAfterMinutes: number;
+  /** Minutes of inactivity before a background tab is frozen (kept in memory, no CPU). 0 = never. */
+  freezeAfterMinutes: number;
+  memorySaver: MemorySaverMode;
+  /** Memory saver threshold: total memory Vela may use before it sleeps tabs (GB). */
+  memorySaverThresholdGB: number;
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
@@ -266,6 +275,10 @@ export interface PerfStats {
   blockedTotal: number;
   /** Estimated memory saved by sleeping tabs (MB). */
   savedMemoryMB: number;
+  /** Tabs currently frozen (in memory, no CPU). */
+  tabsFrozen?: number;
+  /** Last memory saver action: memory freed (MB) and when (epoch ms); null if it has not acted. */
+  memorySaver?: { freedMB: number; at: number } | null;
 }
 
 export interface FindResult {
@@ -316,6 +329,9 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   adblock: true,
   sleepAfterMinutes: 10,
+  freezeAfterMinutes: 5,
+  memorySaver: 'balanced',
+  memorySaverThresholdGB: 4,
   httpsOnly: true,
   blockThirdPartyCookies: true,
   sendDoNotTrack: true,

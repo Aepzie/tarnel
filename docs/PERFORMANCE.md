@@ -28,6 +28,37 @@ the OS; the tab reloads when you click it.
   exit (PIDs gone within a second); the main process keeps no `WebContents` for it
   (`webContents.getAllWebContents()` lists only the UI and awake tabs).
 
+#### Freeze before sleep (`src/main/perf/freeze.ts`)
+Between awake and asleep there is a cheaper stage: after *N* minutes in the background (Settings →
+Performance → Freeze background tabs, default 5, 0 = never; halved on battery) a tab is **frozen**
+with the Page Lifecycle API (`Page.setWebLifecycleState({state:'frozen'})`). Its renderer, scroll
+position and form state stay; its task queues stop, so timers, rAF and callbacks cost nothing. It is
+thawed (`state:'active'`) the moment it is shown again (activation or as a split pane), and still
+sleeps after the longer sleep timeout. Freezing only runs when it is shorter than the sleep timeout.
+
+- The command goes through the tab's DevTools client. When fingerprint protection's worker guard
+  already holds it (`src/main/fingerprint/workers.ts`) it is reused; otherwise it is attached for the
+  one command and detached (the lifecycle state outlives the session). No domain is enabled.
+- Never frozen: on-screen tabs (active tab and every visible split pane), pinned tabs (mail, chat and
+  calendars must keep notifying), audible tabs, tabs with the mic in use, tabs with a download in
+  progress, pages holding a live `MediaStreamTrack` (camera, mic, screen share) or an open
+  `RTCPeerConnection` (found with `Runtime.queryObjects` on the top document's main world right
+  before freezing; subframes are not covered), and tabs with DevTools open.
+- Measured (local page running `setInterval(…, 0)`, Vela window off-screen so every tab is hidden):
+  audible tab (exempt from throttling) 250 timer runs/s and ~2–3% CPU; background tab 2–3 runs/s
+  (1 wake-up/s budget) and 0.03–0.04% CPU; after 5 min hidden, 1 wake-up/min (intensive
+  wake-up throttling); **frozen: 0 runs/s and 0.00% renderer CPU**. With a 1 min setting the tab
+  froze 56 s after it went to the background (30 s tick).
+
+#### Memory saver (`src/main/perf/memory-saver.ts`)
+Settings → Performance → Memory saver: Off / Balanced (default) / Maximum, with a limit (default
+4 GB). On each 30 s tick, when the private bytes of every Vela process (`metrics.ts`) exceed the
+limit, eligible background tabs (same rules as sleeping, plus no download in progress) are slept
+least recently used first until the estimate falls under the limit. A tab's estimate is the memory of
+its renderer processes, shared evenly between the tabs a process hosts. Balanced only touches tabs idle
+≥ 5 min, at most 2 per tick; Maximum tabs idle ≥ 30 s, at most 6 per tick. The perf chip shows
+"Memory saver freed 640 MB" (tooltip and popover) for 10 minutes after it acts.
+
 What sleeping cannot give back is memory held by shared Chromium services the pages used — see
 [Memory: measured](#memory-measured).
 
@@ -66,6 +97,10 @@ Hidden tabs keep Chromium's background timer throttling and intensive wake-up th
 windows are backgrounded (`CalculateNativeWinOcclusion` on Windows). Many Electron apps disable these
 (`disable-renderer-backgrounding`, `disable-background-timer-throttling`) to make *their* single
 page snappier. A browser with dozens of tabs must not, and Vela never does.
+`flags.ts` also strips those switches if something else put them on the command line, and keeps
+`IntensiveWakeUpThrottling` enabled (removing it from `--disable-features`). Every tab view is created
+with `backgroundThrottling: true`; audible tabs and visible split panes are exempt by Chromium itself
+(audio playing / not hidden), so no per-tab override is needed.
 
 ### 5. Lazy session restore
 Restored tabs come back **asleep**: only the active tab gets a renderer at launch. Restoring a
