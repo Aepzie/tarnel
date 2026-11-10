@@ -1,11 +1,11 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'motion/react';
-import { ChevronRightIcon, GlobeIcon, ShieldIcon } from 'lucide-react';
+import { ChevronRightIcon, ShieldIcon } from 'lucide-react';
 import { ease } from '@/lib/motion';
 import { accountTerm } from './vpn-data';
 import { MantelView } from './MantelView';
 import { ServerPicker } from './ServerPicker';
-import { BackButton, MantelMark, PreviewChip, StatusDot } from './parts';
+import { BackButton, MantelMark, StatusDot } from './parts';
 import { useVpn, vpn } from './vpn-store';
 
 function MantelCard() {
@@ -53,18 +53,6 @@ const itemIn: Variants = {
 };
 const itemFade: Variants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.12 } } };
 
-function OtherProvider({ name, variants }: { name: string; variants: Variants }) {
-  return (
-    <motion.li variants={variants} className="flex h-10 items-center gap-3 rounded-[10px] px-2">
-      <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-lg bg-foreground/[0.06] text-muted-foreground">
-        <GlobeIcon className="size-[15px]" strokeWidth={1.75} />
-      </span>
-      <span className="min-w-0 flex-1 text-[13px] font-medium tracking-tight text-foreground/80">{name}</span>
-      <span className="rounded-full bg-foreground/[0.05] px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground/80">Coming soon</span>
-    </motion.li>
-  );
-}
-
 function ProvidersView({ animateIn }: { animateIn: boolean }) {
   const reduce = useReducedMotion();
   const item = reduce ? itemFade : itemIn;
@@ -73,32 +61,14 @@ function ProvidersView({ animateIn }: { animateIn: boolean }) {
       <motion.div variants={item}>
         <MantelCard />
       </motion.div>
-      <div>
-        <motion.p variants={item} className="px-2 pb-1 text-[11px] font-medium text-muted-foreground">
-          Other providers
-        </motion.p>
-        <ul aria-label="Other providers">
-          <OtherProvider name="Mullvad" variants={item} />
-          <OtherProvider name="Proton VPN" variants={item} />
-        </ul>
-        <motion.p variants={item} className="px-2 pt-1.5 text-[11px] leading-snug text-muted-foreground/70">
-          Support for more providers is planned. Bring your own account when it lands.
-        </motion.p>
-      </div>
     </motion.div>
   );
 }
 
 function Header({ children }: { children: ReactNode }) {
-  const { mode } = useVpn();
   return (
     <header className="flex h-11 shrink-0 items-center gap-2.5 px-3.5">
       {children}
-      {mode === 'preview' && (
-        <span className="ml-auto">
-          <PreviewChip />
-        </span>
-      )}
     </header>
   );
 }
