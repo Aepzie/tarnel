@@ -120,12 +120,13 @@ function Segment({ tab, active, width, compact, first, paletteOpen, reduced, dra
     settle(vela().tabs.close(tab.id));
   };
 
+  const wasActive = useRef(false);
+
   const onClick = (): void => {
-    if (dragged.current) {
-      dragged.current = false;
-      return;
-    }
-    if (active) ui.openPalette('current', addressSeed(tab.url));
+    const opensPalette = wasActive.current && !dragged.current;
+    dragged.current = false;
+    wasActive.current = false;
+    if (opensPalette) ui.openPalette('current', addressSeed(tab.url));
   };
 
   return (
@@ -148,6 +149,7 @@ function Segment({ tab, active, width, compact, first, paletteOpen, reduced, dra
         animate={target === undefined ? { width: 'auto', minWidth: PILL_MIN, maxWidth: PILL_MAX } : { width: target, minWidth: 0, maxWidth: 'none' }}
         transition={reduced ? INSTANT : spring.snappy}
         onPointerDown={(event) => {
+          wasActive.current = event.button === 0 && active;
           if (event.button === 0 && !active) settle(vela().tabs.activate(tab.id));
         }}
         onMouseDown={(event) => event.button === 1 && event.preventDefault()}

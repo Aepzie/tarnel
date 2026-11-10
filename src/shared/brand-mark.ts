@@ -50,8 +50,11 @@ const FRAMES: Record<BrandTileShape, TileFrame> = {
   mac: { inset: 100, radius: 185, shadow: true },
 };
 
-/** The full-colour app icon as a standalone SVG document (1024×1024). */
-export function brandIconSvg(shape: BrandTileShape = 'square'): string {
+/**
+ * The full-colour app icon as a standalone SVG document (1024×1024). `accent` tints the cap and the
+ * glow; the OS icon files always use BRAND_ACCENT, in-app copies may pass `var(--accent-space)`.
+ */
+export function brandIconSvg(shape: BrandTileShape = 'square', accent: string = BRAND_ACCENT): string {
   const { inset, radius, shadow } = FRAMES[shape];
   const size = 1024 - inset * 2;
   const scale = (GLYPH_SCALE * size) / 1024;
@@ -62,7 +65,7 @@ export function brandIconSvg(shape: BrandTileShape = 'square'): string {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">',
     '<title>Vela</title>',
     '<defs>',
-    `<radialGradient id="vela-glow" cx="50%" cy="30%" r="72%"><stop offset="0" stop-color="${BRAND_ACCENT}" stop-opacity="0.24"/><stop offset="1" stop-color="${BRAND_ACCENT}" stop-opacity="0"/></radialGradient>`,
+    `<radialGradient id="vela-glow" cx="50%" cy="30%" r="72%"><stop offset="0" stop-color="${accent}" stop-opacity="0.24"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>`,
     '<linearGradient id="vela-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.2"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.06"/><stop offset="1" stop-color="#fff" stop-opacity="0.04"/></linearGradient>',
     shadow
       ? '<filter id="vela-shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.3"/></filter>'
@@ -73,7 +76,7 @@ export function brandIconSvg(shape: BrandTileShape = 'square'): string {
     `<rect x="${ring}" y="${ring}" width="${size - 6}" height="${size - 6}" rx="${radius - 3}" fill="none" stroke="url(#vela-rim)" stroke-width="6"/>`,
     `<g transform="translate(512 512) scale(${scale}) translate(-512 -512)">`,
     `<path d="${BRAND_BODY_PATH}" fill="${BRAND_INK}"/>`,
-    `<path d="${BRAND_CAP_PATH}" fill="${BRAND_ACCENT}"/>`,
+    `<path d="${BRAND_CAP_PATH}" fill="${accent}"/>`,
     '</g>',
     '</svg>',
   ].join('');

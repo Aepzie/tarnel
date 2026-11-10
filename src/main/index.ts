@@ -8,6 +8,7 @@ import { initAudioDevices } from './audio-devices';
 import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
 import { registerIpc } from './ipc';
+import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
@@ -37,7 +38,7 @@ import {
 } from './tabs';
 import { initUpdater, stopUpdater } from './updater';
 import { resolveInput } from './url';
-import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, saveBounds, sendToChrome } from './window';
+import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, refreshWindowTheme, saveBounds, sendToChrome } from './window';
 
 // Isolated profile for development/testing (separate single-instance lock + storage).
 if (process.env.VELA_USER_DATA) app.setPath('userData', process.env.VELA_USER_DATA);
@@ -144,6 +145,7 @@ if (!app.requestSingleInstanceLock()) {
         applyWindowMaterial(material);
       }
     });
+    initPageTheme(refreshWindowTheme);
     registerIpc();
 
     openWindow();

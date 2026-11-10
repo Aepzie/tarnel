@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
 import { splitGeometry } from '../shared/split-layout';
 import type { ContentBounds, WindowMaterial } from '../shared/types';
+import { themeBackdrop } from './page-theme';
 import { getSettings } from './settings';
 import { emulateDragSnap } from './snap';
 import { createStore, type JsonStore } from './store';
@@ -122,7 +123,6 @@ function supportsMaterial(): boolean {
 
 type WindowLook = Pick<Electron.BaseWindowConstructorOptions, 'backgroundColor' | 'backgroundMaterial' | 'transparent'>;
 
-const OPAQUE_BG = '#09090b';
 const CLEAR_BG = '#00000000';
 
 /**
@@ -133,7 +133,7 @@ const CLEAR_BG = '#00000000';
  */
 function windowLook(material: WindowMaterial): WindowLook {
   if (material === 'none') return { transparent: true, backgroundColor: CLEAR_BG };
-  if (!supportsMaterial()) return { backgroundColor: OPAQUE_BG };
+  if (!supportsMaterial()) return { backgroundColor: themeBackdrop() };
   return { backgroundColor: CLEAR_BG, backgroundMaterial: material };
 }
 
@@ -271,8 +271,13 @@ export function applyWindowMaterial(material: WindowMaterial): void {
     return;
   }
   if (windowTransparent) return;
-  win.setBackgroundColor(look.backgroundColor ?? OPAQUE_BG);
+  win.setBackgroundColor(look.backgroundColor ?? themeBackdrop());
   if (supportsMaterial()) win.setBackgroundMaterial(look.backgroundMaterial ?? 'none');
+}
+
+/** Re-tints the opaque window background (no-material platforms) after a theme change. */
+export function refreshWindowTheme(): void {
+  applyWindowMaterial(getSettings().windowMaterial);
 }
 
 export function createMainWindow(): BaseWindow {
@@ -373,6 +378,10 @@ export function detachView(view: WebContentsView): void {
 export function setContentBounds(bounds: ContentBounds): void {
   contentBounds = bounds;
   layout();
+}
+
+export function isOverlayOpen(): boolean {
+  return overlayOpen;
 }
 
 export function setOverlay(open: boolean): void {

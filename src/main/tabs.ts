@@ -1,6 +1,7 @@
 import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContents } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
+import { isLoneStartPage } from '../shared/tab-close';
 import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabMediaDevices, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
@@ -18,6 +19,7 @@ import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTab
 import { forgetTabAudio, onTabAudioChanged, restoreTabAudio, tabAudioSettings } from './audio-mixer/state';
 import type { TabAudioSettings } from '../shared/audio-mixer';
 import { normalizeCountry } from '../shared/vpn-route';
+import { attachViewBackdrop } from './page-theme';
 
 export interface SavedTab {
   url: string;
@@ -339,6 +341,7 @@ function createView(tab: Tab): WebContentsView {
     },
   });
   tab.view = view;
+  attachViewBackdrop(view, tab.errorUrl ?? tab.url);
   const wc = view.webContents;
   wcToTab.set(wc.id, tab.id);
   wireEvents(tab, view);
@@ -474,7 +477,8 @@ export function activateTab(id: number): void {
   const wc = wake(tab);
   if (Math.abs(wc.getZoomFactor() - tab.zoom) > 0.001) wc.setZoomFactor(tab.zoom);
   showActive();
-  if (!isInternalUrl(tab.url)) wc.focus();
+  // The start page owns its search box, so it takes keyboard focus like a web page (unless the palette is up).
+  if (!isInternalUrl(tab.url) || (tab.url.startsWith(NEWTAB_URL) && !windowLayer.isOverlayOpen())) wc.focus();
   scheduleEmit();
 }
 
@@ -541,6 +545,8 @@ function closeTabInternal(id: number, replace: boolean): void {
 }
 
 export function closeTab(id: number): void {
+  const tab = tabs.get(id);
+  if (tab && isLoneStartPage({ id, spaceId: tab.spaceId, url: tab.errorUrl ?? tab.url }, [...tabs.values()])) return;
   closeTabInternal(id, true);
 }
 

@@ -1,4 +1,4 @@
-import { app, ipcMain, nativeTheme, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { app, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { AUDIO_IPC, IPC } from '../shared/ipc';
 import {
   SPACE_COLORS,
@@ -14,6 +14,7 @@ import { clearHistory, deleteHistoryEntry, listHistory, suggest, topSites } from
 import { getBlockedTotal } from './perf/adblock';
 import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
+import { pageThemeFor } from './page-theme';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
 import * as tabs from './tabs';
@@ -223,16 +224,6 @@ function resolvedUrl(input: string): string {
 /** Executables and scripts are never launched from the browser UI; the folder is shown instead. */
 const DANGEROUS_EXT = /\.(exe|msi|msix|appx|bat|cmd|com|scr|pif|ps1|psm1|vbs|vbe|js|jse|wsf|wsh|hta|lnk|jar|reg|cpl|dll|app|pkg|dmg|sh|command|run|appimage|deb|rpm)$/i;
 
-const SPACE_HEX: Record<SpaceColor, string> = {
-  slate: '#94a3b8',
-  blue: '#60a5fa',
-  violet: '#a78bfa',
-  pink: '#f472b6',
-  red: '#f87171',
-  orange: '#fb923c',
-  green: '#4ade80',
-  teal: '#2dd4bf',
-};
 
 /**
  * Synchronous boot info for vela:// pages, read by the pages preload before first paint so pages
@@ -244,12 +235,7 @@ function registerPagesBootSync(): void {
       event.returnValue = null;
       return;
     }
-    const { theme, newtabHero } = getSettings();
-    const dark = theme === 'dark' || (theme === 'system' && nativeTheme.shouldUseDarkColors);
-    const tabId = tabs.tabIdForWebContents(event.sender.id);
-    const spaceId = tabId === null ? null : tabs.getTabSpaceId(tabId);
-    const space = spaceId ? getSpace(spaceId) : undefined;
-    event.returnValue = { theme: dark ? 'dark' : 'light', accent: space ? SPACE_HEX[space.color] : null, hero: newtabHero };
+    event.returnValue = pageThemeFor(event.sender);
   });
 }
 

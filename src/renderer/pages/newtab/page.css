@@ -1,3 +1,13 @@
+/* Flat page colour with a whisper of the Space accent: the empty page reads as "this Space" without
+   a coloured wash. Follows --accent-space live (theme / Space colour changes need no reload). */
+.vt-backdrop {
+  background-color: color-mix(in oklab, var(--accent-space) 4%, var(--background));
+}
+
+:root.light .vt-backdrop {
+  background-color: color-mix(in oklab, var(--accent-space) 3%, var(--background));
+}
+
 /* Accent aurora baked into one static paint: three radial gradients on a single non-composited
    layer (no blur, no will-change, no animation), so it costs no GPU textures beyond the page itself.
    Positions/radii match where the former drifting blobs came to rest. Absolute (not fixed) inside
