@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
-import { BRAND_BODY_PATH, BRAND_CAP_PATH, BRAND_GLYPH_VIEWBOX, brandIconDataUrl } from '@shared/brand-mark';
+import { BRAND_BODY_PATH, BRAND_CAP_PATH, BRAND_GLYPH_VIEWBOX, brandIconSvg } from '@shared/brand-mark';
 import { cn } from '@/lib/utils';
 import { ease } from '@/lib/motion';
 
@@ -14,11 +14,18 @@ export function VelaMark({ className }: { className?: string }) {
   );
 }
 
-const APP_ICON_URL = brandIconDataUrl();
+/** Same markup as the taskbar / installer icon, but the cap and glow follow the theme accent. */
+const APP_ICON_SVG = brandIconSvg('square', 'var(--accent-space)');
 
-/** The full-colour app icon, pixel-identical to the taskbar / installer icon. */
+/** The full-colour app icon, inline so its accent cap tracks the active Space colour live. */
 export function VelaAppIcon({ className }: { className?: string }) {
-  return <img src={APP_ICON_URL} alt="" draggable={false} className={cn('size-16 select-none', className)} />;
+  return (
+    <span
+      aria-hidden
+      className={cn('block size-16 select-none [&>svg]:size-full', className)}
+      dangerouslySetInnerHTML={{ __html: APP_ICON_SVG }}
+    />
+  );
 }
 
 /** Number that tweens to each new value; jumps when reduced motion is requested. */

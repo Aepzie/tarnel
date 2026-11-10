@@ -18,6 +18,7 @@ import { onPaneFocus, trackPanes, type Pane } from './split-panes';
 import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTabMediaDevices, tabMediaDevices } from './audio-devices/state';
 import { forgetTabAudio, onTabAudioChanged, restoreTabAudio, tabAudioSettings } from './audio-mixer/state';
 import type { TabAudioSettings } from '../shared/audio-mixer';
+import { attachViewBackdrop } from './page-theme';
 
 export interface SavedTab {
   url: string;
@@ -335,6 +336,7 @@ function createView(tab: Tab): WebContentsView {
     },
   });
   tab.view = view;
+  attachViewBackdrop(view, tab.errorUrl ?? tab.url);
   const wc = view.webContents;
   wcToTab.set(wc.id, tab.id);
   wireEvents(tab, view);
