@@ -420,6 +420,8 @@ export interface VelaChromeAPI {
     refresh(): Promise<VpnState>;
     /** Account number (16 digits, spaces/dashes allowed). Stored with safeStorage in main only. */
     login(accountNumber: string): Promise<VpnResult>;
+    /** Second step when Mantel asks for a two-factor code. */
+    verifyTotp(code: string): Promise<VpnResult>;
     logout(): Promise<VpnState>;
     /** Routes the active Space through a Mantel proxy on that location (live mode only). */
     connect(serverId: string): Promise<VpnResult>;

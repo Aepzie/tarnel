@@ -149,6 +149,7 @@ const api: VelaChromeAPI = {
     state: () => invoke(VPN_IPC.state),
     refresh: () => invoke(VPN_IPC.refresh),
     login: (accountNumber) => invoke(VPN_IPC.login, accountNumber),
+    verifyTotp: (code) => invoke(VPN_IPC.verifyTotp, code),
     logout: () => invoke(VPN_IPC.logout),
     connect: (serverId) => invoke(VPN_IPC.connect, serverId),
     disconnect: () => invoke(VPN_IPC.disconnect),

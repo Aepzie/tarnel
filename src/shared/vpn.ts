@@ -9,6 +9,7 @@
 export const VPN_IPC = {
   state: 'chrome:vpn-state',
   login: 'chrome:vpn-login',
+  verifyTotp: 'chrome:vpn-verify-totp',
   logout: 'chrome:vpn-logout',
   refresh: 'chrome:vpn-refresh',
   connect: 'chrome:vpn-connect',
@@ -53,6 +54,8 @@ export interface VpnState {
   connection: VpnConnection | null;
   /** Last API problem, shown in the panel. */
   notice: string | null;
+  /** Mantel asked for a two-factor code (sign-in or an expired session); the panel shows the code field. */
+  totpRequired: boolean;
 }
 
 export type VpnResult = { ok: true; state: VpnState } | { ok: false; error: string; state: VpnState };
@@ -62,6 +65,13 @@ export function normalizeAccountNumber(raw: string): string | null {
   if (typeof raw !== 'string' || raw.length > 64) return null;
   const compact = raw.replace(/[\s\-. ]/g, '');
   return /^\d{16}$/.test(compact) ? compact : null;
+}
+
+/** A two-factor code from an authenticator app: 6–8 digits, spaces dropped. Null otherwise. */
+export function normalizeTotp(raw: unknown): string | null {
+  if (typeof raw !== 'string' || raw.length > 32) return null;
+  const compact = raw.replace(/\s/g, '');
+  return /^\d{6,8}$/.test(compact) ? compact : null;
 }
 
 /** Groups digits in fours for display while typing ("1234 5678 9…"); non-digits are dropped. */
@@ -207,8 +217,9 @@ export function describeApiError(status: number, code: string | null, serverMess
     case 'account_not_found':
       return 'This account number does not exist.';
     case 'totp_required':
+      return 'Enter the code from your authenticator app.';
     case 'totp_invalid':
-      return 'This account uses two-factor authentication, which Vela does not support yet.';
+      return 'That code did not work. Enter the current code from your authenticator app.';
     case 'account_expired':
       return 'This Mantel account has no active time left.';
     case 'device_limit_reached':

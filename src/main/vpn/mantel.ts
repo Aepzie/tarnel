@@ -91,8 +91,8 @@ function unexpected(status: number): never {
 }
 
 export const mantel = {
-  async login(accountNumber: string): Promise<{ token: string; paidUntil: string }> {
-    const { status, body } = await request('POST', '/api/v1/auth/login', { body: { code: accountNumber, totp: null } });
+  async login(accountNumber: string, totp: string | null = null): Promise<{ token: string; paidUntil: string }> {
+    const { status, body } = await request('POST', '/api/v1/auth/login', { body: { code: accountNumber, totp } });
     if (status !== 200) fail(status, body);
     return parseLogin(body) ?? unexpected(status);
   },
