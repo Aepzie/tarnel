@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Flame, Focus, History, Monitor, Moon, Plus, RotateCcw, Settings2, ShieldCheck, Sun } from 'lucide-react';
+import { EyeOff, Flame, Focus, History, Monitor, Moon, Plus, RotateCcw, Settings2, ShieldCheck, Sun } from 'lucide-react';
 import { ChevronsDownUp, ChevronsUpDown, LayersPlus, PanelLeft, PanelTop } from 'lucide-react';
 import type { BrowserState, Settings, ThemeMode } from '@shared/types';
 import { groupActiveTab } from '../tabs/groups/group-ui';
@@ -50,6 +50,14 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
         void vela.spaces
           .create({ name: 'Burner', color: 'orange', ephemeral: true })
           .then((space) => vela.spaces.activate(space.id)),
+    },
+    {
+      id: 'cmd:panic',
+      title: 'Panic: wipe Burners and lock',
+      icon: EyeOff,
+      keywords: 'panic boss key hide minimize mute wipe burner close vpn disconnect emergency',
+      hint: 'Ctrl Shift Del',
+      run: () => void vela.panic(),
     },
     {
       id: 'cmd:adblock',

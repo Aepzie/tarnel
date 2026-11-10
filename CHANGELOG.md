@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Extension permission review: adding an extension (Chrome Web Store or unpacked) first shows what it will be able to do in plain language with a risk level per line ("Read and change all your data on all websites", debugger, native messaging, proxy, history = high; tabs, cookies, webRequest = medium). Nothing is added until you confirm; a declined store download is deleted
+- Settings → Extensions shows each extension's permissions, a "High access" badge for high-risk ones and a Site access control: On all sites, On specific sites (a saved host list) or On click (the extension stays unloaded until you click its toolbar button, once per launch)
+- Panic button (`Ctrl+Shift+Delete` or "Panic: wipe Burners and lock" in the command palette): minimizes Vela, mutes every tab, drops all MantelVPN routes and closes and wipes every Burner Space. Nothing persistent is deleted unless Settings → Privacy → "Also clear the last 15 minutes of history" is on
+
 ## [0.6.0] - 2026-11-10
 
 ### Added

@@ -144,6 +144,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 | `Ctrl+Shift+D`            | Split view on / off                 |
 | `Ctrl+Shift+N`            | New Burner space                    |
 | `Ctrl+Shift+M`            | Audio mixer                         |
+| `Ctrl+Shift+Delete`       | Panic: hide, mute, wipe Burners     |
 | `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab             |
 | `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Zoom in / out / reset          |

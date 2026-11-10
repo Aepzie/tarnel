@@ -41,6 +41,13 @@ export function Privacy() {
           />
         </Row>
       </Group>
+      <Group title="Panic button">
+        <SwitchRow
+          title="Also clear the last 15 minutes of history"
+          description="Ctrl+Shift+Delete or “Panic” in the command palette hides Vela, mutes every tab, disconnects the VPN and wipes all Burner Spaces. Nothing else is deleted unless this is on."
+          setting="panicClearRecentHistory"
+        />
+      </Group>
     </>
   );
 }

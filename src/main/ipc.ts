@@ -1,5 +1,5 @@
 import { app, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { AUDIO_IPC, IPC } from '../shared/ipc';
+import { AUDIO_IPC, IPC, PANIC_IPC } from '../shared/ipc';
 import {
   SPACE_COLORS,
   type ContentBounds,
@@ -30,6 +30,7 @@ import { registerSplitIpc } from './split-ipc';
 import { setTabMediaDeviceFromChrome } from './audio-devices';
 import { registerMixerIpc } from './audio-mixer';
 import { registerVpnIpc } from './vpn';
+import { panic } from './panic';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -322,6 +323,7 @@ export function registerIpc(): void {
   handleChrome(AUDIO_IPC.setDevice, (id, slot, choice) => setTabMediaDeviceFromChrome(int(id), slot, choice));
   registerMixerIpc(handleChrome);
   registerVpnIpc(handleChrome);
+  handleChrome(PANIC_IPC.run, () => panic());
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());

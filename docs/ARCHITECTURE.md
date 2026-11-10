@@ -471,6 +471,14 @@ export function serializeSession(): SavedTab[]; export function restoreSession()
 // …plus whatever else ipc.ts needs (back/forward/reload/find/zoom/move/duplicate/pin/mute/moveToSpace)
 ```
 
+## Panic button (`src/main/panic.ts`)
+
+`Ctrl+Shift+Delete` (shortcuts.ts) or the palette command → `PANIC_IPC.run` → `panic()`: minimize the window
+first, mute every unmuted tab (reversible), `vpn.disconnectAll()` (restore the Space route, clear per-tab
+routes; the account stays signed in), then `removeSpaceWithTabs()` for every Burner Space (normal disposal wipes
+its in-memory session; its tabs are not kept in the reopen stack). Only with `panicClearRecentHistory` on does it
+touch persistent data: `deleteHistorySince(now - 15 min)` removes entries whose last visit is in that window.
+
 ## VPN (MantelVPN)
 
 `src/shared/vpn.ts` (contract + pure parsers, unit-tested), `src/main/vpn/mantel.ts` (API client),
@@ -622,7 +630,8 @@ Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`)
 registry.ts  installed list (userData/extensions.json): id, source store|unpacked, path, enabled, spaces 'all'|ids, pinned
 runtime.ts   per-Space host: electron-chrome-extensions instance + session.extensions load/unload, tab wiring, action state
 webstore.ts  CWS download (electron-chrome-web-store) to userData/Extensions/<id>/<ver>_0, Omaha update checks (5 h)
-manifest.ts  name/description (incl. __MSG_*__), icon data URL, options page
+manifest.ts  name/description (incl. __MSG_*__), icon data URL, options page, classified permissions
+risk.ts      pure permission classifier (plain-language labels + low/medium/high), unit-tested
 index.ts     initExtensions() wiring + registerExtensionIpc() (registered from ipc.ts with handleChrome/handlePages)
 ```
 
@@ -648,6 +657,19 @@ index.ts     initExtensions() wiring + registerExtensionIpc() (registered from i
 * **`browser` namespace.** Chromium also exposes the extension API as `browser`, a separate object from `chrome`
   that the library never completes (`browser.commands`, `browser.tabs.query`, … were missing). The extension-API
   preload (`src/preload/extension-api.ts`) points `browser` at `chrome` in extension pages and service workers.
+
+* **Permission review.** `install` / `loadUnpacked` no longer add anything: they download or validate, then
+  *stage* the extension and return an `ExtensionReview` (token, plain-language permissions from `risk.ts`, overall
+  risk). `confirmInstall(token)` adds it; `cancelInstall(token)` (or a 15 min timeout) drops it and deletes a
+  staged store download. Host access comes from `host_permissions`, MV2 host patterns in `permissions` and
+  `content_scripts[].matches`; Chrome's silent permissions (storage, alarms, …) are not listed.
+* **Site access** (`siteAccess` in the registry). `all` = manifest as written. `click` is enforced: `runsIn()`
+  is false until the user clicks the extension's button, so it is not loaded in any Space; the toolbar shows a
+  placeholder action (manifest icon) and the first click arms it (in memory, per launch), syncs, then runs the
+  normal click (popup / `action.onClicked`). Pages already open need a reload for its content scripts.
+  `sites` stores a host list but is **not enforced yet**: Electron loads extensions natively and offers no hook
+  to narrow content-script matches or host permissions per session; doing it would mean loading a rewritten
+  copy of the extension (changes unpacked IDs) — the UI says so and points to On click / Spaces.
 
 ### declarativeNetRequest (`src/main/extensions/dnr/*`)
 
