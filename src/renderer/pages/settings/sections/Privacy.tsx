@@ -164,6 +164,23 @@ export function Privacy() {
       </Group>
       <SiteDataOnClose />
       <SecureDns />
+      <Group title="Passwords">
+        <SwitchRow
+          title="Offer to save passwords"
+          description="Ask after you sign in. Passwords are encrypted by your OS and stay in their Space."
+          setting="offerToSavePasswords"
+        />
+        <SwitchRow title="Auto-fill" description="Offer saved accounts on sign-in forms. Nothing is filled until you pick one." setting="passwordAutofill" />
+        <Row title="Saved passwords" description="View, edit, export or delete saved passwords.">
+          <button
+            type="button"
+            onClick={() => void velaPages().navigate('vela://passwords/')}
+            className="h-8 rounded-lg px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Manage
+          </button>
+        </Row>
+      </Group>
       <Group title="History">
         <Row title="Browsing history" description="Removes visited pages and top sites from every Space.">
           <ConfirmActions

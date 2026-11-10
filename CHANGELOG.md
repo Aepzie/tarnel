@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extensions store at `vela://extensions`: a curated, privacy-first catalog (uBlock Origin Lite, Privacy Badger, Bitwarden, Proton Pass, Dark Reader, SponsorBlock, React DevTools and more) with install, enable/disable, options and remove, an Installed view, a filter and a "Search the Chrome Web Store" shortcut. Every install still goes through the permission review.
 - "Add to Vela" button in the toolbar while a Chrome Web Store extension page is open.
 - "Browse extensions" in the extensions menu and Settings → Extensions, and an "Extensions store" palette command.
+- Built-in password manager, per Space: Vela offers to save (or update) a password after you sign in, and offers saved accounts on sign-in forms. Nothing is filled until you pick an account. Passwords are encrypted with your OS (DPAPI, Keychain or a Linux keyring); if that is not available Vela does not save them. Burner Spaces keep passwords in memory only.
+- vela://passwords: search, reveal (with a confirm, hidden again after 30 s), copy (cleared from the clipboard after 30 s), edit, delete, CSV export, "Never saved" sites, and a shortcut to install Bitwarden or 1Password instead.
+- Settings → Privacy → Passwords: "Offer to save passwords" and "Auto-fill" switches.
 
 ## [0.7.1] - 2026-11-10
 

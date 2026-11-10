@@ -850,6 +850,45 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   throttling, static regex rules beyond Chrome's 1000 per ruleset are not dropped, `onRuleMatchedDebug` reports
   `frameId: -1`, and `activeTab` is treated as granted for `getMatchedRules`.
 
+## Passwords (`src/main/passwords/*`)
+
+- **Storage.** One vault per Space at `userData/passwords/<spaceId>.json` (`vault.ts`, pure). Every password is
+  sealed with Electron `safeStorage` (DPAPI on Windows, Keychain on macOS, libsecret/kwallet on Linux) and stored
+  as base64 ciphertext; origins and usernames are plain. Writes are atomic (0600 temp file, fsync, rename).
+  Linux `basic_text` (hard-coded key) counts as unavailable: with no real OS encryption nothing is saved and
+  vela://passwords says so. Burner Spaces keep their vault in memory only; removing a Space deletes its file.
+- **Origins.** `origin.ts` normalises to scheme + host + non-default port, http(s) only. Matching is exact: no
+  subdomain, http↔https or port sharing.
+- **Capture.** A session preload (`src/preload/passwords.ts`, every web frame, isolated world) stays idle until
+  the frame has an `<input type=password>`, then asks main once (sendSync) whether saving / filling is on. It
+  sends `{username, password}` on submit, on a click on a button, or on Enter. Main ignores the page's idea of
+  where it is: the origin comes from `event.senderFrame.url`, the Space from the tab owning the sender, and
+  only top frames or frames same-origin with the top frame are accepted. Unchanged credentials and "Never"
+  sites produce no prompt. The pending plain password lives in main memory until answered (3 min max).
+- **Prompts.** The chrome gets `PasswordSavePrompt` / `PasswordFillOffer` (host, username, ids; never a password)
+  and renders them under the address area for the active tab only.
+- **Fill.** Only after the user picks an account. Main resolves the stored frame (`webFrameMain.fromId`), checks it
+  is still attached, in the same tab and Space, and that both it and its top frame still have the login's origin,
+  then sends the login to that frame only (`frame.send`). There is no automatic fill, also not on http:// (the
+  picker warns there). A login form that appears more than 30 s after load is not detected (keeps the observer cheap).
+- **vela://passwords.** `pages:passwords-*` channels are accepted only from a top-level vela://passwords frame of a
+  tab, and the pages preload only exposes `velaPages.passwords` on that host. Reveal is a two-step confirm in the
+  page and auto-hides after 30 s; no OS re-authentication (Windows Hello has no Electron API;
+  `systemPreferences.promptTouchID` is macOS only), so anyone at an unlocked machine can reveal, as in Chrome
+  with no OS password set. Copy happens in main (`clipboard`), cleared after 30 s if the clipboard still holds it.
+  CSV export (Chrome / Bitwarden / 1Password format, RFC 4180 quoting, no formula escaping so it re-imports
+  unchanged) is written by main after a warning and a native save dialog.
+- **Threat model.** Protects against: other users / offline disk access (OS encryption), web pages (they never
+  see stored logins; the isolated world and main-side origin checks stop a page or a cross-origin iframe from
+  requesting fills or reading another origin's login), other vela:// pages and the chrome UI (no password
+  channel). Does not protect against: malware running as the user (it can call the same OS decryption), a
+  compromised renderer of the site itself after a fill (the page owns its form), someone at the unlocked machine
+  (reveal has no re-auth), or a CSV export file left on disk. Imports (`importLogins`) go through the same
+  validation and encryption.
+- **External managers.** vela://passwords installs Bitwarden (`nngceckbapebfimnlniiiahkandclblb`) or 1Password
+  (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) through the normal extension review flow and offers to turn off
+  `offerToSavePasswords` / `passwordAutofill`.
+
 ## Auto-update (`src/main/updater.ts`)
 
 `electron-updater` against the GitHub releases feed (`publish` in electron-builder.yml → `app-update.yml`).

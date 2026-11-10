@@ -29,6 +29,7 @@ import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mix
 import type { VpnResult, VpnState } from './vpn';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
+import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -509,5 +510,36 @@ export interface VelaChromeAPI {
     snapshot(): Promise<TaskSnapshot>;
     /** Crash the tab's renderer (shows the crash page). */
     endProcess(tabId: number): Promise<void>;
+  };
+}
+
+/** Password manager prompts (chrome only). Channels live in PASSWORD_IPC (shared/passwords.ts). No passwords cross this API. */
+export interface VelaChromeAPI {
+  passwords: {
+    onSavePrompt(cb: (prompt: PasswordSavePrompt) => void): Unsubscribe;
+    onSaveCancel(cb: (id: string) => void): Unsubscribe;
+    answerSave(id: string, answer: PasswordSaveAnswer): Promise<void>;
+    onFillOffer(cb: (offer: PasswordFillOffer) => void): Unsubscribe;
+    onFillCancel(cb: (id: string) => void): Unsubscribe;
+    /** Main re-checks the frame's origin, then fills that frame only. */
+    fill(offerId: string, loginId: string): Promise<void>;
+    dismissOffer(offerId: string): Promise<void>;
+  };
+}
+
+/** vela://passwords only (main rejects every other page). */
+export interface VelaPagesAPI {
+  passwords?: {
+    status(): Promise<PasswordsStatus>;
+    list(spaceId: SpaceId): Promise<SavedLogin[]>;
+    /** Plain password, after the page's explicit two-step reveal. */
+    reveal(spaceId: SpaceId, loginId: string): Promise<string>;
+    /** Copied by main; a copied password is cleared from the clipboard after 30 s. */
+    copy(spaceId: SpaceId, loginId: string, field: 'username' | 'password'): Promise<void>;
+    update(spaceId: SpaceId, loginId: string, patch: SavedLoginPatch): Promise<SavedLogin>;
+    remove(spaceId: SpaceId, loginId: string): Promise<void>;
+    /** Save dialog + file write happen in main. */
+    exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
+    removeNever(spaceId: SpaceId, origin: string): Promise<void>;
   };
 }
