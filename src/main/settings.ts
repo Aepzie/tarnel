@@ -16,6 +16,7 @@ const BOOLEAN_KEYS = [
   'restoreSession',
   'sidebarCollapsed',
   'autoHideToolbar',
+  'showBookmarksBar',
   'updateAutoCheck',
   'updateAutoDownload',
   'updatePrerelease',

@@ -1,6 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import { EyeOff, Flame, Focus, History, Monitor, Moon, Plus, Puzzle, RotateCcw, Settings2, ShieldCheck, Sun } from 'lucide-react';
 import { ChevronsDownUp, ChevronsUpDown, LayersPlus, PanelLeft, PanelTop } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Star } from 'lucide-react';
+import { ui } from '../ui-store';
 import type { BrowserState, Settings, ThemeMode } from '@shared/types';
 import { groupActiveTab } from '../tabs/groups/group-ui';
 import { splitCommands } from '../split/split-commands';
@@ -68,6 +70,30 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       hint: settings.adblock ? 'On' : 'Off',
       active: settings.adblock,
       run: () => void vela.settings.set({ adblock: !settings.adblock }),
+    },
+    {
+      id: 'cmd:bookmarks',
+      title: 'Bookmarks',
+      icon: Bookmark,
+      keywords: 'favorites saved pages manager organize star',
+      run: () => void vela.bookmarks.openManager(),
+    },
+    {
+      id: 'cmd:bookmark-page',
+      title: 'Bookmark this page',
+      icon: Star,
+      keywords: 'add favorite save star',
+      hint: 'Ctrl D',
+      run: () => ui.openBookmarkEditor(),
+    },
+    {
+      id: 'cmd:bookmarks-bar',
+      title: 'Toggle bookmarks bar',
+      icon: BookmarkCheck,
+      keywords: 'favorites bar toolbar show hide',
+      hint: settings.showBookmarksBar ? 'On' : 'Off',
+      active: settings.showBookmarksBar,
+      run: () => void vela.settings.set({ showBookmarksBar: !settings.showBookmarksBar }),
     },
     {
       id: 'cmd:focus',

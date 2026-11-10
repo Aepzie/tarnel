@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Bookmarks, per Space: star next to the address in the command palette or Ctrl+D bookmarks the page and opens a small editor (name, folder, remove). Every Space has "Bookmarks bar" and "Other bookmarks"; Burner Spaces keep bookmarks in memory only.
+- Optional bookmarks bar under the toolbar (Settings → Appearance → Show bookmarks bar, Ctrl+Shift+B), with folder dropdowns, an overflow menu and drag to reorder.
+- vela://bookmarks: folder tree, search, add, edit, delete, drag and drop, and "Import bookmarks…".
+- Bookmarks appear in address-bar suggestions and the command palette ("Bookmarks", "Bookmark this page", "Toggle bookmarks bar").
 - Extensions store at `vela://extensions`: a curated, privacy-first catalog (uBlock Origin Lite, Privacy Badger, Bitwarden, Proton Pass, Dark Reader, SponsorBlock, React DevTools and more) with install, enable/disable, options and remove, an Installed view, a filter and a "Search the Chrome Web Store" shortcut. Every install still goes through the permission review.
 - "Add to Vela" button in the toolbar while a Chrome Web Store extension page is open.
 - "Browse extensions" in the extensions menu and Settings → Extensions, and an "Extensions store" palette command.

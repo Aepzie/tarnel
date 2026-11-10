@@ -11,12 +11,15 @@ export interface ChromeUIState {
   find: { open: boolean };
   /** Focus mode: island temporarily revealed by hovering the top edge. */
   islandRevealed: boolean;
+  /** "Bookmark this page" popover (star button, Ctrl+D). */
+  bookmarkEditor: { open: boolean };
 }
 
 let state: ChromeUIState = {
   palette: { open: false, mode: 'current', initial: '' },
   find: { open: false },
   islandRevealed: false,
+  bookmarkEditor: { open: false },
 };
 const listeners = new Set<() => void>();
 
@@ -41,6 +44,8 @@ export const ui = {
   closePalette: (): void => set({ palette: { ...state.palette, open: false } }),
   openFind: (): void => set({ find: { open: true } }),
   closeFind: (): void => set({ find: { open: false } }),
+  openBookmarkEditor: (): void => set({ palette: { ...state.palette, open: false }, bookmarkEditor: { open: true } }),
+  closeBookmarkEditor: (): void => set({ bookmarkEditor: { open: false } }),
   setIslandRevealed: (islandRevealed: boolean): void => {
     if (state.islandRevealed !== islandRevealed) set({ islandRevealed });
   },

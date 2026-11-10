@@ -5,6 +5,7 @@ import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
 import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
+import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
 
 const C = IPC.chrome;
@@ -171,6 +172,15 @@ const api: VelaChromeAPI = {
     snapshot: () => invoke(TASK_MANAGER_IPC.snapshot),
     endProcess: (tabId) => invoke(TASK_MANAGER_IPC.endProcess, tabId),
   },
+  bookmarks: {
+    list: (spaceId) => invoke(BOOKMARKS_IPC.chromeList, spaceId ?? null),
+    add: (input, spaceId) => invoke(BOOKMARKS_IPC.chromeAdd, input, spaceId ?? null),
+    update: (id, patch, spaceId) => invoke(BOOKMARKS_IPC.chromeUpdate, id, patch, spaceId ?? null),
+    remove: (id, spaceId) => invoke(BOOKMARKS_IPC.chromeRemove, id, spaceId ?? null),
+    search: (query, limit, spaceId) => invoke(BOOKMARKS_IPC.chromeSearch, query, limit ?? null, spaceId ?? null),
+    onChange: (cb) => subscribe(BOOKMARKS_IPC.changed, cb),
+    openManager: () => invoke(BOOKMARKS_IPC.chromeOpenManager),
+    },
   passwords: {
     onSavePrompt: (cb) => subscribe(PASSWORD_IPC.savePrompt, cb),
     onSaveCancel: (cb) => subscribe(PASSWORD_IPC.saveCancel, cb),

@@ -16,6 +16,8 @@ import { usePermissionQueue } from './permissions/permission-store';
 import { usePasswordQueue } from './passwords/password-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
+import { BookmarksBar } from './bookmarks/BookmarksBar';
+import { BookmarkEditor } from './bookmarks/BookmarkEditor';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
@@ -76,8 +78,12 @@ export function App() {
         case 'toggle-sidebar':
           settle(window.vela.settings.set({ autoHideToolbar: !settings.autoHideToolbar }));
           break;
+        case 'bookmark-page':
+          ui.openBookmarkEditor();
+          break;
         case 'escape':
-          if (ui.get().palette.open) ui.closePalette();
+          if (ui.get().bookmarkEditor.open) ui.closeBookmarkEditor();
+          else if (ui.get().palette.open) ui.closePalette();
           else if (ui.get().find.open) ui.closeFind();
           break;
         case 'new-space':
@@ -97,6 +103,7 @@ export function App() {
           {settings.tabLayout === 'vertical' && <VerticalIsland />}
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <TopIsland />
+            <BookmarksBar />
             <FindBar />
             <Viewport />
           </div>
@@ -112,6 +119,7 @@ export function App() {
           </Suspense>
         )}
         <CommandPalette />
+        <BookmarkEditor />
         <TaskManager />
       </LayoutGroup>
     </TooltipProvider>

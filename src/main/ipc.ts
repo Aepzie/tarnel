@@ -36,6 +36,8 @@ import { registerVpnIpc } from './vpn';
 import { panic } from './panic';
 import { registerSiteDataIpc } from './site-data';
 import { registerTaskManagerIpc } from './perf/task-manager';
+import { bookmarkSuggestions } from './bookmarks';
+import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
 import { getChromeView, getMainWindow } from './window';
 
@@ -188,6 +190,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
   for (const tab of tabs.searchOpenTabs(input, 3)) {
     push({ kind: 'tab', title: tab.title || tab.url, url: tab.url, tabId: tab.id });
   }
+  for (const entry of bookmarkSuggestions(input, 3)) push(entry);
   for (const entry of suggest(input, 6)) push(entry);
   for (const entry of remoteTabSuggestions(input, 3)) push(entry);
   return results;
@@ -340,6 +343,7 @@ export function registerIpc(): void {
   handleChrome(PANIC_IPC.run, () => panic());
   registerSiteDataIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
+  registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
 
   const p = IPC.pages;

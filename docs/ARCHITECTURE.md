@@ -506,6 +506,15 @@ first, mute every unmuted tab (reversible), `vpn.disconnectAll()` (restore the S
 routes; the account stays signed in), then `removeSpaceWithTabs()` for every Burner Space (normal disposal wipes
 its in-memory session; its tabs are not kept in the reopen stack). Only with `panicClearRecentHistory` on does it
 touch persistent data: `deleteHistorySince(now - 15 min)` removes entries whose last visit is in that window.
+## Bookmarks (`src/main/bookmarks/*`)
+
+- Contract: `src/shared/bookmarks.ts` (`BookmarkNode`, `ImportedBookmark`) and `src/shared/bookmarks-ipc.ts` (`BOOKMARKS_IPC`, `BOOKMARK_ROOTS`, `BookmarkInput`/`BookmarkUpdate`, API types). Chrome API `vela.bookmarks.*` (plus `onChange`, `openManager`), pages API `velaPages.bookmarks.*`; both default to the active Space (chrome) or the hosting tab's Space (pages). Every argument is validated in `bookmarks/ipc.ts`; handlers go through the sender-checked `handleChrome` / `handlePages`.
+- Model: one flat node list per Space (`parentId` + `index`) with fixed roots `root-bar` ("Bookmarks bar") and `root-other` ("Other bookmarks"). `tree.ts` is pure and unit-tested: `normalizeTree` (drops malformed nodes, orphans and cycles, re-adds roots, reindexes), `addNode`, `updateNode` (rename, url, move; the drop index counts the siblings before the move; a folder cannot move into itself), `removeNode` (subtree), `searchNodes`, `findByUrl`, `importNodes`. URLs are limited to http(s), vela and file.
+- Storage: persistent Spaces share `bookmarks.json` (`Record<SpaceId, BookmarkNode[]>`, atomic writes via `createStore`); Burner Spaces live in a memory map only. `onSpacesChanged` prunes the bookmarks of removed Spaces. Every write sends `chrome-event:bookmarks` (Space id) so the chrome reloads; vela://bookmarks refreshes on focus.
+- `importBookmarkTree(spaceId, folderTitle, nodes)` (browser import) appends a new folder under "Other bookmarks" and resolves to the number of bookmarks added.
+- UI: `renderer/chrome/bookmarks/*`. The star (`BookmarkStar`) sits next to the palette's site chip; it and Ctrl+D (`bookmark-page` UI command) open `BookmarkEditor`, which bookmarks the page in the bar if needed. `BookmarksBar` is a plain row in App's column under the top island (setting `showBookmarksBar`, Ctrl+Shift+B), so `#viewport` shrinks and its ResizeObserver reports the new bounds; its menus hold the overlay. Address-bar suggestions include up to 3 bookmarks (`kind: 'bookmark'`), shown as their own palette group.
+- Not synced yet (sync categories are unchanged).
+
 ## Site info & site data on close (`src/main/site-data.ts`)
 
 - Contract: `src/shared/site-data.ts` (pure, unit-tested: `SITE_IPC`, `SiteInfo`, `SiteDataPolicy`, exception matching). Chrome API `vela.site.*`, pages API `velaPages.siteData.*`.

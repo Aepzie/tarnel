@@ -199,6 +199,8 @@ export interface Settings {
   sidebarWidth: number;
   /** Focus mode: the top island hides and reveals on hover at the top edge. */
   autoHideToolbar: boolean;
+  /** Bookmarks bar under the top island (Ctrl+Shift+B). */
+  showBookmarksBar: boolean;
   windowMaterial: WindowMaterial;
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
@@ -232,7 +234,7 @@ export interface Settings {
 }
 
 export interface Suggestion {
-  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab';
+  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab' | 'bookmark';
   title: string;
   url: string;
   /** Present when kind === 'tab': switching to an existing tab. */
@@ -315,6 +317,7 @@ export type UICommand =
   | 'new-space'
   | 'audio-mixer'
   | 'task-manager'
+  | 'bookmark-page'
   | 'escape';
 
 export const SPACE_COLORS: readonly SpaceColor[] = [
@@ -345,6 +348,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarCollapsed: false,
   sidebarWidth: 240,
   autoHideToolbar: false,
+  showBookmarksBar: false,
   windowMaterial: 'mica',
   newtabHero: 'clock',
   tabLayout: 'horizontal',

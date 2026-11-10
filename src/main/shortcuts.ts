@@ -115,6 +115,8 @@ function handle(input: Input): boolean {
         });
       case 'KeyM':
         return once(() => sendCommand('audio-mixer'));
+      case 'KeyB':
+        return once(() => updateSettings({ showBookmarksBar: !getSettings().showBookmarksBar }));
       case 'Delete':
         return once(() => void panic());
       case 'Equal':
@@ -141,6 +143,8 @@ function handle(input: Input): boolean {
       return once(() => sendCommand('command-palette'));
     case 'KeyF':
       return once(() => sendCommand('find'));
+    case 'KeyD':
+      return once(() => sendCommand('bookmark-page'));
     case 'KeyR':
       return once(() => withActive((id) => reloadTab(id)));
     case 'BracketLeft':
@@ -167,10 +171,12 @@ function handle(input: Input): boolean {
   }
 }
 
-/** vela://history uses Ctrl/Cmd+F to focus its own search field instead of the find bar. */
+/** vela://history and vela://bookmarks use Ctrl/Cmd+F to focus their own search field instead of the find bar. */
 function ownsFindShortcut(wc: WebContents, input: Input): boolean {
   const mod = isMac ? input.meta : input.control;
-  return mod && !input.shift && !input.alt && input.code === 'KeyF' && wc.getURL().startsWith('vela://history');
+  if (!mod || input.shift || input.alt || input.code !== 'KeyF') return false;
+  const url = wc.getURL();
+  return url.startsWith('vela://history') || url.startsWith('vela://bookmarks');
 }
 
 /** Capture browser shortcuts on any webContents (chrome UI or tab) regardless of focus. */
