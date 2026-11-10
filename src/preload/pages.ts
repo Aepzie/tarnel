@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { EXTENSION_IPC, IPC, type VelaPagesAPI } from '../shared/ipc';
+import { EXTENSION_IPC, IPC, SAFETY_IPC, type VelaPagesAPI } from '../shared/ipc';
+import { SITE_IPC } from '../shared/site-data';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -40,6 +41,14 @@ if (isVelaPage()) {
       openOptions: (id) => call(EXTENSION_IPC.pageOptions, id),
       confirmInstall: (token) => call(EXTENSION_IPC.confirmInstall, token),
       cancelInstall: (token) => call(EXTENSION_IPC.cancelInstall, token),
+    },
+    safety: {
+      status: () => call(SAFETY_IPC.status),
+      proceed: (url) => call(SAFETY_IPC.proceed, url),
+    },
+    siteData: {
+      list: () => call(SITE_IPC.pagesPolicies),
+      set: (spaceId, policy) => call(SITE_IPC.pagesSetPolicy, spaceId, policy),
     },
     sync: {
       status: () => call(ch.syncStatus),

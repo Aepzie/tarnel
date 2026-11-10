@@ -19,7 +19,8 @@ import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
 import * as tabs from './tabs';
 import * as tabGroups from './tab-groups';
-import { getCompletedDownloadPath, getDownloadPath } from './downloads';
+import { getCompletedDownloadPath, getDownloadPath, isDangerousDownload } from './downloads';
+import { registerSafetyIpc } from './safety';
 import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { regenerateFingerprint } from './fingerprint';
@@ -31,6 +32,8 @@ import { setTabMediaDeviceFromChrome } from './audio-devices';
 import { registerMixerIpc } from './audio-mixer';
 import { registerVpnIpc } from './vpn';
 import { panic } from './panic';
+import { registerSiteDataIpc } from './site-data';
+import { registerTaskManagerIpc } from './perf/task-manager';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -302,9 +305,10 @@ export function registerIpc(): void {
   handleChrome(c.setContentBounds, (rect) => tabs.setContentBounds(bounds(rect)));
   handleChrome(c.setOverlay, (open) => tabs.setOverlay(optBool(open) ?? false));
   handleChrome(c.downloadOpen, async (id) => {
-    const path = getCompletedDownloadPath(str(id, MAX_ID, 'download id'));
+    const downloadId = str(id, MAX_ID, 'download id');
+    const path = getCompletedDownloadPath(downloadId);
     if (!path) return;
-    if (DANGEROUS_EXT.test(path)) shell.showItemInFolder(path);
+    if (DANGEROUS_EXT.test(path) || isDangerousDownload(downloadId)) shell.showItemInFolder(path);
     else await shell.openPath(path);
   });
   handleChrome(c.downloadShow, (id) => {
@@ -324,6 +328,8 @@ export function registerIpc(): void {
   registerMixerIpc(handleChrome);
   registerVpnIpc(handleChrome);
   handleChrome(PANIC_IPC.run, () => panic());
+  registerSiteDataIpc(handleChrome, handlePages);
+  registerTaskManagerIpc(handleChrome);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
@@ -375,4 +381,5 @@ export function registerIpc(): void {
   }));
   registerExtensionIpc(handleChrome, handlePages);
   registerSyncIpc(handlePages);
+  registerSafetyIpc(handlePages);
 }

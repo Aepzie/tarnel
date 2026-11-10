@@ -34,9 +34,6 @@ jobs:
           - name: linux
             os: ubuntu-latest
             args: --linux AppImage deb --x64
-    env:
-      # Unsigned builds until code-signing certificates are configured.
-      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - uses: actions/checkout@v4
 
@@ -54,8 +51,44 @@ jobs:
       - name: Build (production)
         run: node scripts/build.mjs --production
 
+      # Signing switches itself on once the secrets in docs/RELEASING.md exist; without them (forks,
+      # the repo today) every target still packages unsigned. Each secret only reaches the runner
+      # OS it belongs to, so the macOS certificate can never be picked up by the Windows signer.
+      - name: Configure code signing
+        id: signing
+        shell: bash
+        env:
+          AZURE_TENANT_ID: ${{ runner.os == 'Windows' && secrets.AZURE_TENANT_ID || '' }}
+          AZURE_CLIENT_ID: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_CLIENT_SECRET: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_SECRET || '' }}
+          AZURE_SIGNING_ENDPOINT: ${{ runner.os == 'Windows' && (vars.AZURE_SIGNING_ENDPOINT || secrets.AZURE_SIGNING_ENDPOINT) || '' }}
+          AZURE_SIGNING_ACCOUNT: ${{ runner.os == 'Windows' && (vars.AZURE_SIGNING_ACCOUNT || secrets.AZURE_SIGNING_ACCOUNT) || '' }}
+          AZURE_SIGNING_PROFILE: ${{ runner.os == 'Windows' && (vars.AZURE_SIGNING_PROFILE || secrets.AZURE_SIGNING_PROFILE) || '' }}
+          WIN_PUBLISHER_NAME: ${{ runner.os == 'Windows' && (vars.WIN_PUBLISHER_NAME || secrets.WIN_PUBLISHER_NAME) || '' }}
+          WIN_CSC_LINK: ${{ runner.os == 'Windows' && secrets.WIN_CSC_LINK || '' }}
+          CSC_LINK: ${{ runner.os == 'macOS' && secrets.MAC_CSC_LINK || '' }}
+          APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
+        run: node scripts/signing-config.mjs
+
       - name: Package installers
-        run: npx electron-builder ${{ matrix.args }} --publish never
+        run: npx electron-builder ${{ matrix.args }} ${{ steps.signing.outputs.args }} --publish never
+        env:
+          # Unsigned builds must not go looking for a keychain / certificate-store identity.
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.signed == 'true' && 'true' || 'false' }}
+          # Windows: Azure Trusted Signing (service principal) or a classic PFX certificate.
+          AZURE_TENANT_ID: ${{ steps.signing.outputs.method == 'azure' && secrets.AZURE_TENANT_ID || '' }}
+          AZURE_CLIENT_ID: ${{ steps.signing.outputs.method == 'azure' && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_CLIENT_SECRET: ${{ steps.signing.outputs.method == 'azure' && secrets.AZURE_CLIENT_SECRET || '' }}
+          WIN_CSC_LINK: ${{ steps.signing.outputs.method == 'pfx' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ steps.signing.outputs.method == 'pfx' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          # macOS: Developer ID Application certificate (.p12), then notarization via notarytool.
+          CSC_LINK: ${{ steps.signing.outputs.method == 'developer-id' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ steps.signing.outputs.method == 'developer-id' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ steps.signing.outputs.notarize == 'true' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ steps.signing.outputs.notarize == 'true' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ steps.signing.outputs.notarize == 'true' && secrets.APPLE_TEAM_ID || '' }}
 
       # Each mac job writes a latest-mac.yml listing only its own arch; keep them apart so the
       # publish job can merge them into one feed instead of one overwriting the other.
