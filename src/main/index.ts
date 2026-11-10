@@ -1,4 +1,5 @@
 import { app, type BaseWindow, protocol, session as electronSession } from 'electron';
+import { flushCompileCache } from 'node:module';
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
@@ -40,10 +41,17 @@ import { initUpdater, stopUpdater } from './updater';
 import { resolveInput } from './url';
 import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, refreshWindowTheme, saveBounds, sendToChrome } from './window';
 
+/** VELA_STARTUP_TRACE=1 prints process-uptime marks for startup profiling (scripts measure these). */
+const traceStartup = process.env.VELA_STARTUP_TRACE === '1';
+function startupMark(name: string): void {
+  if (traceStartup) console.info(`[vela:startup] ${name} ${Math.round(process.uptime() * 1000)}ms`);
+}
+
 // Isolated profile for development/testing (separate single-instance lock + storage).
 if (process.env.VELA_USER_DATA) app.setPath('userData', process.env.VELA_USER_DATA);
 
 applyChromiumFlags();
+startupMark('main-evaluated');
 
 // @ghostery/adblocker-electron fires cosmetic scriptlets with an un-awaited executeJavaScript();
 // a scriptlet throwing on a page surfaces here as an unhandled rejection. It is harmless page-level
@@ -53,7 +61,8 @@ process.on('unhandledRejection', (reason) => {
   console.error('[vela] unhandled rejection', reason);
 });
 protocol.registerSchemesAsPrivileged([
-  { scheme: VELA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // codeCache: V8 code cache for vela:// pages (Chromium only caches http(s) by default); needs standard.
+  { scheme: VELA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
 ]);
 
 let sessionStore: JsonStore<SavedTab[]> | null = null;
@@ -81,6 +90,7 @@ function openWindow(): BaseWindow {
   const chromeWc = getChromeView()?.webContents;
   if (chromeWc) {
     attachShortcuts(chromeWc);
+    chromeWc.once('did-finish-load', () => startupMark('chrome-loaded'));
     chromeWc.on('did-finish-load', () => sendToChrome(IPC.chromeEvents.state, getBrowserState()));
   }
   win.on('close', saveSession);
@@ -110,6 +120,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   void app.whenReady().then(() => {
+    startupMark('ready');
     applyGlobalUserAgent();
     setPermissionPrompter(chromePermissionPrompter);
     electronSession.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
@@ -155,6 +166,7 @@ if (!app.requestSingleInstanceLock()) {
     else activateSpace(getActiveSpaceId());
     for (const url of urlsFromArgv(process.argv)) createTab({ url, active: true });
     booted = true;
+    startupMark('booted');
 
     initSleeper({
       listTabs: listSleepCandidates,
@@ -169,6 +181,9 @@ if (!app.requestSingleInstanceLock()) {
         flushAllStores();
       },
     });
+    // Persist the main-process compile cache (enabled in boot.ts) once startup modules have loaded,
+    // rather than relying on a clean exit to write it.
+    setTimeout(() => flushCompileCache?.(), 3000).unref();
   });
 
   app.on('activate', () => {
