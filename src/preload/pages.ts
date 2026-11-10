@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import { EXTENSION_IPC, IPC, SAFETY_IPC, type VelaPagesAPI } from '../shared/ipc';
 import { SITE_IPC } from '../shared/site-data';
+import { PASSWORD_IPC } from '../shared/passwords';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -76,6 +77,20 @@ if (isVelaPage()) {
       openRelease: () => call(ch.updateOpenRelease),
     },
   };
+
+  if (location.host === 'passwords') {
+    const pw = PASSWORD_IPC;
+    api.passwords = {
+      status: () => call(pw.status),
+      list: (spaceId) => call(pw.list, spaceId),
+      reveal: (spaceId, loginId) => call(pw.reveal, spaceId, loginId),
+      copy: (spaceId, loginId, field) => call(pw.copy, spaceId, loginId, field),
+      update: (spaceId, loginId, patch) => call(pw.update, spaceId, loginId, patch),
+      remove: (spaceId, loginId) => call(pw.remove, spaceId, loginId),
+      exportCsv: (spaceId) => call(pw.exportCsv, spaceId),
+      removeNever: (spaceId, origin) => call(pw.neverRemove, spaceId, origin),
+    };
+  }
 
   contextBridge.exposeInMainWorld('velaPages', api);
   applyBootTheme();
