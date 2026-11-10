@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, FRAME_RATE_MODES, NEWTAB_HEROES, type FrameRateMode, type NewtabHero, type SearchEngine, type Settings, type TabLayout, type ThemeMode, type WindowMaterial } from '../shared/types';
+import { DEFAULT_SETTINGS, FRAME_RATE_MODES, MEMORY_SAVER_MODES, NEWTAB_HEROES, type FrameRateMode, type MemorySaverMode, type NewtabHero, type SearchEngine, type Settings, type TabLayout, type ThemeMode, type WindowMaterial } from '../shared/types';
 import { createStore, type JsonStore } from './store';
 
 const SEARCH_ENGINES: readonly SearchEngine[] = ['duckduckgo', 'google', 'brave', 'startpage', 'ecosia'];
@@ -39,6 +39,9 @@ function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>
     if (typeof patch[key] === 'boolean') next[key] = patch[key];
   }
   next.sleepAfterMinutes = clampInt(patch.sleepAfterMinutes, 0, 240) ?? next.sleepAfterMinutes;
+  next.freezeAfterMinutes = clampInt(patch.freezeAfterMinutes, 0, 240) ?? next.freezeAfterMinutes;
+  if (MEMORY_SAVER_MODES.includes(patch.memorySaver as MemorySaverMode)) next.memorySaver = patch.memorySaver as MemorySaverMode;
+  next.memorySaverThresholdGB = clampInt(patch.memorySaverThresholdGB, 1, 64) ?? next.memorySaverThresholdGB;
   next.sidebarWidth = clampInt(patch.sidebarWidth, 180, 420) ?? next.sidebarWidth;
   return next;
 }

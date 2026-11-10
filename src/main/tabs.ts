@@ -8,6 +8,7 @@ import { recordVisit, updateTitle } from './history';
 import { upgradeToHttps } from './privacy';
 import { rendererMemoryKB } from './perf/metrics';
 import type { SleepCandidate } from './perf/sleeper';
+import { freezeWebContents, setLifecycleState } from './perf/freeze';
 import { getSettings } from './settings';
 import { getActiveSpaceId, getSpace, getSpaceSession, listSpaces, onSpacesChanged, removeSpace, setActiveSpaceId, whenSessionReady } from './spaces';
 import { bindGroupModel, clusterGroups, getGroup, groupsInOrder, pruneGroups, restoreGroup, savedGroup, type SavedGroup } from './tab-groups';
@@ -74,6 +75,8 @@ interface Tab {
   /** Private memory the tab's renderer gave back when it was put to sleep (KB); null = unknown. */
   freedKB: number | null;
   groupId: TabGroupId | null;
+  /** Page Lifecycle frozen (perf/freeze.ts): renderer kept, task queues stopped. */
+  frozen: boolean;
 }
 
 type WebContentsHook = (wc: WebContents, tabId: number) => void;
@@ -360,6 +363,10 @@ function createView(tab: Tab): WebContentsView {
 function wake(tab: Tab): WebContents {
   tab.lastActiveAt = Date.now();
   const existing = liveWc(tab);
+  if (existing && tab.frozen) {
+    tab.frozen = false;
+    void setLifecycleState(existing, 'active');
+  }
   if (existing && !existing.isCrashed()) return existing;
   if (existing) destroyView(tab, false);
   tab.freedKB = null;
@@ -394,6 +401,7 @@ function destroyView(tab: Tab, keepHistory: boolean): void {
   tab.view = null;
   tab.loading = false;
   tab.audible = false;
+  tab.frozen = false;
   windowLayer.detachView(view);
   wcToTab.delete(wc.id);
   if (!wc.isDestroyed()) wc.close();
@@ -446,6 +454,7 @@ export function createTab(opts: CreateTabOpts = {}): number {
     findText: '',
     savedHistory: null,
     freedKB: null,
+    frozen: false,
     groupId: !opts.pinned && groupId && getGroup(groupId)?.spaceId === spaceId ? groupId : null,
   };
   tabs.set(tab.id, tab);
@@ -651,6 +660,11 @@ function exclusiveRendererKB(tab: Tab): number | null {
   return rendererMemoryKB([...own]);
 }
 
+function rendererPids(tab: Tab): number[] {
+  const wc = liveWc(tab);
+  return wc ? [...framePids(wc)] : [];
+}
+
 /** Every renderer process hosting a frame of `wc`: the page itself plus out-of-process iframes. */
 function framePids(wc: WebContents): Set<number> {
   const pids = new Set<number>([wc.getOSProcessId()]);
@@ -662,12 +676,30 @@ function framePids(wc: WebContents): Set<number> {
   return pids;
 }
 
-export function sleepTab(id: number): void {
+/** Puts a background tab to sleep; returns the renderer memory it gave back (KB), null if unknown or not slept. */
+export function sleepTab(id: number): number | null {
   const tab = tabs.get(id);
-  if (!tab || !tab.view || isOnScreen(id)) return;
+  if (!tab || !tab.view || isOnScreen(id)) return null;
   tab.freedKB = exclusiveRendererKB(tab);
   destroyView(tab, true);
   scheduleEmit();
+  return tab.freedKB;
+}
+
+/** Freezes a background tab (perf/freeze.ts); a no-op for on-screen, asleep or already frozen tabs. */
+export async function freezeTab(id: number): Promise<boolean> {
+  const tab = tabs.get(id);
+  const wc = liveWc(tab);
+  if (!tab || !wc || tab.frozen || isOnScreen(id)) return false;
+  const view = tab.view;
+  if (!(await freezeWebContents(wc))) return false;
+  if (tabs.get(id) !== tab || tab.view !== view || wc.isDestroyed()) return false;
+  if (isOnScreen(id)) {
+    void setLifecycleState(wc, 'active');
+    return false;
+  }
+  tab.frozen = true;
+  return true;
 }
 
 export function togglePin(id: number): void {
@@ -896,6 +928,9 @@ export function listSleepCandidates(): SleepCandidate[] {
       pinned: tab.pinned,
       asleep: !liveWc(tab),
       active: isOnScreen(tab.id),
+      frozen: tab.frozen,
+      capturing: isMicActive(tab.id),
+      pids: rendererPids(tab),
     };
   });
 }
@@ -905,14 +940,17 @@ export function listTabAudibility(): { id: number; audible: boolean }[] {
   return order.map((id) => ({ id, audible: tabs.get(id)!.audible }));
 }
 
-export function countTabs(): { awake: number; asleep: number; freedKB: number[] } {
+export function countTabs(): { awake: number; asleep: number; frozen: number; freedKB: number[] } {
   let awake = 0;
+  let frozen = 0;
   const freedKB: number[] = [];
   for (const tab of tabs.values()) {
-    if (liveWc(tab)) awake++;
-    else if (tab.freedKB !== null) freedKB.push(tab.freedKB);
+    if (liveWc(tab)) {
+      awake++;
+      if (tab.frozen) frozen++;
+    } else if (tab.freedKB !== null) freedKB.push(tab.freedKB);
   }
-  return { awake, asleep: tabs.size - awake, freedKB };
+  return { awake, asleep: tabs.size - awake, frozen, freedKB };
 }
 
 export function searchOpenTabs(query: string, limit: number): TabState[] {

@@ -19,6 +19,8 @@ const SPARK_WIDTH = 264;
 const SPARK_HEIGHT = 56;
 
 const formatPercent = (value: number): string => `${Math.round(value)}%`;
+/** How long the memory saver notice stays in the chip tooltip and popover. */
+const SAVER_NOTICE_MS = 10 * 60_000;
 
 /** Right-side island chip: live memory readout; opens a glass popover with stats, sparkline and actions. */
 export function PerfChip() {
@@ -48,6 +50,8 @@ export function PerfChip() {
 
   const memory = stats?.totalMemoryMB ?? 0;
   const heavy = memory > HEAVY_MB;
+  const saver = stats?.memorySaver;
+  const saverNotice = saver && saver.freedMB > 0 && Date.now() - saver.at < SAVER_NOTICE_MS ? `Memory saver freed ${formatBytesMB(saver.freedMB)}` : null;
 
   const sleepInactive = async (): Promise<void> => {
     const ids = sleepable;
@@ -69,6 +73,7 @@ export function PerfChip() {
           whileTap={reduce ? undefined : { scale: 0.96 }}
           transition={spring.snappy}
           aria-label={stats ? `Memory ${formatBytesMB(memory)}. Performance details` : 'Performance details'}
+          title={saverNotice ?? undefined}
           className={cn(
             'no-drag group/perf flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] px-2.5 text-[12px] font-medium tracking-tight tabular-nums',
             'transition-colors duration-300 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent',
@@ -152,6 +157,13 @@ export function PerfChip() {
             <AnimatedNumber value={stats?.blockedTotal ?? 0} format={(n) => formatCount(Math.round(n))} />
           </Stat>
         </div>
+
+        {saverNotice && (
+          <p className="flex items-center gap-1.5 pt-2 text-[11px] text-muted-foreground">
+            <Leaf className="size-3 shrink-0" strokeWidth={1.75} />
+            {saverNotice}
+          </p>
+        )}
 
         <div className="flex items-center gap-2 pt-3">
           <button

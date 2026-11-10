@@ -14,6 +14,7 @@ import { clearHistory, deleteHistoryEntry, listHistory, suggest, topSites } from
 import { getBlockedTotal } from './perf/adblock';
 import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
+import { getMemorySaverNotice } from './perf/sleeper';
 import { pageThemeFor } from './page-theme';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
@@ -189,13 +190,17 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
 function perfStats() {
   const counts = tabs.countTabs();
   const chromePid = getChromeView()?.webContents.getOSProcessId();
-  return collectPerfStats({
-    tabsAwake: counts.awake,
-    tabsAsleep: counts.asleep,
-    blockedTotal: getBlockedTotal(),
-    sleptRendererKB: counts.freedKB,
-    uiRendererPids: chromePid ? [chromePid] : [],
-  });
+  return {
+    ...collectPerfStats({
+      tabsAwake: counts.awake,
+      tabsAsleep: counts.asleep,
+      blockedTotal: getBlockedTotal(),
+      sleptRendererKB: counts.freedKB,
+      uiRendererPids: chromePid ? [chromePid] : [],
+    }),
+    tabsFrozen: counts.frozen,
+    memorySaver: getMemorySaverNotice(),
+  };
 }
 
 function preconnect(rawUrl: unknown): void {
@@ -258,7 +263,9 @@ export function registerIpc(): void {
   handleChrome(c.tabForward, (id) => tabs.goForward(int(id)));
   handleChrome(c.tabReload, (id, ignoreCache) => tabs.reloadTab(int(id), optBool(ignoreCache) ?? false));
   handleChrome(c.tabStop, (id) => tabs.stopTab(int(id)));
-  handleChrome(c.tabSleep, (id) => tabs.sleepTab(int(id)));
+  handleChrome(c.tabSleep, (id) => {
+    tabs.sleepTab(int(id));
+  });
   handleChrome(c.tabTogglePin, (id) => tabs.togglePin(int(id)));
   handleChrome(c.tabToggleMute, (id) => tabs.toggleMute(int(id)));
   handleChrome(c.tabMove, (id, toIndex) => tabs.moveTab(int(id), int(toIndex, 'index')));

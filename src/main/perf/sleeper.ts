@@ -1,5 +1,9 @@
-import { powerMonitor } from 'electron';
+import { app, powerMonitor, type Session, type WebContents } from 'electron';
 import os from 'node:os';
+import type { MemorySaverMode } from '../../shared/types';
+import { pickFreezeTargets } from './freeze';
+import { estimateTabMemoryKB, pickSaverTargets } from './memory-saver';
+import { processMemoryKB } from './metrics';
 
 /**
  * Tab sleeping. A sleeping tab has its renderer process destroyed (not merely frozen), so its
@@ -13,12 +17,27 @@ export interface SleepCandidate {
   pinned: boolean;
   asleep: boolean;
   active: boolean;
+  frozen: boolean;
+  /** Microphone/camera granted and in use (audio-devices state). */
+  capturing: boolean;
+  /** Renderer processes hosting the tab's frames (memory saver estimate). */
+  pids: number[];
 }
 
 export interface SleeperDeps {
   listTabs(): SleepCandidate[];
-  sleepTab(id: number): void;
+  /** Returns the renderer memory given back (KB), null if unknown. */
+  sleepTab(id: number): number | null | void;
   getSleepAfterMinutes(): number;
+  freezeTab?(id: number): Promise<boolean>;
+  getFreezeAfterMinutes?(): number;
+  getMemorySaver?(): { mode: MemorySaverMode; thresholdGB: number };
+  tabIdForWebContents?(wcId: number): number | null;
+}
+
+export interface MemorySaverNotice {
+  freedMB: number;
+  at: number;
 }
 
 const TICK_MS = 30_000;
@@ -29,6 +48,11 @@ const PRESSURE_MIN_IDLE_MS = 60_000;
 const PRESSURE_MAX_PER_TICK = 2;
 
 let timer: NodeJS.Timeout | null = null;
+let currentDeps: SleeperDeps | null = null;
+let lastSaverNotice: MemorySaverNotice | null = null;
+/** Tab id -> downloads it started that are still in progress. */
+const activeDownloads = new Map<number, number>();
+const watchedSessions = new WeakSet<Session>();
 let onBattery = false;
 const onBatteryListener = (): void => {
   onBattery = true;
@@ -38,7 +62,74 @@ const onAcListener = (): void => {
 };
 
 function isEligible(tab: SleepCandidate): boolean {
-  return !tab.active && !tab.asleep && !tab.audible && !tab.pinned;
+  return !tab.active && !tab.asleep && !tab.audible && !tab.pinned && !tab.capturing && !activeDownloads.has(tab.id);
+}
+
+/** Never freeze or sleep a tab whose download is still running (its progress UI lives in the page). */
+export function trackDownloadsForSleep(session: Session): void {
+  if (watchedSessions.has(session)) return;
+  watchedSessions.add(session);
+  session.on('will-download', (_event, item, wc: WebContents | undefined) => {
+    const tabId = wc && !wc.isDestroyed() ? (currentDeps?.tabIdForWebContents?.(wc.id) ?? null) : null;
+    if (tabId === null) return;
+    activeDownloads.set(tabId, (activeDownloads.get(tabId) ?? 0) + 1);
+    item.once('done', () => {
+      const left = (activeDownloads.get(tabId) ?? 1) - 1;
+      if (left > 0) activeDownloads.set(tabId, left);
+      else activeDownloads.delete(tabId);
+    });
+  });
+}
+
+/** Last time the memory saver slept tabs, for the perf chip; null until it acts. */
+export function getMemorySaverNotice(): MemorySaverNotice | null {
+  return lastSaverNotice;
+}
+
+function runFreeze(deps: SleeperDeps, tabs: SleepCandidate[], now: number, timeoutMs: number): void {
+  const minutes = deps.getFreezeAfterMinutes?.() ?? 0;
+  if (!deps.freezeTab || !(minutes > 0)) return;
+  const freezeMs = minutes * 60_000;
+  if (timeoutMs > 0 && freezeMs >= timeoutMs) return;
+  const targets = pickFreezeTargets(
+    tabs.filter((tab) => !tab.capturing).map((tab) => ({ ...tab, downloading: activeDownloads.has(tab.id) })),
+    now,
+    freezeMs,
+  );
+  for (const id of targets) void deps.freezeTab(id).catch(() => false);
+}
+
+function runMemorySaver(deps: SleeperDeps, tabs: SleepCandidate[], now: number, slept: Set<number>): void {
+  const saver = deps.getMemorySaver?.();
+  if (!saver || saver.mode === 'off') return;
+  const metrics = app.getAppMetrics();
+  const pidKB = new Map<number, number>();
+  let usedKB = 0;
+  for (const metric of metrics) {
+    const kb = processMemoryKB(metric);
+    usedKB += kb;
+    pidKB.set(metric.pid, kb);
+  }
+  const thresholdKB = saver.thresholdGB * 1024 * 1024;
+  if (usedKB <= thresholdKB) return;
+  const awake = tabs.filter((tab) => !tab.asleep && !slept.has(tab.id));
+  const estimate = estimateTabMemoryKB(new Map(awake.map((tab) => [tab.id, tab.pids])), pidKB);
+  const targets = pickSaverTargets(
+    awake
+      .filter((tab) => !tab.capturing)
+      .map((tab) => ({ ...tab, downloading: activeDownloads.has(tab.id), memoryKB: estimate.get(tab.id) ?? 0 })),
+    now,
+    saver.mode,
+    usedKB,
+    thresholdKB,
+  );
+  if (targets.length === 0) return;
+  let freedKB = 0;
+  for (const id of targets) {
+    const freed = deps.sleepTab(id);
+    freedKB += typeof freed === 'number' ? freed : (estimate.get(id) ?? 0);
+  }
+  lastSaverNotice = { freedMB: Math.round(freedKB / 1024), at: now };
 }
 
 function underMemoryPressure(): boolean {
@@ -48,22 +139,32 @@ function underMemoryPressure(): boolean {
 
 function tick(deps: SleeperDeps): void {
   const minutes = deps.getSleepAfterMinutes();
-  if (!(minutes > 0)) return; // 0 = user opted out of sleeping entirely
-
-  // On battery, halve the timeout: every awake renderer costs timers, GC and wakeups.
-  const timeoutMs = (minutes * 60_000) / (onBattery ? 2 : 1);
+  // On battery, halve the timeouts: every awake renderer costs timers, GC and wakeups.
+  const factor = onBattery ? 2 : 1;
+  const timeoutMs = minutes > 0 ? (minutes * 60_000) / factor : 0;
   const now = Date.now();
-  const candidates = deps.listTabs().filter(isEligible);
+  const all = deps.listTabs().map((tab) => (activeDownloads.has(tab.id) ? { ...tab, downloading: true } : { ...tab, downloading: false }));
+  const candidates = all.filter(isEligible);
   const slept = new Set<number>();
 
-  for (const tab of candidates) {
-    if (now - tab.lastActiveAt > timeoutMs) {
-      deps.sleepTab(tab.id);
-      slept.add(tab.id);
+  if (timeoutMs > 0) {
+    for (const tab of candidates) {
+      if (now - tab.lastActiveAt > timeoutMs) {
+        deps.sleepTab(tab.id);
+        slept.add(tab.id);
+      }
     }
   }
 
-  if (!underMemoryPressure()) return;
+  runFreeze(
+    { ...deps, getFreezeAfterMinutes: () => (deps.getFreezeAfterMinutes?.() ?? 0) / factor },
+    all.filter((tab) => !slept.has(tab.id)),
+    now,
+    timeoutMs,
+  );
+  runMemorySaver(deps, all, now, slept);
+
+  if (timeoutMs <= 0 || !underMemoryPressure()) return; // 0 = user opted out of sleeping entirely
   const oldestFirst = candidates
     .filter((tab) => !slept.has(tab.id) && now - tab.lastActiveAt > PRESSURE_MIN_IDLE_MS)
     .sort((a, b) => a.lastActiveAt - b.lastActiveAt)
@@ -73,6 +174,7 @@ function tick(deps: SleeperDeps): void {
 
 export function initSleeper(deps: SleeperDeps): void {
   stopSleeper();
+  currentDeps = deps;
   try {
     onBattery = powerMonitor.isOnBatteryPower();
     powerMonitor.on('on-battery', onBatteryListener);

@@ -12,7 +12,7 @@ import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
-import { initSleeper, stopSleeper } from './perf/sleeper';
+import { initSleeper, stopSleeper, trackDownloadsForSleep } from './perf/sleeper';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, setPermissionPrompter } from './privacy';
 import { VELA_SCHEME, registerVelaProtocol } from './protocol';
@@ -34,6 +34,8 @@ import {
   restoreSession,
   serializeSession,
   sleepTab,
+  freezeTab,
+  tabIdForWebContents,
   type SavedTab,
 } from './tabs';
 import { initUpdater, stopUpdater } from './updater';
@@ -124,6 +126,7 @@ if (!app.requestSingleInstanceLock()) {
     onSessionCreated((ses) => {
       registerVelaProtocol(ses);
       attachDownloads(ses);
+      trackDownloadsForSleep(ses);
       enableAdblockForSession(ses);
     });
     initExtensions();
@@ -160,6 +163,10 @@ if (!app.requestSingleInstanceLock()) {
       listTabs: listSleepCandidates,
       sleepTab,
       getSleepAfterMinutes: () => getSettings().sleepAfterMinutes,
+      freezeTab,
+      getFreezeAfterMinutes: () => getSettings().freezeAfterMinutes,
+      getMemorySaver: () => ({ mode: getSettings().memorySaver, thresholdGB: getSettings().memorySaverThresholdGB }),
+      tabIdForWebContents,
     });
     initSync();
     initUpdater({
