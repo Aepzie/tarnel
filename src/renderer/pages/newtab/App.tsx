@@ -5,6 +5,7 @@ import { ease } from '@/lib/motion';
 import { velaPages } from '@/lib/vela';
 import { Aurora } from './components/Aurora';
 import { Hero } from './components/hero/Hero';
+import { ImportHint } from './components/ImportHint';
 import { bootHero, isNewtabHero } from './components/hero/heroes';
 import { SearchBar } from './components/SearchBar';
 import { StatsFooter } from './components/StatsFooter';
@@ -14,6 +15,7 @@ import { bootTheme, hasBridge } from './theme';
 export function App() {
   const [sites, setSites] = useState<Site[]>([]);
   const [stats, setStats] = useState<PerfStats | null>(null);
+  const [importFrom, setImportFrom] = useState<string | null>(null);
   const [hero, setHero] = useState<NewtabHero | null>(() => (hasBridge() ? bootHero() : 'clock'));
 
   const changeHero = useCallback((next: NewtabHero) => {
@@ -38,7 +40,14 @@ export function App() {
     document.addEventListener('visibilitychange', onVisible);
     velaPages()
       .topSites()
-      .then((raw) => setSites(toSites(raw)))
+      .then((raw) => {
+        const next = toSites(raw);
+        setSites(next);
+        if (next.length > 0) return;
+        return velaPages()
+          .browserImport.hint()
+          .then((hint) => setImportFrom(hint?.browserName ?? null));
+      })
       .catch(() => undefined);
     velaPages()
       .perf()
@@ -64,6 +73,7 @@ export function App() {
         </motion.div>
         <div className="mt-10 flex h-[212px] w-full items-start justify-center">
           {sites.length > 0 && <TopSites sites={sites} />}
+          {sites.length === 0 && importFrom && <ImportHint browserName={importFrom} onDismiss={() => setImportFrom(null)} />}
         </div>
       </main>
       <footer className="absolute inset-x-0 bottom-5 z-10 flex justify-center px-4">
