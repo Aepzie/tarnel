@@ -9,6 +9,7 @@ import {
   parseNodes,
   parseProxyList,
   parseProxyWithPassword,
+  normalizeTotp,
 } from './vpn';
 
 const SAMPLE = '1234567890123456';
@@ -64,12 +65,21 @@ test('proxies: list and create (password only on create)', () => {
 test('API errors become short user-facing copy', () => {
   assert.deepEqual(parseApiError({ code: 'unknown_code', error: 'x' }), { code: 'unknown_code', message: 'x' });
   assert.match(describeApiError(401, 'unknown_code'), /does not exist/);
-  assert.match(describeApiError(401, 'totp_required'), /two-factor/);
   assert.match(describeApiError(429, null), /Too many/);
 });
 
 test('a 403 is only two-factor when Mantel says so', () => {
-  assert.doesNotMatch(describeApiError(403, null), /two-factor/);
+  assert.doesNotMatch(describeApiError(403, null), /authenticator/);
+  assert.match(describeApiError(401, 'totp_required'), /authenticator app/);
+  assert.match(describeApiError(401, 'totp_invalid'), /did not work/);
   assert.match(describeApiError(403, 'account_expired'), /no active time/);
   assert.equal(describeApiError(403, 'forbidden', 'Not allowed from this client.'), 'Mantel: Not allowed from this client. (forbidden, 403)');
+});
+
+test('two-factor codes are 6 to 8 digits', () => {
+  assert.equal(normalizeTotp('123 456'), '123456');
+  assert.equal(normalizeTotp('12345678'), '12345678');
+  assert.equal(normalizeTotp('12345'), null);
+  assert.equal(normalizeTotp('12a456'), null);
+  assert.equal(normalizeTotp(42), null);
 });

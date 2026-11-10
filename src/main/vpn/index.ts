@@ -1,5 +1,5 @@
 import { app, safeStorage } from 'electron';
-import { VPN_IPC, normalizeAccountNumber, type VpnConnection, type VpnResult, type VpnServer, type VpnState } from '../../shared/vpn';
+import { VPN_IPC, normalizeAccountNumber, normalizeTotp, type VpnConnection, type VpnResult, type VpnServer, type VpnState } from '../../shared/vpn';
 import { getActiveSpaceId, getSpace, updateSpace } from '../spaces';
 import { createStore, type JsonStore } from '../store';
 import { sendToChrome } from '../window';
@@ -46,6 +46,13 @@ let mode: VpnState['mode'] = 'signed-out';
 let notice: string | null = null;
 /** Account number held only for this run when safeStorage is unavailable. */
 let volatileAccount: string | null = null;
+/** Account number waiting for its two-factor code (first sign-in); memory only. */
+let pendingAccount: string | null = null;
+/** The stored account needs a fresh two-factor code before the session can be renewed. */
+let totpNeeded = false;
+
+const isTotpError = (error: unknown): boolean =>
+  error instanceof MantelError && (error.code === 'totp_required' || error.code === 'totp_invalid');
 
 function requireStore(): JsonStore<VpnFile> {
   store ??= createStore<VpnFile>('vpn', { account: null, tail: null, proxies: [], route: null });
@@ -80,6 +87,7 @@ function snapshot(): VpnState {
     servers,
     connection: route ? { serverId: route.serverId, spaceId: route.spaceId, proxy: route.proxy, connectedAt: route.connectedAt } : null,
     notice,
+    totpRequired: pendingAccount !== null || totpNeeded,
   };
 }
 
@@ -99,9 +107,9 @@ function bracket(host: string): string {
 }
 
 /** Signs in with the stored number; on an unreachable API falls back to preview data. */
-async function signIn(accountNumber: string): Promise<void> {
+async function signIn(accountNumber: string, totp: string | null = null): Promise<void> {
   try {
-    const session = await mantel.login(accountNumber);
+    const session = await mantel.login(accountNumber, totp);
     token = session.token;
     paidUntil = session.paidUntil;
     servers = await mantel.nodes(token);
@@ -122,6 +130,7 @@ async function signIn(accountNumber: string): Promise<void> {
 async function withSession<T>(task: (session: string) => Promise<T>): Promise<T> {
   const accountNumber = storedAccount();
   if (!accountNumber) throw new MantelError('Sign in with your Mantel account number first.', 'auth');
+  if (!token && totpNeeded) throw new MantelError('Enter a code from your authenticator app to continue.', 'auth');
   if (!token) await signIn(accountNumber);
   if (!token) throw new MantelError('Mantel is not reachable right now.', 'network');
   try {
@@ -129,7 +138,14 @@ async function withSession<T>(task: (session: string) => Promise<T>): Promise<T>
   } catch (error) {
     if (!(error instanceof MantelError) || error.kind !== 'auth') throw error;
     token = null;
-    await signIn(accountNumber);
+    try {
+      await signIn(accountNumber);
+    } catch (renewError) {
+      if (!isTotpError(renewError)) throw renewError;
+      totpNeeded = true;
+      emit();
+      throw new MantelError('Your Mantel session ended. Enter a code from your authenticator app to continue.', 'auth');
+    }
     if (!token) throw error;
     return task(token);
   }
@@ -200,14 +216,44 @@ async function login(raw: unknown): Promise<VpnResult> {
   if (!accountNumber) return { ok: false, error: 'An account number has exactly 16 digits.', state: snapshot() };
   try {
     token = null;
-    await signIn(accountNumber);
-    const sealed = encrypt(accountNumber);
-    volatileAccount = sealed ? null : accountNumber;
-    if (!sealed) notice = 'Secure storage is unavailable, so you will need to sign in again after a restart.';
-    requireStore().update((current) => ({ ...current, account: sealed, tail: accountNumber.slice(-4) }));
-    return { ok: true, state: emit() };
+    pendingAccount = null;
+    totpNeeded = false;
+    try {
+      await signIn(accountNumber);
+    } catch (error) {
+      if (!isTotpError(error)) throw error;
+      pendingAccount = accountNumber;
+      return failure(error);
+    }
+    return finishLogin(accountNumber);
   } catch (error) {
     mode = storedAccount() ? mode : 'signed-out';
+    return failure(error);
+  }
+}
+
+function finishLogin(accountNumber: string): VpnResult {
+  pendingAccount = null;
+  totpNeeded = false;
+  const sealed = encrypt(accountNumber);
+  volatileAccount = sealed ? null : accountNumber;
+  if (!sealed) notice = 'Secure storage is unavailable, so you will need to sign in again after a restart.';
+  requireStore().update((current) => ({ ...current, account: sealed, tail: accountNumber.slice(-4) }));
+  return { ok: true, state: emit() };
+}
+
+/** Second sign-in step: the pending (or stored) account number plus a code from the authenticator app. */
+async function verifyTotp(raw: unknown): Promise<VpnResult> {
+  const code = normalizeTotp(raw);
+  if (!code) return { ok: false, error: 'Enter the 6-digit code from your authenticator app.', state: snapshot() };
+  const accountNumber = pendingAccount ?? (totpNeeded ? storedAccount() : null);
+  if (!accountNumber) return { ok: false, error: 'Sign in with your Mantel account number first.', state: snapshot() };
+  try {
+    token = null;
+    await signIn(accountNumber, code);
+    if (!token) return failure(new MantelError('Mantel is not reachable right now.', 'network'));
+    return finishLogin(accountNumber);
+  } catch (error) {
     return failure(error);
   }
 }
@@ -226,6 +272,8 @@ async function logout(): Promise<VpnState> {
   mode = 'signed-out';
   notice = null;
   volatileAccount = null;
+  pendingAccount = null;
+  totpNeeded = false;
   requireStore().set({ account: null, tail: null, proxies: [], route: null });
   return emit();
 }
@@ -273,6 +321,7 @@ export function registerVpnIpc(handle: ChromeHandler): void {
   handle(VPN_IPC.state, () => snapshot());
   handle(VPN_IPC.refresh, () => refresh());
   handle(VPN_IPC.login, (raw) => login(raw));
+  handle(VPN_IPC.verifyTotp, (raw) => verifyTotp(raw));
   handle(VPN_IPC.logout, () => logout());
   handle(VPN_IPC.connect, (serverId) => connect(serverId));
   handle(VPN_IPC.disconnect, () => {

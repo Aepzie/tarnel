@@ -26,6 +26,8 @@ export interface VpnSnapshot extends Persisted {
   /** Live Mantel servers, or preview data. */
   servers: readonly VpnServer[];
   notice: string | null;
+  /** Mantel wants a two-factor code before signing in (or renewing the session). */
+  totpRequired: boolean;
   status: VpnStatus;
   checking: boolean;
   /** Server actually in use while connecting/connected (Fastest resolved). */
@@ -72,6 +74,7 @@ let snapshot: VpnSnapshot = {
   paidUntil: null,
   servers: SERVERS,
   notice: null,
+  totpRequired: false,
   status: 'off',
   checking: false,
   activeServerId: null,
@@ -114,6 +117,7 @@ function applyState(state: VpnState): void {
     paidUntil: state.paidUntil,
     servers,
     notice: state.notice,
+    totpRequired: state.totpRequired,
     ...(live
       ? { status: 'connected' as const, activeServerId: live.serverId, connectedAt: live.connectedAt, ip: live.proxy.replace(/:\d+$/, '').replace(/^\[|\]$/g, '') }
       : preview
@@ -164,6 +168,21 @@ export const vpn = {
     emit({ checking: true, error: null });
     try {
       const result = await bridge.login(accountNumber);
+      applyState(result.state);
+      emit({ checking: false });
+      return result.ok ? null : result.error;
+    } catch {
+      emit({ checking: false });
+      return 'Something went wrong. Try again.';
+    }
+  },
+  /** Second sign-in step with a code from the authenticator app. Resolves to an error message or null. */
+  async verifyTotp(code: string): Promise<string | null> {
+    const bridge = api();
+    if (!bridge) return 'VPN is not available in this window.';
+    emit({ checking: true, error: null });
+    try {
+      const result = await bridge.verifyTotp(code);
       applyState(result.state);
       emit({ checking: false });
       return result.ok ? null : result.error;

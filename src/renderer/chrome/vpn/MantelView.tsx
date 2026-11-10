@@ -4,7 +4,7 @@ import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronRightIcon, KeyRoundIcon, 
 import { ease } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Flag } from './Flag';
-import { formatAccountNumber, normalizeAccountNumber } from '@shared/vpn';
+import { formatAccountNumber, normalizeAccountNumber, normalizeTotp } from '@shared/vpn';
 import { FASTEST_ID, TERM_DAYS, accountTerm, hash, resolveServer } from './vpn-data';
 import { MantelMark, StatusDot } from './parts';
 import { useVpn, vpn } from './vpn-store';
@@ -146,6 +146,115 @@ function AccountForm() {
           'Sign in'
         )}
       </button>
+    </form>
+  );
+}
+
+/** Two-factor step: shown when Mantel asks for a code at sign-in or to renew an expired session. */
+function TotpForm() {
+  const state = useVpn();
+  const [value, setValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 60);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const submit = async (code: string): Promise<void> => {
+    if (state.checking) return;
+    if (!normalizeTotp(code)) {
+      setError('Enter the 6-digit code from your authenticator app.');
+      inputRef.current?.focus();
+      return;
+    }
+    const message = await vpn.verifyTotp(code);
+    setError(message);
+    if (message) {
+      setValue('');
+      inputRef.current?.focus();
+    }
+  };
+
+  return (
+    <form
+      onSubmit={(event: FormEvent) => {
+        event.preventDefault();
+        void submit(value);
+      }}
+      className="flex flex-col gap-3 p-3.5"
+      noValidate
+    >
+      <div className="flex items-center gap-3">
+        <MantelMark />
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold tracking-tight text-foreground">Two-factor code</p>
+          <p className="text-[12px] leading-snug text-muted-foreground">Enter the current code from your authenticator app.</p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="vpn-totp" className="sr-only">
+          Two-factor code
+        </label>
+        <input
+          ref={inputRef}
+          id="vpn-totp"
+          value={value}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          spellCheck={false}
+          maxLength={8}
+          placeholder="000000"
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
+          disabled={state.checking}
+          onChange={(event) => {
+            const digits = event.target.value.replace(/\D/g, '').slice(0, 8);
+            setValue(digits);
+            if (error) setError(null);
+            if (digits.length === 6) void submit(digits);
+          }}
+          className={cn(
+            'h-11 rounded-[10px] bg-foreground/[0.05] text-center font-mono text-[20px] tracking-[0.4em] text-foreground outline-none ring-1 ring-foreground/10 ring-inset transition-shadow duration-150 placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-space/60 disabled:opacity-60',
+            error && 'ring-red-400/70 focus:ring-red-400/80',
+          )}
+        />
+        <AnimatePresence initial={false}>
+          {error && (
+            <motion.p
+              key="error"
+              id={errorId}
+              role="alert"
+              className="px-1 text-[11px] leading-snug text-red-500 dark:text-red-400"
+              initial={{ opacity: 0, y: -3 }}
+              animate={{ opacity: 1, y: 0, x: [0, -4, 4, -2, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.28, ease: ease.out }}
+            >
+              {error}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => void vpn.signOut()}
+          className="h-9 flex-1 rounded-[10px] text-[12.5px] font-medium text-muted-foreground transition-colors duration-150 outline-none hover:bg-foreground/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Use another account
+        </button>
+        <button
+          type="submit"
+          disabled={state.checking || value.length < 6}
+          className="vpn-cta flex h-9 flex-1 items-center justify-center gap-2 rounded-[10px] text-[13px] font-semibold tracking-tight outline-none transition-[opacity,transform] duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97] disabled:cursor-default disabled:opacity-50"
+        >
+          {state.checking ? <Loader2Icon className="size-3.5 animate-spin" strokeWidth={2} /> : null}
+          {state.checking ? 'Checking…' : 'Verify'}
+        </button>
+      </div>
     </form>
   );
 }
@@ -447,17 +556,20 @@ export function MantelView() {
   const state = useVpn();
   const reduce = useReducedMotion();
   const signedOut = state.mode === 'signed-out';
+  const step = state.totpRequired ? 'totp' : signedOut ? 'sign-in' : 'account';
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
-        key={signedOut ? 'sign-in' : 'account'}
+        key={step}
         className="flex min-h-0 flex-col"
         initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0 }}
         transition={quick}
       >
-        {signedOut ? (
+        {step === 'totp' ? (
+          <TotpForm />
+        ) : signedOut ? (
           <AccountForm />
         ) : (
           <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-3 [scrollbar-width:thin]">
