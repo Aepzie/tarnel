@@ -86,8 +86,14 @@ export type MixerRouting =
   | 'full'
   /** Some media is cross-origin without CORS; only volume/mute apply to it (Web Audio would output silence). */
   | 'partial'
-  /** Tab has not produced audio yet / no engine injected. */
-  | 'idle';
+  /** Nothing is being processed: no engine, neutral settings, or nothing routed is playing. */
+  | 'idle'
+  /**
+   * The tab is audible with non-neutral settings, but its sound started before the engine was attached
+   * where the engine cannot reach it live (a page AudioContext connected earlier, a detached `new Audio()`
+   * nobody touches): it applies after a reload.
+   */
+  | 'reload';
 
 export interface MixerTabState {
   tabId: number;
