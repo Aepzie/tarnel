@@ -17,6 +17,7 @@ import { onPaneFocus, trackPanes, type Pane } from './split-panes';
 import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTabMediaDevices, tabMediaDevices } from './audio-devices/state';
 import { forgetTabAudio, onTabAudioChanged, restoreTabAudio, tabAudioSettings } from './audio-mixer/state';
 import type { TabAudioSettings } from '../shared/audio-mixer';
+import { normalizeCountry } from '../shared/vpn-route';
 
 export interface SavedTab {
   url: string;
@@ -29,11 +30,14 @@ export interface SavedTab {
   split?: SavedSplit;
   devices?: TabMediaDevices;
   audio?: TabAudioSettings;
+  vpn?: string;
 }
 
 export interface CreateTabOpts {
   url?: string;
   spaceId?: SpaceId;
+  /** MantelVPN country (own partition per Space and country). */
+  vpn?: string | null;
   active?: boolean;
   asleep?: boolean;
   pinned?: boolean;
@@ -48,6 +52,7 @@ export interface CreateTabOpts {
 interface Tab {
   id: number;
   spaceId: SpaceId;
+  vpn: string | null;
   view: WebContentsView | null;
   url: string;
   title: string;
@@ -151,7 +156,7 @@ function loadInTab(tab: Tab, wc: WebContents, url: string, navigate: () => Promi
   }
   const view = tab.view;
   const stillCurrent = (): boolean => !wc.isDestroyed() && tab.view === view && tabs.get(tab.id) === tab;
-  whenSessionReady(tab.spaceId).then(
+  whenSessionReady(tab.spaceId, tab.vpn).then(
     () => {
       if (stillCurrent()) navigate().catch(() => undefined);
     },
@@ -295,12 +300,12 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
       };
     }
     const allowed = isOpenableFromWeb(url) || (isInternalUrl(url) && isInternalUrl(wc.getURL()));
-    if (allowed) createTab({ url, spaceId: tab.spaceId, active: disposition !== 'background-tab' && tab.id === activeTabId, afterId: tab.id });
+    if (allowed) createTab({ url, spaceId: tab.spaceId, vpn: tab.vpn, active: disposition !== 'background-tab' && tab.id === activeTabId, afterId: tab.id });
     return { action: 'deny' };
   });
   wc.on('did-create-window', (child) => {
     child.webContents.setWindowOpenHandler(({ url }) => {
-      if (isOpenableFromWeb(url)) createTab({ url, spaceId: tab.spaceId, active: true });
+      if (isOpenableFromWeb(url)) createTab({ url, spaceId: tab.spaceId, vpn: tab.vpn, active: true });
       return { action: 'deny' };
     });
     child.webContents.on('will-attach-webview', (event) => event.preventDefault());
@@ -320,7 +325,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
 function createView(tab: Tab): WebContentsView {
   const view = new WebContentsView({
     webPreferences: {
-      session: getSpaceSession(tab.spaceId),
+      session: getSpaceSession(tab.spaceId, tab.vpn),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -422,6 +427,7 @@ export function createTab(opts: CreateTabOpts = {}): number {
   const tab: Tab = {
     id: nextId++,
     spaceId,
+    vpn: normalizeCountry(opts.vpn),
     view: null,
     url: opts.url || NEWTAB_URL,
     title: opts.title ?? '',
@@ -698,7 +704,30 @@ export function moveTab(id: number, toIndex: number): void {
 export function duplicateTab(id: number): number | null {
   const tab = tabs.get(id);
   if (!tab) return null;
-  return createTab({ url: tab.errorUrl ?? tab.url, spaceId: tab.spaceId, active: true, title: tab.title, favicon: tab.favicon, afterId: id });
+  return createTab({ url: tab.errorUrl ?? tab.url, spaceId: tab.spaceId, vpn: tab.vpn, active: true, title: tab.title, favicon: tab.favicon, afterId: id });
+}
+
+export function getTabVpn(id: number): string | null {
+  return tabs.get(id)?.vpn ?? null;
+}
+
+/**
+ * Routes a tab through a MantelVPN country (its own partition for this Space and country) or back
+ * to the Space session (null). The view is recreated in the other session and its history reloaded,
+ * like moving a tab between Spaces; position, group and split stay.
+ */
+export function setTabVpn(id: number, country: string | null): void {
+  const tab = tabs.get(id);
+  const next = country === null ? null : normalizeCountry(country);
+  if (!tab || (country !== null && !next) || tab.vpn === next) return;
+  const wasOnScreen = isOnScreen(id);
+  const hadView = !!tab.view;
+  destroyView(tab, true);
+  tab.vpn = next;
+  tab.blockedCount = 0;
+  if (wasOnScreen) showActive();
+  else if (hadView) wake(tab);
+  scheduleEmit();
 }
 
 export function moveToSpace(id: number, spaceId: SpaceId): void {
@@ -835,6 +864,7 @@ function toState(tab: Tab): TabState {
     splitId: splitIdOf(tab.id),
     devices: tabMediaDevices(tab.id),
     micActive: isMicActive(tab.id),
+    vpn: tab.vpn,
   };
 }
 
@@ -907,6 +937,7 @@ export function serializeSession(): SavedTab[] {
       ...(splitIdOf(tab.id) ? { split: savedSplit(tab.id) } : {}),
       ...(tabMediaDevices(tab.id) ? { devices: tabMediaDevices(tab.id)! } : {}),
       ...(tabAudioSettings(tab.id) ? { audio: tabAudioSettings(tab.id)! } : {}),
+      ...(tab.vpn ? { vpn: tab.vpn } : {}),
     }));
 }
 
@@ -930,6 +961,7 @@ export function restoreSession(saved: unknown): number {
     const id = createTab({
       url: entry.url,
       spaceId: entry.spaceId,
+      vpn: normalizeCountry(entry.vpn),
       active: false,
       asleep: true,
       pinned: entry.pinned === true,

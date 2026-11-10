@@ -153,6 +153,7 @@ const api: VelaChromeAPI = {
     logout: () => invoke(VPN_IPC.logout),
     connect: (serverId) => invoke(VPN_IPC.connect, serverId),
     disconnect: () => invoke(VPN_IPC.disconnect),
+    routeTab: (tabId, country) => invoke(VPN_IPC.routeTab, tabId, country),
     onState: (cb) => subscribe(VPN_IPC.changed, cb),
   },
 };

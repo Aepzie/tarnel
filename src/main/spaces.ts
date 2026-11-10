@@ -1,5 +1,8 @@
-import { session as electronSession, type Session } from 'electron';
+import { app, session as electronSession, type Session } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { normalizeCountry, routeKey, routedPartition } from '../shared/vpn-route';
 import { FINGERPRINT_LEVELS, SPACE_COLORS, type FingerprintLevel, type Space, type SpaceColor, type SpaceId, type SpaceInput } from '../shared/types';
 import { applyPrivacy } from './privacy';
 import { createStore, type JsonStore } from './store';
@@ -20,9 +23,16 @@ let store: JsonStore<SpacesFile> | null = null;
 let ephemeral: Space[] = [];
 let activeSpaceId: SpaceId = '';
 
-const sessions = new Map<SpaceId, Session>();
-/** Latest setProxy result per created session. */
-const proxyReady = new Map<SpaceId, Promise<void>>();
+/** Created sessions by session key: the Space id, or `<space>@vpn-<cc>` for a VPN-routed partition. */
+const sessions = new Map<string, Session>();
+/** Routed sessions: session key -> its Space and country. */
+const routed = new Map<string, { spaceId: SpaceId; country: string }>();
+/** Latest setProxy result per created session (by session key). */
+const proxyReady = new Map<string, Promise<void>>();
+/** Proxy rules for a VPN country, or null when it cannot be routed (the session is then blackholed). */
+let routeProxy: (country: string) => string | null = () => null;
+/** While hooks run for a routed session, gateSessionReady(space.id) applies to that session. */
+let hookKey: { spaceId: SpaceId; key: string } | null = null;
 const removedHooks: ((session: Session) => void)[] = [];
 const hooks: SessionHook[] = [];
 const changeListeners = new Set<() => void>();
@@ -91,9 +101,13 @@ const BLACKHOLE_PROXY = 'http://127.0.0.1:9';
  * session stays "not ready" (rejected) until a later update succeeds, so callers awaiting
  * whenSessionReady() never load pages through an unintended direct connection.
  */
-function applyProxy(id: SpaceId, ses: Session, space: Space): void {
-  const direct = !space.proxy || /^direct:\/\//i.test(space.proxy);
-  const pending = ses.setProxy(direct ? { mode: 'direct' } : { proxyRules: space.proxy }).then(
+function applyProxy(id: string, ses: Session, space: Space): void {
+  applyRules(id, ses, space.proxy);
+}
+
+function applyRules(id: string, ses: Session, rules: string): void {
+  const direct = !rules || /^direct:\/\//i.test(rules);
+  const pending = ses.setProxy(direct ? { mode: 'direct' } : { proxyRules: rules }).then(
     () => undefined,
     async (err: unknown) => {
       // Fail CLOSED: route everything to an unroutable proxy so in-page navigations (links,
@@ -224,7 +238,8 @@ export async function removeSpace(id: SpaceId): Promise<void> {
   const ses = created ?? electronSession.fromPartition(partitionFor(space), { cache: true });
   forgetSession(id);
   if (created) emitSessionRemoved(created);
-  await Promise.allSettled([ses.clearStorageData(), ses.clearCache(), ses.clearAuthCache()]);
+  const targets = [ses, ...dropRoutedSessions(space)];
+  await Promise.allSettled(targets.flatMap((target) => [target.clearStorageData(), target.clearCache(), target.clearAuthCache()]));
 }
 
 export async function clearSpaceData(id: SpaceId): Promise<void> {
@@ -244,23 +259,86 @@ export function setActiveSpaceId(id: SpaceId): void {
   emitChanged();
 }
 
-export function getSpaceSession(id: SpaceId): Session {
-  const existing = sessions.get(id);
+/**
+ * The Space's session, or with `country` its MantelVPN partition for that country: the same Space
+ * protections (every onSessionCreated hook runs), separate storage, the proxy from the VPN route
+ * provider, or the blackhole when the country cannot be routed (fail closed).
+ */
+export function getSpaceSession(id: SpaceId, country: string | null = null): Session {
+  const key = routeKey(id, country);
+  const existing = sessions.get(key);
   if (existing) return existing;
   const space = getSpace(id);
   if (!space) throw new Error(`Unknown space: ${id}`);
-  const ses = electronSession.fromPartition(partitionFor(space), { cache: true });
-  sessions.set(id, ses);
-  applyProxy(id, ses, space);
-  for (const hook of hooks) runHook(hook, ses, space);
+  if (country !== null && normalizeCountry(country) !== country) throw new Error(`Invalid country: ${country}`);
+  const partition = country ? routedPartition(space.id, space.ephemeral, country) : partitionFor(space);
+  const ses = electronSession.fromPartition(partition, { cache: true });
+  sessions.set(key, ses);
+  if (country) {
+    routed.set(key, { spaceId: id, country });
+    applyRules(key, ses, routeProxy(country) ?? BLACKHOLE_PROXY);
+  } else applyProxy(key, ses, space);
+  runHooksFor(key, ses, space, hooks);
   return ses;
+}
+
+function runHooksFor(key: string, ses: Session, space: Space, list: SessionHook[]): void {
+  hookKey = { spaceId: space.id, key };
+  try {
+    for (const hook of list) runHook(hook, ses, space);
+  } finally {
+    hookKey = null;
+  }
+}
+
+/** Where routed sessions get their proxy rules from (the VPN module). */
+export function setRouteProxyProvider(provider: (country: string) => string | null): void {
+  routeProxy = provider;
+}
+
+/** Re-applies the proxy of every open routed session (after a VPN proxy was created or removed). */
+export function refreshRoutedProxies(): void {
+  for (const [key, route] of routed) {
+    const ses = sessions.get(key);
+    if (ses) applyRules(key, ses, routeProxy(route.country) ?? BLACKHOLE_PROXY);
+  }
+}
+
+/** The VPN country a session routes through, if it is a routed partition. */
+export function routedCountryOf(ses: Session): string | null {
+  for (const [key, route] of routed) if (sessions.get(key) === ses) return route.country;
+  return null;
+}
+
+/** Forgets the Space's routed sessions, including partitions earlier runs left on disk. */
+function dropRoutedSessions(space: Space): Session[] {
+  const found = new Set<Session>();
+  for (const [key, route] of [...routed]) {
+    if (route.spaceId !== space.id) continue;
+    const ses = sessions.get(key);
+    forgetSession(key);
+    if (!ses) continue;
+    emitSessionRemoved(ses);
+    found.add(ses);
+  }
+  if (space.ephemeral) return [...found];
+  try {
+    const prefix = `space-${space.id}-vpn-`;
+    for (const name of readdirSync(join(app.getPath('userData'), 'Partitions'))) {
+      const country = name.startsWith(prefix) ? normalizeCountry(name.slice(prefix.length)) : null;
+      if (country) found.add(electronSession.fromPartition(routedPartition(space.id, false, country), { cache: true }));
+    }
+  } catch {
+    /* no partitions on disk */
+  }
+  return [...found];
 }
 
 export function onSessionCreated(hook: SessionHook): void {
   hooks.push(hook);
-  for (const [id, ses] of sessions) {
-    const space = getSpace(id);
-    if (space) runHook(hook, ses, space);
+  for (const [key, ses] of sessions) {
+    const space = getSpace(routed.get(key)?.spaceId ?? key);
+    if (space) runHooksFor(key, ses, space, [hook]);
   }
 }
 
@@ -271,6 +349,7 @@ export function onSpacesChanged(cb: () => void): void {
 export async function disposeEphemeralSpaces(): Promise<void> {
   const targets: Session[] = [];
   for (const space of ephemeral) {
+    targets.push(...dropRoutedSessions(space));
     const ses = sessions.get(space.id);
     if (!ses) continue;
     targets.push(ses);
@@ -284,14 +363,15 @@ export async function disposeEphemeralSpaces(): Promise<void> {
  * Resolves once the space's session exists and its proxy configuration has been applied
  * (re-awaits if the proxy changed meanwhile). Rejects if the latest setProxy failed.
  */
-export async function whenSessionReady(id: SpaceId): Promise<void> {
-  getSpaceSession(id);
-  await readyGates.get(id);
+export async function whenSessionReady(id: SpaceId, country: string | null = null): Promise<void> {
+  getSpaceSession(id, country);
+  const key = routeKey(id, country);
+  await readyGates.get(key);
   for (;;) {
-    const pending = proxyReady.get(id);
+    const pending = proxyReady.get(key);
     if (!pending) return;
     await pending;
-    if (proxyReady.get(id) === pending) return;
+    if (proxyReady.get(key) === pending) return;
   }
 }
 
@@ -299,18 +379,20 @@ export function onSessionRemoved(hook: (session: Session) => void): void {
   removedHooks.push(hook);
 }
 
-function forgetSession(id: SpaceId): void {
-  sessions.delete(id);
-  proxyReady.delete(id);
-  readyGates.delete(id);
+function forgetSession(key: string): void {
+  sessions.delete(key);
+  routed.delete(key);
+  proxyReady.delete(key);
+  readyGates.delete(key);
 }
 
 /** Extra work a new session must finish before pages load (e.g. extensions). Must never reject. */
-const readyGates = new Map<SpaceId, Promise<void>>();
+const readyGates = new Map<string, Promise<void>>();
 
 /** Delay whenSessionReady() for this Space until `gate` settles. Call from an onSessionCreated hook. */
 export function gateSessionReady(id: SpaceId, gate: Promise<void>): void {
-  readyGates.set(id, gate.catch(() => undefined));
+  const key = hookKey && hookKey.spaceId === id ? hookKey.key : id;
+  readyGates.set(key, gate.catch(() => undefined));
 }
 
 function emitSessionRemoved(ses: Session): void {

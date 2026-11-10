@@ -426,6 +426,8 @@ export interface VelaChromeAPI {
     /** Routes the active Space through a Mantel proxy on that location (live mode only). */
     connect(serverId: string): Promise<VpnResult>;
     disconnect(): Promise<VpnState>;
+    /** Routes one tab through a MantelVPN country (own partition), or back to its Space with null. */
+    routeTab(tabId: number, country: string | null): Promise<VpnResult>;
     onState(cb: (state: VpnState) => void): Unsubscribe;
   };
 }
