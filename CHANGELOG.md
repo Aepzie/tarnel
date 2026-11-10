@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Phishing & malware protection: pages and frames are checked locally against the URLhaus (malware URLs), Phishing Army (phishing domains) and uBlock "Badware risks" lists, downloaded on start and every 6 h — nothing you visit is sent anywhere. A listed page shows a calm warning with "Back to safety" and a small "Proceed anyway (unsafe)" that allows that site until Vela quits; listed frames are blocked, and downloads from listed sites are only revealed in their folder, never opened directly. Settings → Privacy → "Warn about dangerous sites" (on by default) shows the entry count and last update
+
 ## [0.6.0] - 2026-11-10
 
 ### Added
