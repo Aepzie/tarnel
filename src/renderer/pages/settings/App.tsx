@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type KeyboardEvent } from 'react';
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react';
-import { Cloud, Gauge, Info, Layers, Palette, Puzzle, Settings2, Shield, type LucideIcon } from 'lucide-react';
+import { Cloud, Gauge, Import as ImportIcon, Info, Layers, Palette, Puzzle, Settings2, Shield, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ease, spring, stagger } from '@/lib/motion';
 import { VelaMark } from './components/brand';
@@ -9,12 +9,13 @@ import { About } from './sections/About';
 import { Appearance } from './sections/Appearance';
 import { Extensions } from './sections/Extensions';
 import { General } from './sections/General';
+import { Import } from './sections/Import';
 import { Performance } from './sections/Performance';
 import { Privacy } from './sections/Privacy';
 import { Spaces } from './sections/Spaces';
 import { Sync } from './sections/Sync';
 
-type SectionId = 'general' | 'appearance' | 'spaces' | 'extensions' | 'privacy' | 'sync' | 'performance' | 'about';
+type SectionId = 'general' | 'appearance' | 'spaces' | 'extensions' | 'privacy' | 'sync' | 'import' | 'performance' | 'about';
 
 interface SectionDef {
   id: SectionId;
@@ -30,6 +31,7 @@ const SECTIONS: readonly SectionDef[] = [
   { id: 'extensions', label: 'Extensions', icon: Puzzle, Component: Extensions },
   { id: 'privacy', label: 'Privacy', icon: Shield, Component: Privacy },
   { id: 'sync', label: 'Sync', icon: Cloud, Component: Sync },
+  { id: 'import', label: 'Import', icon: ImportIcon, Component: Import },
   { id: 'performance', label: 'Performance', icon: Gauge, Component: Performance },
   { id: 'about', label: 'About', icon: Info, Component: About },
 ];

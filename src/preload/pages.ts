@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import { EXTENSION_IPC, IPC, SAFETY_IPC, type VelaPagesAPI } from '../shared/ipc';
+import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
@@ -58,6 +59,15 @@ if (isVelaPage()) {
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),
       set: (spaceId, policy) => call(SITE_IPC.pagesSetPolicy, spaceId, policy),
+    },
+    browserImport: {
+      profiles: () => call(IMPORT_IPC.profiles),
+      run: (profileId, kind, spaceId) => call(IMPORT_IPC.run, profileId, kind, spaceId),
+      pickPasswordCsv: () => call(IMPORT_IPC.pickPasswordCsv),
+      importPasswords: (token, spaceId) => call(IMPORT_IPC.importPasswords, token, spaceId),
+      discardPasswords: (token) => call(IMPORT_IPC.discardPasswords, token),
+      hint: () => call(IMPORT_IPC.hint),
+      dismissHint: () => call(IMPORT_IPC.dismissHint),
     },
     sync: {
       status: () => call(ch.syncStatus),

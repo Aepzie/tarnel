@@ -404,6 +404,7 @@ export function disposeEphemeralSpaces(): Promise<void>;  // clear storage of ep
 export function recordVisit(url: string, title: string): void; // skips vela://, about:, data:, ephemeral spaces handled by caller
 export function suggest(input: string, limit?: number): Suggestion[]; // frecency ranking on url+title
 export function topSites(limit?: number): TopSite[];
+export function importHistory(entries: readonly HistoryEntry[]): number; // browser import; merges like sync, returns entries kept
 export function clearHistory(): void;
 ```
 
@@ -640,6 +641,38 @@ any device can write records attributed to any id; there is no per-device signin
 provider can delete or roll back files (denial of service / replay of an older state of one device's
 file); records carry clocks so a rolled-back file never overwrites newer data that was already merged.
 "Wipe remote" deletes the files but cannot guarantee the provider's version history is purged.
+
+## Import from other browsers (`src/main/import/*`)
+
+Settings → Import (`vela://settings/#import`) plus a dismissible "Import from Chrome" pill on a fresh
+new tab page (shown only while there are no top sites; dismissed for good on click or after any import,
+state in `import-hint.json`).
+
+- **Detection** (`sources.ts`): Chromium family (Chrome, Edge, Brave, Vivaldi, Opera, Chromium) from
+  the per-OS user-data folder (`%LOCALAPPDATA%`, `~/Library/Application Support`, `~/.config`;
+  Opera lives in `%APPDATA%` and keeps a single profile directly in that folder). Profiles are
+  `Default` / `Profile N` folders containing `Bookmarks` or `History`; names come from
+  `Local State` → `profile.info_cache`. Firefox from `profiles.ini` (plus snap / flatpak roots on
+  Linux) → `places.sqlite`. The renderer only ever sees opaque profile ids, never paths.
+- **Bookmarks**: Chromium `Bookmarks` JSON (roots `bookmark_bar`, `other`, `synced`; `date_added` is
+  µs since 1601) / Firefox `moz_bookmarks` ⋈ `moz_places` assembled into a tree by `parent` +
+  `position` (tags, separators and `place:` queries dropped). Handed to
+  `bookmarks.importBookmarkTree(spaceId, "Imported from <browser>", tree)` as a new folder.
+- **History**: Chromium `urls` / Firefox `moz_places`, last 90 days, most visited first, at most
+  5,000 (Vela's history cap) → `history.importHistory`. Chromium's `last_visit_time` exceeds 2^53,
+  so it is scaled to ms inside the SQL query.
+- **SQLite** (`sqlite.ts`): Node's built-in `node:sqlite` (Electron 45 ships Node 24; loaded lazily
+  with `import()`, so it costs nothing at startup). The source database is never opened: it is copied
+  (with its `-wal`) to a private temp folder, opened read-only (falling back to a normal open of the
+  copy when a WAL needs a writable `-shm`), and the folder is deleted afterwards.
+- **Passwords**: other browsers' encrypted stores are deliberately not read (Chrome's app-bound
+  encryption would make it fragile, and it would look like credential theft). Instead the user picks
+  an exported CSV through a main-process file dialog; `csv.ts` parses it (RFC 4180, BOM, Chrome / Edge /
+  Brave, Firefox, Bitwarden, 1Password, generic url/username/password headers). The parsed logins stay
+  in main behind a 10-minute token; the page only gets a count, then calls
+  `importPasswords(token, spaceId)` → `passwords.importLogins`.
+- IPC: `IMPORT_IPC` (`src/shared/import.ts`), pages-only (`handlePages`), exposed as
+  `velaPages.browserImport`.
 
 ## Network pipeline (`src/main/net/*`)
 

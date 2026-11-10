@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Import from other browsers (Settings → Import): bookmarks and recent history from Chrome, Edge, Brave, Vivaldi, Opera, Chromium and Firefox profiles on Windows, macOS and Linux, into the Space you choose. Passwords come from the CSV file those browsers, Bitwarden or 1Password export; the file is read in the main process and never shown to pages. A fresh new tab page offers a small, dismissible "Import from Chrome" hint
 - Bookmarks, per Space: star next to the address in the command palette or Ctrl+D bookmarks the page and opens a small editor (name, folder, remove). Every Space has "Bookmarks bar" and "Other bookmarks"; Burner Spaces keep bookmarks in memory only.
 - Optional bookmarks bar under the toolbar (Settings → Appearance → Show bookmarks bar, Ctrl+Shift+B), with folder dropdowns, an overflow menu and drag to reorder.
 - vela://bookmarks: folder tree, search, add, edit, delete, drag and drop, and "Import bookmarks…".

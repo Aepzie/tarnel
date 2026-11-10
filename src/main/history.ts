@@ -262,6 +262,17 @@ export function mergeSyncedHistory(entries: readonly HistoryEntry[]): void {
   s.set([...byUrl.values()]);
 }
 
+/** Browser import: merged like synced history. Resolves to how many of the entries are kept after eviction. */
+export function importHistory(entries: readonly HistoryEntry[]): number {
+  mergeSyncedHistory(entries);
+  const kept = new Set<string>();
+  for (const entry of entries) {
+    const key = stripHash(entry.url);
+    if (byUrl.has(key)) kept.add(key);
+  }
+  return kept.size;
+}
+
 export function clearHistory(): void {
   const s = getStore();
   byUrl.clear();
