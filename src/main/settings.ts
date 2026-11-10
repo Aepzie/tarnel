@@ -19,6 +19,7 @@ const BOOLEAN_KEYS = [
   'updateAutoCheck',
   'updateAutoDownload',
   'updatePrerelease',
+  'preloadPages',
   'panicClearRecentHistory',
   'warnDangerousSites',
   'secureDnsStrict',

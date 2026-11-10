@@ -202,6 +202,8 @@ export interface Settings {
   updateAutoDownload: boolean;
   /** Offer pre-releases (e.g. 0.3.0-beta.1). */
   updatePrerelease: boolean;
+  /** Prefetch the top address-bar URL suggestion while the user lingers on it (docs/PERFORMANCE.md). */
+  preloadPages: boolean;
   /** Panic button also deletes history entries visited in the last 15 minutes. */
   panicClearRecentHistory: boolean;
   /** Warn before opening sites on the local phishing / malware blocklists. */
@@ -330,6 +332,7 @@ export const DEFAULT_SETTINGS: Settings = {
   updateAutoCheck: true,
   updateAutoDownload: true,
   updatePrerelease: false,
+  preloadPages: true,
   panicClearRecentHistory: false,
   warnDangerousSites: true,
   secureDns: 'off',

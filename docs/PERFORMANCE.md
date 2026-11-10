@@ -75,6 +75,36 @@ Restored tabs come back **asleep**: only the active tab gets a renderer at launc
 Hovering or arrowing onto an address-bar suggestion preconnects (DNS + TCP + TLS) to that origin, so
 by the time you press Enter the handshake — often 100–300 ms on mobile networks — is already done.
 
+**Address-bar prefetch** (`src/main/perf/prerender.ts`, Settings → Performance → "Preload pages from
+the address bar", on by default). When the selection rests on a URL suggestion for 150 ms, Vela opens
+two sockets to the origin and fetches the main document once (GET, `Sec-Purpose: prefetch`) through
+the Space's own session, into the HTTP cache. Nothing is rendered and no script runs, so a wrong guess
+costs one request. Guard rails: https only (plain http only on loopback, for local testing); never
+search-engine pages; never in a Burner Space or when the active tab is routed through MantelVPN (the
+request would leave the tunnel); one prefetch in flight, at most 3 per minute, the same URL at most
+once a minute, 2 MB / 10 s cap.
+
+It only pays off when the document is cacheable. Local test server with 250 ms server latency,
+median of 5 navigations (palette → Enter to `pageshow`):
+
+| Document | No prefetch | Prefetched |
+|---|---|---|
+| `Cache-Control: max-age=60` | 291 ms | 25 ms (server hit once — navigation served from cache) |
+| no cache headers | 287 ms | 274 ms (server hit twice — no gain beyond the warm connection) |
+
+Most HTML is `no-cache`, so on the real web the main win is still the warm connection; the extra GET
+is the cost. Chromium's real prerender / NoStatePrefetch and Speculation Rules can't be driven from
+the browser UI in Electron, which is why this uses a plain cached fetch.
+
+**Back/forward cache: not available in Electron 45.** Tested A → B → Back on a local page with
+`--enable-features=BackForwardCache`: `pageshow.persisted` stays `false` and Chromium reports
+`BackForwardCacheDisabledForDelegate` (Electron's `WebContentsDelegate` does not opt in to bfcache —
+only an Electron change can), plus `UnloadHandlerExistsInMainFrame` from an isolated-world listener that
+is not in Vela's source (the page's main world has none; Vela's preloads register no
+`unload`/`beforeunload`), most likely Electron's renderer init. The flag is therefore not set: it buys
+nothing and changes BrowsingInstance swapping. Back navigation to a same-origin page measured ~30 ms
+median either way (normal HTTP-cache reload).
+
 ### 7. Chromium switches (`src/main/perf/flags.ts`)
 Only switches that are stable and safe on every GPU. Launch with `VELA_NO_FLAGS=1` to skip all of
 them (useful for bisecting a site bug).
