@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+
+- Clicking an inactive tab (or split pane) only switches to it; the command palette opens only when clicking the tab that was already active, and never after a drag.
 - The start page can no longer be closed when it is the only tab of a Space: it has no close button, and Ctrl+W, middle-click and the context menu's Close do nothing. Closing the last tab that shows a website still turns it into the start page.
 
 ## [0.5.0] - 2026-11-10
