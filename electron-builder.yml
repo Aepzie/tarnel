@@ -44,6 +44,10 @@ fileAssociations:
 
 win:
   icon: build/icon.ico
+  # No signing options here on purpose: scripts/signing-config.mjs layers azureSignOptions or
+  # signtoolOptions.publisherName on top of this file in CI, only when the secrets exist. The
+  # publisherName ends up in app-update.yml, and electron-updater only verifies the publisher of
+  # a downloaded installer when it is present, so unsigned builds keep updating unsigned builds.
   target:
     - nsis
     - portable
@@ -65,8 +69,21 @@ mac:
   # 'maximum' makes 7-Zip spend ~7 min per arch on the updater zip; the dmg is unaffected.
   compression: normal
   category: public.app-category.productivity
+  # Signing is driven by the environment (see docs/RELEASING.md): without CSC_LINK the build stays
+  # unsigned/ad-hoc, and notarization only runs when APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and
+  # APPLE_TEAM_ID are set; otherwise electron-builder logs "skipped macOS notarization".
   hardenedRuntime: true
   gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
+  # Hardened runtime + camera/mic/location entitlements need usage strings, or macOS kills the app
+  # the first time a page asks for the device.
+  extendInfo:
+    NSCameraUsageDescription: A website in Vela wants to use your camera.
+    NSMicrophoneUsageDescription: A website in Vela wants to use your microphone.
+    NSLocationWhenInUseUsageDescription: A website in Vela wants to know your location.
+    NSBluetoothAlwaysUsageDescription: A website in Vela wants to use a Bluetooth device.
   target:
     - target: dmg
       arch:

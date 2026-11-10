@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Release pipeline is ready for code signing: Windows via Azure Trusted Signing or a PFX certificate, macOS via Developer ID with notarization (hardened runtime + entitlements for camera, microphone, location and security keys). It switches on automatically once the secrets in docs/RELEASING.md are added; without them releases stay unsigned as before
 - Secure DNS (DNS-over-HTTPS) in Settings → Privacy: Off, Automatic (upgrade when the system resolver supports it), Cloudflare, Quad9, Mullvad, Mullvad with ad blocking, NextDNS (configuration ID) or a custom `https://` template. "Strict" fails lookups instead of falling back to plain DNS. Applies live to every Space at once (Electron's resolver is process-global); Spaces behind a proxy or MantelVPN keep resolving through the proxy
 
 ### Changed
