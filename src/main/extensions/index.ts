@@ -1,15 +1,19 @@
 import { dialog, type IpcMainInvokeEvent } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { EXTENSION_IPC } from '../../shared/ipc';
-import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState, SpaceId } from '../../shared/types';
+import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionReview, ExtensionSiteAccess, ExtensionsState, SpaceId } from '../../shared/types';
 import { gateSessionReady, getActiveSpaceId, getSpaceSession, listSpaces, onSessionCreated, onSessionRemoved, onSpacesChanged } from '../spaces';
 import { closeTab, getBrowserState, getTabSpaceId, onStateChanged, onTabWebContents, tabIdForWebContents } from '../tabs';
 import { getMainWindow, sendToChrome } from '../window';
 import { deleteDnrState } from './dnr';
-import { forgetManifest, readManifest, readMeta, staticInfo } from './manifest';
+import { forgetManifest, readManifest, readMeta, staticInfo, type ManifestMeta } from './manifest';
 import {
+  cleanSites,
   cleanSpaces,
+  disarm,
+  isArmed,
   EXTENSION_ID,
   getInstalled,
   hasInstalled,
@@ -41,13 +45,24 @@ const UPDATE_FIRST_MS = 2 * 60_000;
 const UPDATE_EVERY_MS = 5 * 60 * 60_000;
 /** Never hold a Space's first page load for longer than this while extensions load. */
 const GATE_TIMEOUT_MS = 3000;
+/** A review left open this long is dropped (and its download deleted). */
+const STAGE_TTL_MS = 15 * 60_000;
+
+interface Staged {
+  review: ExtensionReview;
+  path: string;
+  meta: ManifestMeta;
+  timer: NodeJS.Timeout;
+}
+
+const staged = new Map<string, Staged>();
 
 let emitQueued = false;
 let emitSeq = 0;
 let updateTimer: NodeJS.Timeout | null = null;
 
 function toInfo(entry: InstalledExtension): ExtensionInfo {
-  const { icon, optionsPage } = staticInfo(entry.path);
+  const { icon, optionsPage, permissions, risk } = staticInfo(entry.path);
   return {
     id: entry.id,
     name: entry.name,
@@ -60,6 +75,11 @@ function toInfo(entry: InstalledExtension): ExtensionInfo {
     icon,
     hasOptions: optionsPage !== null,
     error: entry.enabled ? loadError(entry.id) : null,
+    permissions,
+    risk,
+    siteAccess: entry.siteAccess,
+    sites: entry.sites,
+    armed: entry.siteAccess === 'click' && isArmed(entry.id),
   };
 }
 
@@ -93,10 +113,23 @@ function infoOf(id: string): ExtensionInfo {
   return toInfo(entry);
 }
 
-export async function installFromStore(input: string): Promise<ExtensionInfo> {
+function stage(id: string, source: ExtensionReview['source'], path: string, meta: ManifestMeta, update: boolean): ExtensionReview {
+  for (const [token, entry] of staged) if (entry.review.id === id) void cancelInstall(token);
+  forgetManifest(path);
+  const { icon, permissions, risk } = staticInfo(path);
+  const token = randomUUID();
+  const review: ExtensionReview = { token, id, ...meta, source, icon, permissions, risk, update };
+  const timer = setTimeout(() => void cancelInstall(token), STAGE_TTL_MS);
+  timer.unref();
+  staged.set(token, { review, path, meta, timer });
+  return review;
+}
+
+/** Downloads a Chrome Web Store extension and stages it for the permission review. */
+export async function installFromStore(input: string): Promise<ExtensionReview> {
   const id = parseStoreInput(input);
   if (!id) throw new Error('Paste a Chrome Web Store link or a 32-letter extension ID');
-  if (getInstalled(id)) return infoOf(id);
+  if (getInstalled(id)) throw new Error('This extension is already installed');
   const path = await downloadFromStore(id);
   let meta;
   try {
@@ -105,18 +138,7 @@ export async function installFromStore(input: string): Promise<ExtensionInfo> {
     await removeStoreFiles(path);
     throw error;
   }
-  putInstalled({
-    id,
-    source: 'store',
-    path,
-    ...meta,
-    enabled: true,
-    spaces: 'all',
-    pinned: false,
-    installedAt: Date.now(),
-  });
-  await syncAll();
-  return infoOf(id);
+  return stage(id, 'store', path, meta, false);
 }
 
 /** Chromium derives an unpacked extension's ID from its path (or manifest key): ask it. */
@@ -131,7 +153,8 @@ async function probeId(dir: string): Promise<string> {
   return extension.id;
 }
 
-export async function loadUnpacked(dir: string): Promise<ExtensionInfo> {
+/** Validates an unpacked folder and stages it for the permission review. */
+export async function loadUnpacked(dir: string): Promise<ExtensionReview> {
   if (!(await stat(dir).catch(() => null))?.isDirectory()) throw new Error('Choose a folder');
   await readManifest(dir);
   const meta = await readMeta(dir);
@@ -139,23 +162,55 @@ export async function loadUnpacked(dir: string): Promise<ExtensionInfo> {
   if (!EXTENSION_ID.test(id)) throw new Error('Unexpected extension ID');
   const current = getInstalled(id);
   if (current?.source === 'store') throw new Error('This extension is already installed from the Chrome Web Store');
-  forgetManifest(dir);
-  unloadEverywhere(id);
+  return stage(id, 'unpacked', dir, meta, current !== undefined);
+}
+
+function takeStaged(token: unknown): Staged {
+  const entry = typeof token === 'string' ? staged.get(token) : undefined;
+  if (!entry) throw new Error('This review expired. Add the extension again.');
+  staged.delete(entry.review.token);
+  clearTimeout(entry.timer);
+  return entry;
+}
+
+/** The user accepted the review: add (or refresh) the extension. */
+export async function confirmInstall(token: unknown): Promise<ExtensionInfo> {
+  const { review, path, meta } = takeStaged(token);
+  const { id, source } = review;
+  const current = getInstalled(id);
+  if (source === 'store' && current) throw new Error('This extension is already installed');
+  if (source === 'unpacked' && current?.source === 'store') throw new Error('This extension is already installed from the Chrome Web Store');
+  forgetManifest(path);
+  if (current) unloadEverywhere(id);
   putInstalled({
     id,
-    source: 'unpacked',
-    path: dir,
+    source,
+    path,
     ...meta,
     enabled: current?.enabled ?? true,
     spaces: current?.spaces ?? 'all',
     pinned: current?.pinned ?? false,
     installedAt: current?.installedAt ?? Date.now(),
+    siteAccess: current?.siteAccess ?? 'all',
+    sites: current?.sites ?? [],
   });
   await syncAll();
   return infoOf(id);
 }
 
-async function pickUnpacked(): Promise<ExtensionInfo | null> {
+/** The user declined (or the review expired): nothing was added; drop downloaded files. */
+export async function cancelInstall(token: unknown): Promise<void> {
+  let entry: Staged;
+  try {
+    entry = takeStaged(token);
+  } catch {
+    return;
+  }
+  forgetManifest(entry.path);
+  if (entry.review.source === 'store' && !getInstalled(entry.review.id)) await removeStoreFiles(resolve(entry.path, '..'));
+}
+
+async function pickUnpacked(): Promise<ExtensionReview | null> {
   const win = getMainWindow();
   const options = { title: 'Load unpacked extension', properties: ['openDirectory' as const] };
   const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
@@ -168,6 +223,9 @@ export async function updateExtension(id: string, patch: ExtensionPatch): Promis
   if (patch.enabled !== undefined) next.enabled = patch.enabled;
   if (patch.pinned !== undefined) next.pinned = patch.pinned;
   if (patch.spaces !== undefined) next.spaces = cleanSpaces(patch.spaces, listSpaces());
+  if (patch.siteAccess !== undefined) next.siteAccess = patch.siteAccess;
+  if (patch.sites !== undefined) next.sites = cleanSites(patch.sites);
+  if (patch.siteAccess !== undefined || patch.enabled === false) disarm(id);
   patchInstalled(id, next);
   await syncAll();
   return infoOf(id);
@@ -282,6 +340,8 @@ function anchor(value: unknown): ExtensionAnchor {
   return { x: num(raw.x), y: num(raw.y), width: Math.max(0, num(raw.width)), height: Math.max(0, num(raw.height)) };
 }
 
+const SITE_ACCESS: readonly ExtensionSiteAccess[] = ['all', 'sites', 'click'];
+
 function patchOf(value: unknown): ExtensionPatch {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Invalid patch');
   const raw = value as Record<string, unknown>;
@@ -293,6 +353,17 @@ function patchOf(value: unknown): ExtensionPatch {
   if (raw.pinned !== undefined) {
     if (typeof raw.pinned !== 'boolean') throw new TypeError('Invalid pinned');
     patch.pinned = raw.pinned;
+  }
+  if (raw.siteAccess !== undefined) {
+    if (!SITE_ACCESS.includes(raw.siteAccess as ExtensionSiteAccess)) throw new TypeError('Invalid siteAccess');
+    patch.siteAccess = raw.siteAccess as ExtensionSiteAccess;
+  }
+  if (raw.sites !== undefined) {
+    const sites = raw.sites;
+    if (!Array.isArray(sites) || sites.length > 256 || !sites.every((site) => typeof site === 'string' && site.length <= 300)) {
+      throw new TypeError('Invalid sites');
+    }
+    patch.sites = sites as string[];
   }
   if (raw.spaces !== undefined) {
     const spaces = raw.spaces;
@@ -313,7 +384,7 @@ export function registerExtensionIpc(chrome: Register, pages: RegisterPages): vo
   chrome(X.get, () => buildState());
   chrome(X.activate, (id, rect, kind) => {
     if (kind !== undefined && kind !== 'click' && kind !== 'contextmenu') throw new TypeError('Invalid kind');
-    activateAction(extensionId(id), anchor(rect), kind === 'contextmenu' ? 'contextmenu' : 'click');
+    return activateAction(extensionId(id), anchor(rect), kind === 'contextmenu' ? 'contextmenu' : 'click');
   });
   chrome(X.setPinned, async (id, pinned) => {
     if (typeof pinned !== 'boolean') throw new TypeError('Invalid pinned');
@@ -327,6 +398,8 @@ export function registerExtensionIpc(chrome: Register, pages: RegisterPages): vo
     return installFromStore(input);
   });
   pages(X.loadUnpacked, () => pickUnpacked());
+  pages(X.confirmInstall, (_event, token) => confirmInstall(token));
+  pages(X.cancelInstall, (_event, token) => cancelInstall(token));
   pages(X.update, (_event, id, patch) => updateExtension(extensionId(id), patchOf(patch)));
   pages(X.reload, (_event, id) => reloadExtension(extensionId(id)));
   pages(X.remove, (_event, id) => removeExtension(extensionId(id)));

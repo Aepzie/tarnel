@@ -23,7 +23,7 @@ import type {
   UICommand,
   UpdateStatus,
 } from './types';
-import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } from './types';
+import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionReview, ExtensionsState } from './types';
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
@@ -360,7 +360,18 @@ export const EXTENSION_IPC = {
   reload: 'pages:extension-reload',
   remove: 'pages:extension-remove',
   pageOptions: 'pages:extension-options',
+  confirmInstall: 'pages:extension-confirm-install',
+  cancelInstall: 'pages:extension-cancel-install',
 } as const;
+
+export const PANIC_IPC = {
+  run: 'chrome:panic',
+} as const;
+
+/** Panic button: wipe Burners, mute, drop VPN routes, hide the window. See src/main/panic.ts. */
+export interface VelaChromeAPI {
+  panic(): Promise<void>;
+}
 
 export interface VelaChromeAPI {
   extensions: {
@@ -411,10 +422,14 @@ export interface VelaChromeAPI {
 export interface VelaPagesAPI {
   extensions: {
     list(): Promise<ExtensionInfo[]>;
-    /** Chrome Web Store URL or 32-letter extension ID. */
-    install(input: string): Promise<ExtensionInfo>;
-    /** Opens a folder picker; null when cancelled. */
-    loadUnpacked(): Promise<ExtensionInfo | null>;
+    /** Chrome Web Store URL or 32-letter extension ID. Downloads and stages it for review. */
+    install(input: string): Promise<ExtensionReview>;
+    /** Opens a folder picker and stages the folder for review; null when cancelled. */
+    loadUnpacked(): Promise<ExtensionReview | null>;
+    /** Adds a reviewed extension. */
+    confirmInstall(token: string): Promise<ExtensionInfo>;
+    /** Drops a staged extension (deletes downloaded store files). */
+    cancelInstall(token: string): Promise<void>;
     update(id: string, patch: ExtensionPatch): Promise<ExtensionInfo>;
     reload(id: string): Promise<ExtensionInfo>;
     remove(id: string): Promise<void>;
