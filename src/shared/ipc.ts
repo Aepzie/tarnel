@@ -26,6 +26,7 @@ import type {
 import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionsState } from './types';
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
+import type { VpnResult, VpnState } from './vpn';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -407,5 +408,22 @@ export interface VelaChromeAPI {
     /** Start/stop streaming levels (call with true while the panel is open). */
     watchLevels(on: boolean): Promise<void>;
     onLevels(cb: (levels: TabAudioLevel[]) => void): Unsubscribe;
+  };
+}
+
+/** MantelVPN (chrome only). Channels live in VPN_IPC (shared/vpn.ts); see docs/ARCHITECTURE.md → VPN. */
+export interface VelaChromeAPI {
+  vpn: {
+    /** Current state as main knows it (no network). */
+    state(): Promise<VpnState>;
+    /** Re-signs in / reloads account + servers from Mantel. */
+    refresh(): Promise<VpnState>;
+    /** Account number (16 digits, spaces/dashes allowed). Stored with safeStorage in main only. */
+    login(accountNumber: string): Promise<VpnResult>;
+    logout(): Promise<VpnState>;
+    /** Routes the active Space through a Mantel proxy on that location (live mode only). */
+    connect(serverId: string): Promise<VpnResult>;
+    disconnect(): Promise<VpnState>;
+    onState(cb: (state: VpnState) => void): Unsubscribe;
   };
 }

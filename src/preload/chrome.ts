@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import { AUDIO_IPC, EXTENSION_IPC, IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
+import { VPN_IPC } from '../shared/vpn';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -143,6 +144,15 @@ const api: VelaChromeAPI = {
     reset: (tabId) => invoke(MIXER_IPC.reset, tabId),
     watchLevels: (on) => invoke(MIXER_IPC.watchLevels, on),
     onLevels: (cb) => subscribe(MIXER_IPC.levelsEvent, cb),
+  },
+  vpn: {
+    state: () => invoke(VPN_IPC.state),
+    refresh: () => invoke(VPN_IPC.refresh),
+    login: (accountNumber) => invoke(VPN_IPC.login, accountNumber),
+    logout: () => invoke(VPN_IPC.logout),
+    connect: (serverId) => invoke(VPN_IPC.connect, serverId),
+    disconnect: () => invoke(VPN_IPC.disconnect),
+    onState: (cb) => subscribe(VPN_IPC.changed, cb),
   },
 };
 

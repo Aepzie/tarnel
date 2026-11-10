@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- MantelVPN integration: the VPN panel shows the official Mantel mark and brand green, signs in with the 16-digit Mantel account number (grouped in fours, pastes with spaces or dashes work), shows the real paid-until date and the live Mantel location list. Connect routes the active Space through an account-scoped Mantel HTTP proxy on the chosen location (proxy password answered by Vela, other Spaces stay direct; the Space's previous proxy comes back on disconnect, sign-out or restart). The account number and proxy passwords are stored only with OS-encrypted safeStorage. When Mantel is unreachable the panel falls back to clearly marked preview data
 - VPN panel (preview, not yet connected to a real VPN): MantelVPN partner card with license activation, account expiry, server picker and a simulated connection; Mullvad and Proton VPN listed as coming soon
 
 ### Changed

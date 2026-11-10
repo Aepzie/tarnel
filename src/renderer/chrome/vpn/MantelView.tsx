@@ -4,13 +4,14 @@ import { ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, KeyRoundIcon, Loader2Icon
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Flag } from './Flag';
-import { FASTEST_ID, LICENSE_HINT, TERM_DAYS, hash, licenseTerm, maskLicense, normalizeLicense, resolveServer } from './vpn-data';
+import { formatAccountNumber, normalizeAccountNumber } from '@shared/vpn';
+import { FASTEST_ID, TERM_DAYS, accountTerm, hash, resolveServer } from './vpn-data';
 import { MantelMark } from './parts';
-import { useVpn, vpn, type VpnLicense } from './vpn-store';
+import { useVpn, vpn } from './vpn-store';
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
-function LicenseForm() {
+function AccountForm() {
   const state = useVpn();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +27,16 @@ function LicenseForm() {
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     if (state.checking) return;
-    const key = normalizeLicense(value.trim());
-    setValue(key);
-    const message = await vpn.activate(key);
+    const accountNumber = normalizeAccountNumber(value);
+    if (!accountNumber) {
+      setError('An account number has exactly 16 digits.');
+      inputRef.current?.focus();
+      return;
+    }
+    const message = await vpn.signIn(accountNumber);
     setError(message);
     if (message) inputRef.current?.focus();
+    else setValue('');
   };
 
   return (
@@ -38,13 +44,13 @@ function LicenseForm() {
       <div className="flex items-center gap-3">
         <MantelMark />
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold tracking-tight text-foreground">Activate your license</p>
-          <p className="text-[11.5px] leading-snug text-muted-foreground">Paste the key from your MantelVPN account.</p>
+          <p className="text-[13px] font-semibold tracking-tight text-foreground">Sign in to MantelVPN</p>
+          <p className="text-[11.5px] leading-snug text-muted-foreground">Enter the 16-digit account number from your Mantel account.</p>
         </div>
       </div>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="vpn-license" className="sr-only">
-          License key
+        <label htmlFor="vpn-account" className="sr-only">
+          Account number
         </label>
         <div
           className={cn(
@@ -55,21 +61,22 @@ function LicenseForm() {
           <KeyRoundIcon aria-hidden className="size-[15px] shrink-0 text-muted-foreground" strokeWidth={1.75} />
           <input
             ref={inputRef}
-            id="vpn-license"
+            id="vpn-account"
             value={value}
             spellCheck={false}
             autoComplete="off"
-            placeholder={LICENSE_HINT}
+            inputMode="numeric"
+            placeholder="0000 0000 0000 0000"
             aria-invalid={!!error}
             aria-describedby={error ? errorId : hintId}
             disabled={state.checking}
             onChange={(event) => {
-              setValue(event.target.value.toUpperCase());
+              setValue(formatAccountNumber(event.target.value));
               if (error) setError(null);
             }}
             onPaste={(event) => {
               event.preventDefault();
-              setValue(normalizeLicense(event.clipboardData.getData('text').trim()));
+              setValue(formatAccountNumber(event.clipboardData.getData('text')));
               setError(null);
             }}
             className="min-w-0 flex-1 bg-transparent font-mono text-[13px] tracking-wider text-foreground outline-none placeholder:text-muted-foreground/60 disabled:opacity-60"
@@ -91,7 +98,7 @@ function LicenseForm() {
             </motion.p>
           ) : (
             <motion.p key="hint" id={hintId} className="px-1 text-[11.5px] text-muted-foreground" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              Format <span className="font-mono">{LICENSE_HINT}</span>, dashes are added on paste.
+              16 digits. Spaces and dashes from a paste are fine. Stored encrypted on this device.
             </motion.p>
           )}
         </AnimatePresence>
@@ -104,10 +111,10 @@ function LicenseForm() {
         {state.checking ? (
           <>
             <Loader2Icon className="size-4 animate-spin" strokeWidth={2} />
-            Checking license…
+            Signing in…
           </>
         ) : (
-          'Activate'
+          'Sign in'
         )}
       </button>
     </form>
@@ -130,27 +137,22 @@ function DaysRing({ daysLeft }: { daysLeft: number }) {
           fill="none"
           strokeWidth={3}
           strokeLinecap="round"
-          stroke="url(#vpn-ring-gradient)"
+          stroke="var(--vpn-accent)"
           strokeDasharray={circumference}
           initial={reduce ? false : { strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference * (1 - fraction) }}
           transition={{ duration: 0.9, ease: ease.out }}
         />
-        <defs>
-          <linearGradient id="vpn-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="var(--vpn-accent)" />
-            <stop offset="100%" stopColor="var(--vpn-accent)" />
-          </linearGradient>
-        </defs>
       </svg>
       <span className="text-[11px] leading-none font-semibold text-foreground tabular-nums">{daysLeft}</span>
     </span>
   );
 }
 
-function AccountCard({ license }: { license: VpnLicense }) {
+function AccountCard() {
+  const state = useVpn();
   const [confirming, setConfirming] = useState(false);
-  const term = licenseTerm(license.key, license.activatedAt);
+  const term = accountTerm(state.paidUntil);
 
   useEffect(() => {
     if (!confirming) return;
@@ -160,26 +162,27 @@ function AccountCard({ license }: { license: VpnLicense }) {
 
   return (
     <section aria-label="MantelVPN account" className="flex items-center gap-3 rounded-xl bg-foreground/[0.04] p-2.5 ring-1 ring-foreground/[0.06] ring-inset">
-      <DaysRing daysLeft={term.daysLeft} />
+      {term ? <DaysRing daysLeft={term.daysLeft} /> : <MantelMark className="size-11" />}
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 text-[12.5px] font-semibold tracking-tight text-foreground">
-          Premium
+          {term && term.daysLeft === 0 ? 'Expired' : 'Mantel account'}
           <span className="vpn-badge rounded-full px-1.5 py-px text-[9.5px] font-semibold tracking-wide">Partner</span>
         </p>
-        <p className="text-[11.5px] text-muted-foreground tabular-nums">{term.daysLeft} days left</p>
-        <p className="truncate text-[11px] text-muted-foreground/80 tabular-nums" title={maskLicense(license.key)}>
-          Expires {dateFormat.format(term.expiresAt)} · <span className="font-mono text-[10.5px]">{license.key.slice(-4)}</span>
+        <p className="text-[11.5px] text-muted-foreground tabular-nums">{term ? `${term.daysLeft} days left` : 'Paid time unknown while offline'}</p>
+        <p className="truncate text-[11px] text-muted-foreground/80 tabular-nums" title={`Account ending ${state.accountTail ?? ''}`}>
+          {term ? `Paid until ${dateFormat.format(term.expiresAt)} · ` : ''}
+          <span className="font-mono text-[10.5px]">••{state.accountTail}</span>
         </p>
       </div>
       <button
         type="button"
-        onClick={() => (confirming ? vpn.removeLicense() : setConfirming(true))}
+        onClick={() => (confirming ? void vpn.signOut() : setConfirming(true))}
         className={cn(
           'shrink-0 self-start rounded-md px-1.5 py-1 text-[11px] font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring',
           confirming ? 'bg-red-500/15 text-red-500 dark:text-red-400' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
         )}
       >
-        {confirming ? 'Confirm remove' : 'Remove license'}
+        {confirming ? 'Confirm sign out' : 'Sign out'}
       </button>
     </section>
   );
@@ -281,10 +284,19 @@ function ConnectedStats() {
       exit={{ opacity: 0, y: 4 }}
       transition={spring.soft}
     >
-      <Stat label="Virtual IP" value={state.ip ?? '—'} />
+      <Stat label={state.mode === 'live' ? 'Exit server' : 'Virtual IP'} value={state.ip ?? '—'} />
       <Stat label="Uptime" value={formatUptime(seconds)} />
-      <Stat label="Downloaded" value={formatBytes(traffic.down)} icon={<ArrowDownIcon aria-hidden className="size-3 text-emerald-500" strokeWidth={2.25} />} />
-      <Stat label="Uploaded" value={formatBytes(traffic.up)} icon={<ArrowUpIcon aria-hidden className="size-3 text-sky-500" strokeWidth={2.25} />} />
+      {state.mode === 'live' ? (
+        <>
+          <Stat label="Routing" value="Active Space" />
+          <Stat label="Via" value="Mantel proxy" />
+        </>
+      ) : (
+        <>
+          <Stat label="Downloaded" value={formatBytes(traffic.down)} icon={<ArrowDownIcon aria-hidden className="size-3 text-emerald-500" strokeWidth={2.25} />} />
+          <Stat label="Uploaded" value={formatBytes(traffic.up)} icon={<ArrowUpIcon aria-hidden className="size-3 text-sky-500" strokeWidth={2.25} />} />
+        </>
+      )}
     </motion.div>
   );
 }
@@ -292,7 +304,11 @@ function ConnectedStats() {
 function LocationButton() {
   const state = useVpn();
   const fastest = state.serverId === FASTEST_ID;
-  const server = state.activeServerId && state.status !== 'off' ? resolveServer(state.activeServerId) : resolveServer(state.serverId);
+  const server = resolveServer(state.servers, state.activeServerId && state.status !== 'off' ? state.activeServerId : state.serverId);
+  if (!server) return <p className="py-2 text-center text-[12px] text-muted-foreground">No Mantel locations available right now.</p>;
+  const detail = [server.ping !== null ? `${server.ping} ms` : null, server.load !== null ? `${server.load}% load` : null, server.online ? null : 'offline']
+    .filter(Boolean)
+    .join(' · ');
   return (
     <button
       type="button"
@@ -310,8 +326,8 @@ function LocationButton() {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[12.5px] font-medium text-foreground">{fastest ? 'Fastest server' : `${server.city}, ${server.country}`}</span>
         <span className="block truncate text-[11px] text-muted-foreground">
-          {fastest ? `${server.city}, ${server.country} · ` : ''}
-          {server.ping} ms · {server.load}% load
+          {fastest ? `${server.city}, ${server.country}${detail ? ' · ' : ''}` : ''}
+          {detail || (fastest ? '' : server.country)}
         </span>
       </span>
       <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5" strokeWidth={1.75} />
@@ -326,7 +342,7 @@ function ConnectButton() {
   return (
     <button
       type="button"
-      onClick={() => (state.status === 'off' ? vpn.connect() : vpn.disconnect())}
+      onClick={() => (state.status === 'off' ? void vpn.connect() : vpn.disconnect())}
       aria-label={state.status === 'connecting' ? 'Connecting, press to cancel' : label}
       className={cn(
         'relative flex h-12 w-full items-center justify-center overflow-hidden rounded-xl text-[14px] font-semibold tracking-tight outline-none transition-[background-color,color,box-shadow,transform] duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[0.98]',
@@ -362,12 +378,12 @@ function ConnectButton() {
 
 function ConnectSection() {
   const state = useVpn();
-  const server = state.activeServerId ? resolveServer(state.activeServerId) : null;
+  const server = state.activeServerId ? resolveServer(state.servers, state.activeServerId) : null;
   const caption =
     state.status === 'connected' && server
       ? `Connected to ${server.city}`
       : state.status === 'connecting' && server
-        ? `Securing tunnel to ${server.city}…`
+        ? `Connecting to ${server.city}…`
         : 'Not connected';
   return (
     <div className="flex flex-col items-center gap-3">
@@ -377,20 +393,29 @@ function ConnectSection() {
       </p>
       <LocationButton />
       <ConnectButton />
+      {state.error && (
+        <p role="alert" className="-mt-1 px-1 text-center text-[11.5px] leading-snug text-red-500 dark:text-red-400">
+          {state.error}
+        </p>
+      )}
       <AnimatePresence initial={false}>{state.status === 'connected' && <ConnectedStats key="stats" />}</AnimatePresence>
     </div>
   );
 }
 
-/** MantelVPN: license entry until activated, then account card + location + connect. */
+/** MantelVPN: account number sign-in, then account card + location + connect. */
 export function MantelView() {
   const state = useVpn();
-  if (!state.license) return <LicenseForm />;
+  if (state.mode === 'signed-out') return <AccountForm />;
   return (
     <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-3 [scrollbar-width:thin]">
-      <AccountCard license={state.license} />
+      <AccountCard />
       <ConnectSection />
-      <p className="text-center text-[10.5px] leading-snug text-muted-foreground/70">Preview: no traffic is routed yet. Values are simulated.</p>
+      <p className="text-center text-[10.5px] leading-snug text-muted-foreground/70">
+        {state.mode === 'live'
+          ? 'Connect routes the active Space through a Mantel proxy on this location. Other Spaces stay direct.'
+          : (state.notice ?? 'Preview: Mantel is not reachable. Servers and the connection are simulated.')}
+      </p>
     </div>
   );
 }
