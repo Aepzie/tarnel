@@ -19,6 +19,18 @@ electronLanguages:
 
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 
+# Electron fuses, flipped in the packaged binary (see docs/ARCHITECTURE.md, "Electron fuses").
+# grantFileProtocolExtraPrivileges stays on: the chrome UI is loaded from file:// and its ES module
+# chunks and @font-face fonts are CORS-mode loads that need the extra file:// privileges.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  enableCookieEncryption: true
+  grantFileProtocolExtraPrivileges: true
+
 protocols:
   - name: Web link
     schemes:

@@ -335,6 +335,7 @@ src/main/settings.ts   settings                       — data
 src/main/spaces.ts     spaces + sessions              — data
 src/main/history.ts    history, suggestions, top sites— data
 src/main/privacy.ts    permissions, UA, headers       — data
+src/main/dns.ts        DNS-over-HTTPS (global host resolver; presets + validation in src/shared/doh.ts) — data
 src/main/fingerprint/* per-space fingerprint seeds, preload registration, header hints, worker patching (CDP) — data
 src/preload/fingerprint*.ts  main-world fingerprint patch (frame + service-worker session preloads) — data
 src/main/identity/*, src/preload/identity*.ts  Chromium identity: window.chrome shape, client-hint headers (every Space) — data
@@ -417,6 +418,27 @@ NOTE: `webRequest` allows only ONE listener per event per session, so nothing ca
 dispatcher (see [Network pipeline](#network-pipeline-srcmainnet)). https-only upgrade is done in tabs.ts
 (`will-navigate`/URL resolution) and privacy.ts exposes `export function upgradeToHttps(url: string): string`.
 Third-party cookie blocking strips the `Cookie` header on third-party sub-resource requests in that stage.
+
+### `src/main/dns.ts` (Secure DNS)
+```ts
+export function initSecureDns(): void; // after 'ready'; re-applies on every settings change
+```
+Settings → Privacy → Secure DNS maps `secureDns` (`off` | `automatic` | `cloudflare` | `quad9` | `mullvad` |
+`mullvad-adblock` | `nextdns` | `custom`), `secureDnsStrict`, `secureDnsNextDns` and `secureDnsTemplate` to
+`app.configureHostResolver({ secureDnsMode, secureDnsServers })` via the pure `resolveSecureDns()` in
+`src/shared/doh.ts`. Provider + Strict = Chromium `secure` mode (lookups fail instead of falling back to plain
+DNS); without Strict = `automatic` with that server. `automatic` alone upgrades only when the system resolver is a
+known DoH provider. A NextDNS/custom choice without a valid template resolves to `off` (never a strict mode with no
+server). Templates must be `https://` without credentials or fragment, plain (POST) or ending in `{?dns}` (GET);
+`sanitize()` rejects anything else, so persisted values are always valid or `''`.
+
+* **Process-global.** Electron's host resolver lives in the single network service, so this is one setting for
+  every Space; per-Space DoH is not possible. `configureHostResolver` can be called again at any time after
+  'ready' and applies to the next lookup (verified on Electron 45: strict with an unreachable server fails with
+  `ERR_DNS_SECURE_RESOLVER_HOSTNAME_RESOLUTION_FAILED` right after the call), so no restart is needed. While the
+  setting has never left `off`, Vela does not call it at all (Chromium defaults).
+* **Proxied Spaces.** A Space or tab behind a proxy (MantelVPN, SOCKS5, HTTP) hands the hostname to the proxy
+  (`CONNECT host`, SOCKS5 remote resolution), so the proxy resolves it and DoH does not apply there.
 
 ### `src/main/perf/flags.ts`
 ```ts
@@ -769,3 +791,41 @@ Brand: `src/shared/brand-mark.ts` holds the logo's path data and app-icon tile; 
 (`scripts/icons.mjs`, offscreen Electron) generates `build/icon.svg`, `icon-mono.svg`, the PNG set,
 `icon.ico` and `icon.icns` from it. Unpackaged runs set the window icon from `build/` (`devWindowIcon`
 in `window.ts`); packaged builds take it from the executable.
+
+## Security hardening
+
+### Electron fuses (`electronFuses` in `electron-builder.yml`)
+
+electron-builder flips these in the packaged executable (after embedding the asar header hash as a
+Windows resource / macOS `ElectronAsarIntegrity` plist key). Unpackaged `npm run dev` runs are unaffected.
+
+| Fuse | Value | Why |
+|---|---|---|
+| `RunAsNode` | off | `ELECTRON_RUN_AS_NODE` would turn `Vela.exe` into a plain Node.js (a signed LOLBin). Vela never forks the main process (no `process.fork`; use `utilityProcess` if ever needed). |
+| `EnableNodeOptionsEnvironmentVariable` | off | `NODE_OPTIONS` / `NODE_EXTRA_CA_CERTS` could inject code or CAs into the main process. |
+| `EnableNodeCliInspectArguments` | off | `--inspect*` / `SIGUSR1` would expose a debugger on the main process. |
+| `EnableEmbeddedAsarIntegrityValidation` | on | `app.asar` is checked against the hash baked into the executable (Windows since Electron 30, macOS). |
+| `OnlyLoadAppFromAsar` | on | No fallback to an `app/` folder or `default_app.asar`, so integrity validation cannot be sidestepped. |
+| `EnableCookieEncryption` | on | Cookie values are encrypted at rest with the OS key (DPAPI on Windows, Keychain on macOS, libsecret/kwallet on Linux), like Chrome. |
+| `GrantFileProtocolExtraPrivileges` | **on** (default) | The chrome UI is loaded via `file://` (`window.ts` → `dist/renderer/chrome/index.html`); its ES-module chunks (`dist/renderer/assets/`) and `@font-face` fonts are CORS-mode loads that rely on these privileges. Turning it off needs the chrome UI moved to a privileged custom scheme first. Web content never runs on `file://` with Node, and tabs are separate sandboxed views. |
+| `LoadBrowserProcessSpecificV8Snapshot` | default (off) | Not used. |
+
+**Cookie encryption migration.** Chromium's `os_crypt` reads both plaintext and encrypted (`v10`-prefixed)
+cookie values, so existing profiles keep their logins: old plaintext cookies stay readable and are
+re-written encrypted as sites update them. The transition is one-way — a build *without* the fuse cannot
+read encrypted cookies, so downgrading to a pre-fuse Vela (≤ 0.6.0) silently loses those cookies (sites
+log out; nothing else breaks). The encryption key lives in `userData/Local State` (`os_crypt.encrypted_key`),
+so copying a profile to another Windows account or machine also loses cookies, as in Chrome.
+
+Verify a build: `node -e "require('@electron/fuses').getCurrentFuseWire('<exe>').then(console.log)"`
+(`@electron/fuses` is already a transitive dependency of electron-builder).
+
+### Mark-of-the-Web on downloads (`src/main/zone-identifier.ts`)
+
+On Windows every completed download gets a `Zone.Identifier` alternate data stream
+(`[ZoneTransfer]` / `ZoneId=3` / `ReferrerUrl` / `HostUrl`, CRLF), written by `downloads.ts` after the
+`done` event, so SmartScreen, Defender, Office Protected View and the "Unblock" checkbox treat the file
+like a Chrome/Edge download. `HostUrl` is the last URL of the redirect chain, `ReferrerUrl` the page that
+started the download. Only http(s) URLs are recorded (credentials and fragment stripped); `blob:`,
+`data:`, `vela://` etc. and every download from a non-persistent (burner) session get the zone line only.
+Writing is best effort: volumes without ADS support (FAT32/exFAT, some shares) simply get no mark.
