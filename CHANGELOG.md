@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-10
+
 ### Added
 - Import from other browsers (Settings → Import): bookmarks and recent history from Chrome, Edge, Brave, Vivaldi, Opera, Chromium and Firefox profiles on Windows, macOS and Linux, into the Space you choose. Passwords come from the CSV file those browsers, Bitwarden or 1Password export; the file is read in the main process and never shown to pages. A fresh new tab page offers a small, dismissible "Import from Chrome" hint
 - Bookmarks, per Space: star next to the address in the command palette or Ctrl+D bookmarks the page and opens a small editor (name, folder, remove). Every Space has "Bookmarks bar" and "Other bookmarks"; Burner Spaces keep bookmarks in memory only.
@@ -244,7 +246,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Aepzie/vela/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.1
 [0.7.0]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Aepzie/vela/compare/v0.5.0...v0.6.0
