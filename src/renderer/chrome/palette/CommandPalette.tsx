@@ -16,6 +16,7 @@ import { LeadingIcon } from './LeadingIcon';
 import { SiteInfoTrigger } from '../site-info/SiteInfoPanel';
 import { PaletteRow, type PaletteRowModel } from './PaletteRow';
 import { useSuggestions } from './useSuggestions';
+import { BookmarkStar } from '../bookmarks/BookmarkStar';
 
 const MAX_STAGGER = 8;
 const STAGGER_STEP = 0.022;
@@ -107,6 +108,9 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
         url: s.url,
         favicon: faviconsById.get(s.tabId!) ?? null,
       }));
+    const bookmarkRows: PaletteRowModel[] = server
+      .filter((s) => s.kind === 'bookmark')
+      .map((s) => ({ type: 'history', id: `bookmark:${s.url}`, title: s.title, url: s.url, bookmark: true }));
     const historyRows: PaletteRowModel[] = server
       .filter((s) => s.kind === 'history')
       .map((s) => ({ type: 'history', id: `history:${s.url}`, title: s.title, url: s.url }));
@@ -118,6 +122,7 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
       { heading: null, rows: [go] },
       { heading: 'Open tabs', rows: tabRows },
       { heading: 'Commands', rows: commandRows },
+      { heading: 'Bookmarks', rows: bookmarkRows },
       { heading: 'History', rows: historyRows },
       { heading: 'Other devices', rows: remoteRows },
     ].filter((group) => group.rows.length > 0);
@@ -314,6 +319,7 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
                   autoComplete="off"
                   className="h-full min-w-0 flex-1 bg-transparent text-[15px] tracking-tight text-foreground outline-none placeholder:text-muted-foreground/70"
                 />
+                {palette.mode === 'current' && kind !== 'command' && <BookmarkStar />}
                 {palette.mode === 'current' && kind !== 'command' && <SiteInfo />}
                 {kind === 'command' && (
                   <motion.span
