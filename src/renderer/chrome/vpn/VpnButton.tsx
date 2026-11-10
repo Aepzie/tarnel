@@ -8,7 +8,7 @@ import { useOverlayPresence } from '@/hooks/overlay';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { ui } from '../ui-store';
-import { serverById } from './vpn-data';
+import { serverIn } from './vpn-data';
 import { VpnPanel } from './VpnPanel';
 import { StatusDot } from './parts';
 import { useVpn, vpn, type VpnStatus } from './vpn-store';
@@ -31,7 +31,7 @@ export function VpnButton() {
   }, []);
   useCommand(onCommand);
 
-  const server = state.status === 'connected' ? serverById(state.activeServerId) : undefined;
+  const server = state.status === 'connected' ? serverIn(state.servers, state.activeServerId) : undefined;
 
   return (
     <Popover open={state.open} onOpenChange={vpn.setOpen}>
@@ -39,7 +39,7 @@ export function VpnButton() {
         <button
           type="button"
           aria-label={`VPN, ${STATUS_LABEL[state.status]}${server ? `, ${server.city}` : ''}`}
-          title="VPN (preview)"
+          title="VPN (MantelVPN)"
           className={cn(
             'no-drag relative flex h-7 shrink-0 items-center gap-1.5 rounded-[10px] pr-2 pl-1.5 text-muted-foreground transition-[background-color,color] duration-150 outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]',
             (state.open || state.status !== 'off') && 'text-foreground',

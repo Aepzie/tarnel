@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ChevronRightIcon, GlobeIcon, ShieldIcon } from 'lucide-react';
 import { ease } from '@/lib/motion';
-import { licenseTerm } from './vpn-data';
+import { accountTerm } from './vpn-data';
 import { MantelView } from './MantelView';
 import { ServerPicker } from './ServerPicker';
 import { BackButton, MantelMark, PreviewChip, StatusDot } from './parts';
@@ -10,7 +10,8 @@ import { useVpn, vpn } from './vpn-store';
 
 function MantelCard() {
   const state = useVpn();
-  const term = state.license ? licenseTerm(state.license.key, state.license.activatedAt) : null;
+  const signedIn = state.mode !== 'signed-out';
+  const term = accountTerm(state.paidUntil);
   return (
     <button
       type="button"
@@ -24,16 +25,17 @@ function MantelCard() {
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
               <span className="text-[13.5px] font-semibold tracking-tight text-foreground">MantelVPN</span>
-              <span className="vpn-badge rounded-full px-1.5 py-px text-[10px] font-semibold tracking-wide">Premium · Partner</span>
+              <span className="vpn-badge rounded-full px-1.5 py-px text-[10px] font-semibold tracking-wide">Partner</span>
             </span>
             <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-              {state.license && term ? (
+              {signedIn ? (
                 <>
                   <StatusDot status={state.status} />
-                  {state.status === 'connected' ? 'Connected' : state.status === 'connecting' ? 'Connecting' : 'Licensed'} · {term.daysLeft} days left
+                  {state.status === 'connected' ? 'Connected' : state.status === 'connecting' ? 'Connecting' : 'Signed in'}
+                  {term ? ` · ${term.daysLeft} days left` : ''}
                 </>
               ) : (
-                'Partner network for Vela · add your license'
+                'Partner network for Vela · sign in with your account number'
               )}
             </span>
           </span>
@@ -75,17 +77,20 @@ function ProvidersView() {
 }
 
 function Header({ children }: { children: ReactNode }) {
+  const { mode } = useVpn();
   return (
     <header className="flex h-11 shrink-0 items-center gap-2.5 px-3.5">
       {children}
-      <span className="ml-auto">
-        <PreviewChip />
-      </span>
+      {mode !== 'live' && (
+        <span className="ml-auto">
+          <PreviewChip />
+        </span>
+      )}
     </header>
   );
 }
 
-/** VPN popover: provider list → MantelVPN (license, account, connect) → server picker. Mock only. */
+/** VPN popover: provider list → MantelVPN (sign-in, account, connect) → server picker. */
 export function VpnPanel() {
   const state = useVpn();
   const reduce = useReducedMotion();

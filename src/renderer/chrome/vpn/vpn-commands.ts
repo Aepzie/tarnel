@@ -8,8 +8,8 @@ export function vpnCommands(): PaletteCommand[] {
       id: 'cmd:vpn',
       title: 'VPN',
       icon: ShieldIcon,
-      keywords: 'vpn mantelvpn mantel mullvad proton privacy location server license connect',
-      hint: 'Preview',
+      keywords: 'vpn mantelvpn mantel mullvad proton privacy location server account connect',
+      hint: 'MantelVPN',
       run: () => window.setTimeout(vpn.open, 0),
     },
   ];

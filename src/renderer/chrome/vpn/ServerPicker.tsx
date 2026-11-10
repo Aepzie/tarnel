@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { CheckIcon, SearchIcon, StarIcon, ZapIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Flag } from './Flag';
-import { FASTEST_ID, SERVERS, fastestServer, type VpnServer } from './vpn-data';
+import { FASTEST_ID, fastestServer, type VpnServer } from './vpn-data';
 import { useVpn, vpn } from './vpn-store';
 
 function LoadBar({ load }: { load: number }) {
@@ -25,13 +25,17 @@ function ServerRow({ server, selected, favorite, showFlag }: { server: VpnServer
         data-vpn-row
         onClick={() => vpn.selectServer(server.id)}
         aria-current={selected || undefined}
-        aria-label={`${server.city}, ${server.country}, ${server.ping} milliseconds, ${server.load}% load`}
-        className={cn(rowClass, 'pr-9', selected && 'bg-space/10')}
+        aria-label={[`${server.city}, ${server.country}`, server.ping !== null ? `${server.ping} milliseconds` : null, server.load !== null ? `${server.load}% load` : null, server.online ? null : 'offline', server.status]
+          .filter(Boolean)
+          .join(', ')}
+        disabled={!server.online}
+        className={cn(rowClass, 'pr-9 disabled:opacity-45', selected && 'bg-space/10')}
       >
         {showFlag ? <Flag code={server.countryCode} /> : <span aria-hidden className="w-5 shrink-0" />}
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{server.city}</span>
-        <LoadBar load={server.load} />
-        <span className="w-12 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{server.ping} ms</span>
+        {server.load !== null && <LoadBar load={server.load} />}
+        {(!server.online || server.status) && <span className="text-[10.5px] text-muted-foreground">{server.online ? server.status : 'offline'}</span>}
+        <span className="w-12 text-right font-mono text-[11px] text-muted-foreground tabular-nums">{server.ping !== null ? `${server.ping} ms` : ''}</span>
         {selected && <CheckIcon aria-hidden className="absolute right-9 size-3.5 text-space" strokeWidth={2.25} />}
       </button>
       <button
@@ -59,13 +63,13 @@ function GroupLabel({ children, code }: { children: string; code?: string }) {
   );
 }
 
-/** Searchable server list grouped by country, with Fastest and favorites on top. Mock data. */
+/** Searchable server list grouped by country, with Fastest and favorites on top. Live Mantel locations or preview data. */
 export function ServerPicker() {
   const state = useVpn();
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const fastest = fastestServer();
+  const fastest = fastestServer(state.servers);
 
   useEffect(() => {
     const timer = window.setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 60);
@@ -74,8 +78,8 @@ export function ServerPicker() {
 
   const needle = query.trim().toLowerCase();
   const matches = useMemo(
-    () => SERVERS.filter((server) => !needle || `${server.city} ${server.country} ${server.countryCode}`.toLowerCase().includes(needle)),
-    [needle],
+    () => state.servers.filter((server) => !needle || `${server.city} ${server.country} ${server.countryCode}`.toLowerCase().includes(needle)),
+    [needle, state.servers],
   );
   const groups = useMemo(() => {
     const byCountry = new Map<string, VpnServer[]>();
@@ -128,7 +132,7 @@ export function ServerPicker() {
                 <span className="min-w-0 flex-1">
                   <span className="block text-[12.5px] font-medium text-foreground">Fastest</span>
                   <span className="block truncate text-[10.5px] text-muted-foreground">
-                    Right now: {fastest.city}, {fastest.ping} ms
+                    {fastest ? `Right now: ${fastest.city}${fastest.ping !== null ? `, ${fastest.ping} ms` : ''}` : 'No location online'}
                   </span>
                 </span>
                 {state.serverId === FASTEST_ID && <CheckIcon aria-hidden className="mr-2 size-3.5 text-space" strokeWidth={2.25} />}
