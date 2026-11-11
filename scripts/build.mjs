@@ -1,7 +1,6 @@
 import { build as esbuild, context } from 'esbuild';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
+import { copyFile, cp, mkdir, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { cp, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -63,6 +62,12 @@ const nodeConfigs = [
     ...shared,
     entryPoints: [join(src, 'main', 'cookie-banners', 'rules.ts')],
     outfile: join(out, 'main', 'cookie-banners.js'),
+    platform: 'node',
+    format: 'cjs',
+    target: 'node20',
+    external: ['electron'],
+  },
+  {
     // On-device translation engine: runs in its own utilityProcess, spawned only when a page is translated.
     ...shared,
     entryPoints: [join(src, 'main', 'translate', 'engine-process.ts')],
