@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Email aliases (Settings → Privacy): connect SimpleLogin or addy.io with an API key and Vela offers "Use an alias for <site>?" when you focus the email field of a sign-up form. The alias is created only after your click, filled into that field, and kept with the login if you save the password (shown in vela://passwords with a link to manage it). The key is encrypted by your OS and never shown to pages.
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
