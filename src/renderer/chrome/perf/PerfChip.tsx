@@ -10,9 +10,10 @@ import { cn } from '@/lib/utils';
 import { GLASS_SURFACE } from '../spaces/surface';
 import { taskManager } from '../task-manager/task-manager-store';
 import { AnimatedNumber } from './AnimatedNumber';
+import { useBatterySaver } from './battery';
 import { SPARK_SAMPLES, Sparkline } from './Sparkline';
 
-/** Live while the popover is open; the resting chip only needs a slow refresh. */
+/** Live while the popover is open; the resting chip only needs a slow refresh (none under battery saver). */
 const POLL_OPEN_MS = 3000;
 const POLL_IDLE_MS = 10_000;
 const HEAVY_MB = 2048;
@@ -26,7 +27,8 @@ const SAVER_NOTICE_MS = 10 * 60_000;
 /** Right-side island chip: live memory readout; opens a glass popover with stats, sparkline and actions. */
 export function PerfChip() {
   const [open, setOpen] = useState(false);
-  const stats = usePerf(open ? POLL_OPEN_MS : POLL_IDLE_MS);
+  const batterySaver = useBatterySaver();
+  const stats = usePerf(open ? POLL_OPEN_MS : batterySaver ? null : POLL_IDLE_MS);
   const reduce = useReducedMotion();
   const [samples, setSamples] = useState<number[]>([]);
   const [slept, setSlept] = useState<number | null>(null);
@@ -73,8 +75,8 @@ export function PerfChip() {
           type="button"
           whileTap={reduce ? undefined : { scale: 0.96 }}
           transition={spring.snappy}
-          aria-label={stats ? `Memory ${formatBytesMB(memory)}. Performance details` : 'Performance details'}
-          title={saverNotice ?? undefined}
+          aria-label={`${stats ? `Memory ${formatBytesMB(memory)}. ` : ''}${batterySaver ? 'Battery saver on. ' : ''}Performance details`}
+          title={[batterySaver ? 'Battery saver on' : null, saverNotice].filter(Boolean).join(' · ') || undefined}
           className={cn(
             'no-drag group/perf flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] px-2.5 text-[12px] font-medium tracking-tight tabular-nums',
             'transition-colors duration-300 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent',
@@ -103,6 +105,7 @@ export function PerfChip() {
           ) : (
             <span className="h-3 w-12 animate-pulse rounded-full bg-foreground/10" aria-hidden />
           )}
+          {batterySaver && <Leaf className="size-3 shrink-0" strokeWidth={1.75} aria-hidden />}
         </motion.button>
       </PopoverTrigger>
 
