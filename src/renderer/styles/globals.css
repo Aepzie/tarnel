@@ -174,6 +174,12 @@
   ::selection {
     background: color-mix(in oklab, var(--accent-space) 35%, transparent);
   }
+  /* Chromium paints a native select's popup with the select's own (translucent) background over white; give the options a solid one. */
+  option,
+  optgroup {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
 }
 
 /* No backdrop-filter: islands sit over the chrome document's own transparent background (the page
