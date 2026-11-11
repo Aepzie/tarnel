@@ -28,7 +28,7 @@ function formatTime(now: Date, withSeconds: boolean): TimeParts {
 
 function Digit({ char, still }: { char: string; still: boolean }) {
   return (
-    <span className="vt-digit-mask relative inline-block h-[1.2em] overflow-hidden align-top">
+    <span className="vt-digit-mask relative inline-block h-[1.2em] shrink-0 overflow-hidden align-top">
       <span className="invisible">{char}</span>
       <AnimatePresence initial={false}>
         <motion.span
@@ -80,7 +80,7 @@ export function ClockHero({ seconds }: { seconds: boolean }) {
           <RollingText text={time.main} still={still} />
         </span>
         {time.seconds && (
-          <span className="ml-[0.08em] flex text-[0.5em] font-extralight text-foreground/55">
+          <span className="ml-[0.08em] flex shrink-0 text-[0.5em] font-extralight tracking-normal text-foreground/55">
             <span className="relative -top-[0.04em] px-[0.04em] text-muted-foreground/40">:</span>
             <RollingText text={time.seconds} still={still} />
           </span>

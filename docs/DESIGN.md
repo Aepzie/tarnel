@@ -49,6 +49,8 @@ src/renderer/
 * **Focus mode** (`settings.autoHideToolbar`, toggle Ctrl+Shift+S): island slides up & fades out, page island
   takes full height (8px margins). Hovering the top 6px edge slides the island back in as an overlay.
 * `#viewport` is a transparent placeholder measured with ResizeObserver → `vela.ui.setContentBounds`.
+* Vertical tab lists use 8px padding and scroll padding so the first tab outline stays visible.
+  Pinned tiles fit the available inner width, including the collapsed rail’s 36px content area.
 
 ## Visual tokens
 
@@ -59,7 +61,12 @@ src/renderer/
   (`0 0 0 1px accent/35%, 0 8px 24px -8px accent/40%`), loading bar, focus rings, switch fill, selection.
 * Space colors: slate #94a3b8, blue #60a5fa, violet #a78bfa, pink #f472b6, red #f87171, orange #fb923c,
   green #4ade80, teal #2dd4bf.
-* Radii: islands 16px, page 12px, pills 10px, menu items 8px, chips full.
+* Radii: islands 16px, page 12px, pills 10px, menu items 8px, chips full. Toolbar and caption
+  controls use the shared 10px radius token (`rounded-md`).
+* Segmented controls: 12px outer radius, 4px padding/gaps and 8px item radius. The animated
+  selection inherits the item radius, keeping concentric corners in light and dark themes.
+* The non-scrolling new-tab page does not reserve scrollbar space; its backdrop fills the page view.
+  Half-size clock seconds use normal tracking, while hours and minutes retain tight tracking.
 * Light theme supported via `.light` class / `data-theme="light"` (islands `bg-white/70`, ring black/8).
 * NO: gradients on surfaces (except accent glows & subtle noise), generic drop shadows on everything,
   blue default buttons, emoji icons. Use lucide icons, size 15–16, strokeWidth 1.75.

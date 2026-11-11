@@ -71,7 +71,7 @@ const CloseGlyph = () => (
 );
 
 const captionClass = cn(
-  'no-drag inline-flex h-7 w-9 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground outline-none',
+  'no-drag inline-flex h-7 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none',
   'transition-[background-color,color] duration-120 ease-out',
   'hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
 );

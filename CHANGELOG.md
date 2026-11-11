@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Clock seconds keep each digit fully visible instead of inheriting the main time’s negative letter spacing.
+- The new-tab background fills the whole page without reserving an unused scrollbar gutter.
+- Vertical tab lists have clear inner spacing, and pinned tiles fit the collapsed rail.
+- Segmented controls use consistent padding and concentric selection corners in light and dark themes.
+- Toolbar and caption buttons use the shared 10px radius token.
+
 ### Changed
 - README: shorter and focused, with a demo recording of the real app at the top (`docs/media/vela-demo.gif`, full quality as `vela-demo.mp4`). The complete feature list, all keyboard shortcuts, the Spaces details, performance notes and the security model moved to the new [docs/FEATURES.md](docs/FEATURES.md); features missing from the old README (VPN, passwords, translation, site rules, privacy report, cookie banners and more) are listed there now.
 

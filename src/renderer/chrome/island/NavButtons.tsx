@@ -21,7 +21,7 @@ export const IslandIconButton = forwardRef<HTMLButtonElement, ComponentPropsWith
         ref={ref}
         type={type}
         className={cn(
-          'no-drag inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground outline-none',
+          'no-drag inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none',
           'transition-[background-color,color,transform,opacity] duration-120 ease-out',
           'hover:bg-accent hover:text-foreground active:scale-[0.96]',
           'focus-visible:ring-2 focus-visible:ring-ring',
