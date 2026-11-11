@@ -4,6 +4,7 @@ import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { TRANSLATE_IPC } from '../shared/translate';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -55,6 +56,12 @@ if (isVelaPage()) {
       update: (id, patch, spaceId) => call(BOOKMARKS_IPC.pagesUpdate, id, patch, spaceId ?? null),
       remove: (id, spaceId) => call(BOOKMARKS_IPC.pagesRemove, id, spaceId ?? null),
       search: (query, limit, spaceId) => call(BOOKMARKS_IPC.pagesSearch, query, limit ?? null, spaceId ?? null),
+    },
+    translate: {
+      overview: () => call(TRANSLATE_IPC.overview),
+      setPrefs: (patch) => call(TRANSLATE_IPC.setPrefs, patch),
+      deleteModel: (pair) => call(TRANSLATE_IPC.deleteModel, pair),
+      refreshCatalog: () => call(TRANSLATE_IPC.refreshCatalog),
     },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),

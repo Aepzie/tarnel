@@ -29,6 +29,7 @@ import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mix
 import type { VpnResult, VpnState } from './vpn';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
+import type { TranslateOverview, TranslatePrefs, TranslateTabState } from './translate';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
 
 /**
@@ -541,5 +542,28 @@ export interface VelaPagesAPI {
     /** Save dialog + file write happen in main. */
     exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
     removeNever(spaceId: SpaceId, origin: string): Promise<void>;
+  };
+}
+
+/** On-device page translation (chrome). Channels live in TRANSLATE_IPC (shared/translate.ts). */
+export interface VelaChromeAPI {
+  translate: {
+    /** Detects the page language on first call (local) and reports whether a model path exists. */
+    state(tabId: number): Promise<TranslateTabState>;
+    /** Downloads models on demand, then translates the page in place. `to` defaults to the target language. */
+    page(tabId: number, to?: string): Promise<TranslateTabState>;
+    showOriginal(tabId: number): Promise<TranslateTabState>;
+    onState(cb: (state: TranslateTabState) => void): Unsubscribe;
+  };
+}
+
+/** Settings → General → Languages. */
+export interface VelaPagesAPI {
+  translate: {
+    overview(): Promise<TranslateOverview>;
+    setPrefs(patch: Partial<TranslatePrefs>): Promise<TranslateOverview>;
+    deleteModel(pair: string): Promise<TranslateOverview>;
+    /** Re-fetches Mozilla's model list (the only network call besides model downloads). */
+    refreshCatalog(): Promise<TranslateOverview>;
   };
 }
