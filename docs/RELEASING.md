@@ -128,6 +128,14 @@ uses its own `ANDROID_KEYSTORE_*` secrets (see the `android` job).
 | Apple Developer Program | $99/year | Needed for Developer ID and notarization |
 | [SignPath Foundation](https://signpath.org) | free for qualifying OSS | Alternative for Windows. Signs releases built by CI via their GitHub integration. Needs a different workflow step (SignPath's action) instead of the electron-builder signer, so it is not wired up here |
 
+## Default apps registration
+
+The Windows installer's default-browser registration is `build/installer.nsh` (see docs/ARCHITECTURE.md,
+"Default browser and file types"). Before a release that changes it, install the build on a test machine or VM
+and check: Vela listed under Settings → Default apps and in "Open with" for `.pdf` / `.html`, "Make default"
+opens Vela's page there, and uninstall leaves no `StartMenuInternet\Vela`, `RegisteredApplications\Vela` or
+`Software\Classes\Vela*` keys. The portable exe registers nothing.
+
 ## Cutting a release
 
 1. Update `version` in `package.json` and move the `[Unreleased]` notes in `CHANGELOG.md` under the new

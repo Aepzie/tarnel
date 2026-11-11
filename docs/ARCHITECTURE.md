@@ -1154,6 +1154,28 @@ The module is `require`d lazily on the first check (esbuild keeps it external), 
 * Testing: `VELA_UPDATE_FEED=<http url | local dir>` switches to a generic provider (a local dir is served on
   127.0.0.1); unpacked dev runs then check in notify mode.
 
+## Default browser and file types (`src/main/default-browser.ts`, `build/installer.nsh`)
+
+* **Windows (NSIS installer)**: electron-builder registers nothing for `protocols` on Windows, and its
+  `fileAssociations` would set each `.ext` default (taking a type over silently), so Windows registration lives
+  in `build/installer.nsh` (`nsis.include`), Chrome-style, under `SHELL_CONTEXT` (HKCU per-user, HKLM for an
+  "all users" install): `Software\Clients\StartMenuInternet\Vela` (+ `Capabilities` with URLAssociations
+  http/https → `VelaURL` and FileAssociations → `VelaHTML` / `VelaPDF` / `VelaSVG` / `VelaWebP` / `VelaMHTML`),
+  `Software\RegisteredApplications\Vela`, the ProgIDs under `Software\Classes` (`"Vela.exe" -- "%1"`; the `--` ends switch parsing) and only an
+  `OpenWithProgids` entry per extension, then `SHChangeNotify(SHCNE_ASSOCCHANGED)`. Uninstall removes exactly
+  those keys/values. It also cleans the `HTML document` ProgID older builds let electron-builder write.
+  Windows 10/11 never let an app make itself default: "Make default" opens
+  `ms-settings:defaultapps?registeredAppUser=Vela` (`registeredAppMachine` when installed under Program Files).
+  The status compares `app.getApplicationInfoForProtocol()`'s handler path with `process.execPath` (that sees
+  the UserChoice; `isDefaultProtocolClient` only reads `HKCU\Software\Classes\<scheme>`).
+* **Portable exe**: writes nothing to the registry, so it can't be listed or made default (the row says so).
+* **macOS / Linux**: `protocols` + `mac.fileAssociations` / `linux.fileAssociations` (one YAML anchor) become
+  `CFBundleURLTypes` / `CFBundleDocumentTypes` (PDF, SVG, WebP with `LSHandlerRank` Alternate) and the
+  `.desktop` `MimeType`; "Make default" calls `app.setAsDefaultProtocolClient('http' / 'https')`.
+* Unpackaged dev runs never register (would point the OS at the dev electron.exe). File types: HTML, XHTML,
+  SHTML, MHT/MHTML, PDF, SVG, WebP. Plain text, JSON and common images (PNG/JPG/GIF) are left out on purpose.
+* IPC `pages:default-browser-status` / `-make-default`: vela://settings only, read on load and on focus.
+
 ## Translation (`src/main/translate/*`)
 
 On-device page translation, the same stack as Firefox Translations. No page text leaves the device;

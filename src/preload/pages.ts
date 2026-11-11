@@ -10,6 +10,7 @@ import { TRANSLATE_IPC } from '../shared/translate';
 import { SITE_RULES_IPC } from '../shared/site-rules';
 import { ALIAS_IPC } from '../shared/aliases';
 import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
+import { DEFAULT_BROWSER_IPC } from '../shared/default-browser';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -149,6 +150,10 @@ if (isVelaPage()) {
       set: (patch) => call(ALIAS_IPC.set, patch),
       setKey: (key) => call(ALIAS_IPC.setKey, key),
       options: () => call(ALIAS_IPC.options),
+    };
+    api.defaultBrowser = {
+      status: () => call(DEFAULT_BROWSER_IPC.status),
+      makeDefault: () => call(DEFAULT_BROWSER_IPC.makeDefault),
     };
   }
 

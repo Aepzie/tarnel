@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Default browser: Settings → General shows whether Vela is your default browser and has a "Make default" button (on Windows it opens Settings → Default apps on Vela's page; on macOS and Linux it sets it directly). The Windows installer now registers Vela as a full browser, so it appears in Default apps and in "Open with" for web links, HTML, XHTML, MHTML, PDF, SVG and WebP files, without taking any file type over. The portable version can't be the default browser.
+
 ### Fixed
 - Clock seconds keep each digit fully visible instead of inheriting the main time’s negative letter spacing.
 - The new-tab background fills the whole page without reserving an unused scrollbar gutter.
