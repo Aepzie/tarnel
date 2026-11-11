@@ -30,6 +30,8 @@ let htmlFullscreen = false;
 /** Window fullscreen state (F11) before a page entered HTML fullscreen. */
 let fullscreenBeforeHtml = false;
 let store: JsonStore<WindowFile> | null = null;
+/** Views beside the pages (web panels, src/main/panels): stacked above the pages, below a raised chrome. */
+let sideViews: () => WebContentsView[] = () => [];
 
 function getStore(): JsonStore<WindowFile> {
   store ??= createStore<WindowFile>('window', { bounds: null, maximized: false });
@@ -59,6 +61,7 @@ function layout(): void {
   if (!win || win.isDestroyed()) return;
   const size = windowSize();
   chromeView?.setBounds({ x: 0, y: 0, ...size });
+  for (const view of sideViews()) view.setVisible(!htmlFullscreen);
   if (!activeView) return;
   if (htmlFullscreen) {
     setRadius(activeView, 0);
@@ -92,6 +95,7 @@ function roundedBounds(bounds: ContentBounds): Rectangle {
 function restack(target: BaseWindow): void {
   for (const view of visibleViews) if (view !== activeView) target.contentView.addChildView(view);
   if (activeView) target.contentView.addChildView(activeView);
+  for (const view of sideViews()) target.contentView.addChildView(view);
   if ((overlayOpen || peekOpen) && chromeView) target.contentView.addChildView(chromeView);
 }
 
@@ -233,7 +237,7 @@ function swapWindow(material: WindowMaterial): void {
   const minimized = old.isMinimized();
   const next = buildWindow(material, old.getNormalBounds());
 
-  for (const view of [chromeView, ...visibleViews]) if (view) old.contentView.removeChildView(view);
+  for (const view of [chromeView, ...visibleViews, ...sideViews()]) if (view) old.contentView.removeChildView(view);
   for (const event of old.eventNames()) {
     if (typeof event !== 'string') continue;
     for (const listener of old.listeners(event)) {
@@ -373,6 +377,17 @@ export function detachView(view: WebContentsView): void {
   if (win && !win.isDestroyed()) win.contentView.removeChildView(view);
   visibleViews = visibleViews.filter((candidate) => candidate !== view);
   if (activeView === view) activeView = null;
+}
+
+/** Registers the provider of side views (web panels); `restackWindow` re-applies the layer order. */
+export function setSideViewsProvider(provider: () => WebContentsView[]): void {
+  sideViews = provider;
+}
+
+export function restackWindow(): void {
+  if (!win || win.isDestroyed()) return;
+  restack(win);
+  layout();
 }
 
 export function setContentBounds(bounds: ContentBounds): void {

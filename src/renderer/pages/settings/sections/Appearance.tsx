@@ -5,6 +5,7 @@ import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Segmented, type SegmentOption } from '../components/controls';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { useSettings } from '../store';
+import { WebPanels } from './WebPanels';
 
 const THEMES: readonly SegmentOption<ThemeMode>[] = [
   { value: 'system', label: 'System', icon: Monitor },
@@ -102,6 +103,7 @@ export function Appearance() {
           }
         />
       </Group>
+      <WebPanels />
       <Group title="Focus">
         <SwitchRow
           title="Focus mode"

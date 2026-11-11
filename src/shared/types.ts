@@ -204,6 +204,8 @@ export interface Settings {
   autoHideToolbar: boolean;
   /** Bookmarks bar under the top island (Ctrl+Shift+B). */
   showBookmarksBar: boolean;
+  /** Web panel rail on the right edge; switched on when the first panel is added. */
+  showPanelRail: boolean;
   windowMaterial: WindowMaterial;
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
@@ -354,6 +356,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarWidth: 240,
   autoHideToolbar: false,
   showBookmarksBar: false,
+  showPanelRail: false,
   windowMaterial: 'mica',
   newtabHero: 'clock',
   tabLayout: 'horizontal',

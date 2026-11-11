@@ -18,6 +18,7 @@ import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
+import { PanelRail } from './panels/PanelRail';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
@@ -105,7 +106,14 @@ export function App() {
             <TopIsland />
             <BookmarksBar />
             <FindBar />
-            <Viewport />
+            {settings.showPanelRail ? (
+              <div className="flex min-h-0 flex-1 gap-2">
+                <Viewport className="min-w-0" />
+                <PanelRail />
+              </div>
+            ) : (
+              <Viewport />
+            )}
           </div>
         </div>
         {permissionUi && (

@@ -29,6 +29,7 @@ import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mix
 import type { VpnResult, VpnState } from './vpn';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
+import type { PanelInput, PanelPatch, PanelsState } from './panels';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
 
 /**
@@ -541,5 +542,34 @@ export interface VelaPagesAPI {
     /** Save dialog + file write happen in main. */
     exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
     removeNever(spaceId: SpaceId, origin: string): Promise<void>;
+  };
+}
+
+/** Web panels. Channels live in PANELS_IPC (shared/panels.ts). */
+export interface VelaChromeAPI {
+  panels: {
+    list(): Promise<PanelsState>;
+    add(input: PanelInput): Promise<PanelsState>;
+    update(id: string, patch: PanelPatch): Promise<PanelsState>;
+    remove(id: string): Promise<PanelsState>;
+    /** Expand the panel, or collapse it when it is the open one. */
+    toggle(id: string): Promise<void>;
+    collapse(): Promise<void>;
+    /** Rect (CSS px, window-relative) of the panel slot. */
+    setBounds(bounds: ContentBounds): Promise<void>;
+    reload(id: string): Promise<void>;
+    toggleMute(id: string): Promise<void>;
+    openAsTab(id: string): Promise<void>;
+    onState(cb: (state: PanelsState) => void): Unsubscribe;
+  };
+}
+
+/** vela://settings only (main rejects every other page). */
+export interface VelaPagesAPI {
+  panels?: {
+    list(): Promise<PanelsState>;
+    add(input: PanelInput): Promise<PanelsState>;
+    update(id: string, patch: PanelPatch): Promise<PanelsState>;
+    remove(id: string): Promise<PanelsState>;
   };
 }
