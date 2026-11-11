@@ -236,11 +236,41 @@ treat run-to-run noise (±150 ms) as larger than the effect.
 
 ## Measuring it in-app
 
-`collectPerfStats()` (`src/main/perf/metrics.ts`) sums **private memory** (`privateBytes` from
-`app.getAppMetrics()`; working set on macOS, where it is not reported) and CPU over *all* processes:
-browser, GPU, utility and renderers.
+`collectPerfStats()` (`src/main/perf/metrics.ts`) sums memory and CPU over *all* processes: browser,
+GPU, utility and renderers. The perf chip, its popover and the task manager (rows and footer) all use
+the same per-process number, `displayMemoryKB()`:
 
-It used to sum `workingSetSize`. That counts every page shared between processes (Chromium and
+- **Windows: private working set** — exactly Task Manager's "Memory" column, so the chip equals the
+  Vela group row in Task Manager. Electron does not expose it (`getAppMetrics()` has only the working
+  set and `privateBytes` = private *commit*, which also counts paged-out / never-touched memory and
+  read ~160 MB (~30%) higher than Task Manager with 4 tabs). It comes from a small PowerShell helper
+  (`src/main/perf/private-ws.ts`) that calls `K32GetProcessMemoryInfo` (`PROCESS_MEMORY_COUNTERS_EX2
+  .PrivateWorkingSetSize`, Windows 10 20H1+) for the pids it is sent on stdin — no npm dependency,
+  language-neutral (perf-counter names such as `Working Set - Private` are localized, so `typeperf` /
+  `Get-Counter` break on non-English Windows), no files written.
+  Cost, measured: started on the first request (~0.4–0.7 s CPU once), then ~8 ms CPU per sample
+  (≈0.15 % of one core at the chip's 5 s poll), 3–5 ms added latency to `perf.get`, and ~3 MB private
+  working set (2.4 MB helper + 0.8 MB conhost; it trims its own working set after every answer). It
+  exits 20 s after the last request — the chip only polls while the window is visible and the task
+  manager only while open — and when Vela quits. Those ~3 MB are in Task Manager's Vela group but not
+  in the chip. If the helper fails (3 times), Vela falls back to private commit for the session.
+- **macOS / Linux:** resident working set from `getAppMetrics()` (no `privateBytes` there). Activity
+  Monitor's "Memory" is `phys_footprint`, which Electron reports only for its own process, so it can
+  differ there.
+
+The **memory saver keeps private commit** (`committedMemoryKB()`): commit is what must be backed by
+RAM or the page file, and the private working set shrinks exactly when Windows trims pages under
+memory pressure — the moment the saver should act. It also avoids running the helper all day.
+"Saved by sleeping" uses the displayed metric (the last helper sample, if fresher than 15 s).
+
+Measured after the fix (Windows 11, isolated profile, 4 local test pages + new tab, 9 processes):
+
+| | Perf chip | Vela task manager total | Windows Task Manager (Σ private WS of the process tree) | Private commit | Working set |
+|---|---|---|---|---|---|
+| Before | 724 | 723.7 | 561 | 724 | 1219 |
+| After | 503–505 | 503.0–504.8 | 502–511 (incl. ~3 MB helper) | 722–726 | 1155–1171 |
+
+Before that, Vela summed `workingSetSize`. That counts every page shared between processes (Chromium and
 system DLLs, shared memory) once *per process*, so with ~10 processes it over-reported by hundreds
 of MB: a fresh window showed ~790 MB while the processes really owned ~330 MB, and five slept tabs
 showed ~1.25 GB for ~600 MB. That inflated number is what users saw in the perf chip.
@@ -274,7 +304,7 @@ Windows 11, Electron 45 (Chromium 156), isolated profile with the ad-block engin
 1280×820. Sites: github.com, youtube.com, en.wikipedia.org (article), reddit.com, MDN JavaScript.
 Each opened as the active tab 2.5 s apart; then the new-tab page activated and all five slept with
 `vela.tabs.sleep`. Columns are sums over every Vela process: **Private** = private commit (what Vela
-now displays), **Private WS** = private working set (Task Manager "Memory" column), **WS** = working
+displayed at the time; it now shows private WS, see above), **Private WS** = private working set (Task Manager "Memory" column), **WS** = working
 set (what Vela used to display). MB.
 
 | Scenario | Before: Private | Before: WS (shown in app) | After: Private (shown in app) | After: Private WS | After: WS |
@@ -290,7 +320,7 @@ What changed:
 - **The window is a `BaseWindow`, not a `BrowserWindow`.** All UI lives in WebContentsViews; the
   BrowserWindow's own never-loaded webContents still kept a renderer process alive (14 MB private,
   ~100 MB working set). Removing it also trimmed ~40 MB of working set from the browser process.
-- **The displayed number is private memory**, and "saved" is measured per tab (see above).
+- **The displayed number became private commit** (now private working set, see above), and "saved" is measured per tab (see above).
 
 What sleeping five heavy tabs still leaves behind (state (d) vs (a), private):
 | Process | (a) | (d) | Why |

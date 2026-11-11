@@ -7,14 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The memory number in the perf chip, its popover and the task manager now matches Windows Task Manager (private working set). It showed private commit before, ~30% higher. macOS/Linux unchanged; the memory saver still uses private commit.
+- Dropdown lists were still white in the dark theme (the 0.8.2 fix didn't reach Chromium's native popup): Spaces timezone/language/user agent and the passwords Space picker now use Vela's own themed select.
+- Settings and other vela:// pages no longer shift sideways when switching between short and long sections (the scrollbar's space is always reserved).
+
+## [0.8.2] - 2026-11-11
+
+### Fixed
+- Dropdown lists (and scrollbars) were white in the dark theme when Windows uses light mode; native controls now follow Vela's theme.
+
 ## [0.8.1] - 2026-11-11
 
 ### Added
 - User agent per Space: a default in Settings → Privacy and an override in each Space (Settings → Spaces). Pick from a list of common browsers (Chrome, Edge, Firefox, Safari on desktop and mobile) or randomize.
-
-### Fixed
-- Dropdown lists (Spaces timezone/language/user agent, passwords Space picker) opened as a white native list in the dark theme; they now use Vela's own themed select. Scrollbars follow Vela's theme instead of Windows'.
-- Settings and other vela:// pages no longer shift sideways when switching between short and long sections (the scrollbar's space is always reserved).
 
 ## [0.8.0] - 2026-11-10
 
@@ -255,7 +261,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/Aepzie/vela/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/Aepzie/vela/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/Aepzie/vela/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.1

@@ -3,7 +3,7 @@ import os from 'node:os';
 import type { MemorySaverMode } from '../../shared/types';
 import { pickFreezeTargets } from './freeze';
 import { estimateTabMemoryKB, pickSaverTargets } from './memory-saver';
-import { processMemoryKB } from './metrics';
+import { committedMemoryKB } from './metrics';
 
 /**
  * Tab sleeping. A sleeping tab has its renderer process destroyed (not merely frozen), so its
@@ -106,7 +106,7 @@ function runMemorySaver(deps: SleeperDeps, tabs: SleepCandidate[], now: number, 
   const pidKB = new Map<number, number>();
   let usedKB = 0;
   for (const metric of metrics) {
-    const kb = processMemoryKB(metric);
+    const kb = committedMemoryKB(metric);
     usedKB += kb;
     pidKB.set(metric.pid, kb);
   }
