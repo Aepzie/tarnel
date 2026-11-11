@@ -3,6 +3,7 @@ import type { SearchEngine } from '@shared/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { useSettings } from '../store';
+import { Languages } from './Languages';
 
 const ENGINES: readonly { value: SearchEngine; label: string }[] = [
   { value: 'duckduckgo', label: 'DuckDuckGo' },
@@ -48,6 +49,7 @@ export function General() {
           setting="peekOnShiftClick"
         />
       </Group>
+      <Languages />
     </>
   );
 }

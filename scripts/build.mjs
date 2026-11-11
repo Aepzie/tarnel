@@ -1,5 +1,5 @@
 import { build as esbuild, context } from 'esbuild';
-import { rm } from 'node:fs/promises';
+import { cp, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,6 +56,16 @@ const nodeConfigs = [
     external: ['electron'],
   },
   {
+    // On-device translation engine: runs in its own utilityProcess, spawned only when a page is translated.
+    ...shared,
+    entryPoints: [join(src, 'main', 'translate', 'engine-process.ts')],
+    outfile: join(out, 'main', 'translate-engine.js'),
+    platform: 'node',
+    format: 'cjs',
+    target: 'node20',
+    external: ['electron'],
+  },
+  {
     ...shared,
     entryPoints: [join(src, 'preload', 'chrome.ts'), join(src, 'preload', 'pages.ts'), join(src, 'preload', 'fingerprint.ts'), join(src, 'preload', 'fingerprint-worker.ts'), join(src, 'preload', 'audio-devices.ts'), join(src, 'preload', 'audio-mixer.ts'), join(src, 'preload', 'identity.ts'), join(src, 'preload', 'extension-api.ts'), join(src, 'preload', 'passwords.ts')],
     outdir: join(out, 'preload'),
@@ -77,6 +87,8 @@ async function buildRenderer() {
 }
 
 await rm(out, { recursive: true, force: true });
+// Vendored bergamot-translator WASM + glue (MPL-2.0), loaded by the translation engine at runtime.
+await cp(join(root, 'vendor', 'bergamot'), join(out, 'vendor', 'bergamot'), { recursive: true });
 
 if (watch) {
   const contexts = await Promise.all(nodeConfigs.map((config) => context(config)));

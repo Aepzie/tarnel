@@ -8,6 +8,7 @@ import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { TRANSLATE_IPC } from '../shared/translate';
 import { SITE_RULES_IPC } from '../shared/site-rules';
 import { PEEK_IPC } from '../shared/peek';
 import { ALIAS_IPC } from '../shared/aliases';
@@ -209,6 +210,12 @@ const api: VelaChromeAPI = {
     onFillCancel: (cb) => subscribe(PASSWORD_IPC.fillCancel, cb),
     fill: (offerId, loginId) => invoke(PASSWORD_IPC.fill, offerId, loginId),
     dismissOffer: (offerId) => invoke(PASSWORD_IPC.dismissOffer, offerId),
+  },
+  translate: {
+    state: (tabId) => invoke(TRANSLATE_IPC.tabState, tabId),
+    page: (tabId, to) => invoke(TRANSLATE_IPC.translateTab, tabId, to ?? null),
+    showOriginal: (tabId) => invoke(TRANSLATE_IPC.showOriginal, tabId),
+    onState: (cb) => subscribe(TRANSLATE_IPC.tabChanged, cb),
   },
   siteRules: {
     createFor: (tabId) => invoke(SITE_RULES_IPC.chromeCreateFor, tabId),
