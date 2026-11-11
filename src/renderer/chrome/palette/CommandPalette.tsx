@@ -17,6 +17,7 @@ import { SiteInfoTrigger } from '../site-info/SiteInfoPanel';
 import { PaletteRow, type PaletteRowModel } from './PaletteRow';
 import { useSuggestions } from './useSuggestions';
 import { BookmarkStar } from '../bookmarks/BookmarkStar';
+import { TranslateButton } from '../translate/TranslateButton';
 
 const MAX_STAGGER = 8;
 const STAGGER_STEP = 0.022;
@@ -319,6 +320,7 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
                   autoComplete="off"
                   className="h-full min-w-0 flex-1 bg-transparent text-[15px] tracking-tight text-foreground outline-none placeholder:text-muted-foreground/70"
                 />
+                {palette.mode === 'current' && kind !== 'command' && <TranslateButton />}
                 {palette.mode === 'current' && kind !== 'command' && <BookmarkStar />}
                 {palette.mode === 'current' && kind !== 'command' && <SiteInfo />}
                 {kind === 'command' && (

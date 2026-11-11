@@ -10,6 +10,7 @@ import { audioCommands } from '../audio/audio-commands';
 import { mixerCommands } from '../mixer/mixer-commands';
 import { vpnCommands } from '../vpn/vpn-commands';
 import { taskManagerCommands } from '../task-manager/task-manager-commands';
+import { translateCommands } from '../translate/translate-commands';
 
 export interface PaletteCommand {
   id: string;
@@ -143,6 +144,7 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
   commands.push(...mixerCommands());
   commands.push(...vpnCommands());
   commands.push(...taskManagerCommands());
+  commands.push(...translateCommands(state));
   commands.push(...audioCommands(state));
   if (activeTabId !== null) {
     commands.push({
