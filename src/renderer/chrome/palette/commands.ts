@@ -124,6 +124,13 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       run: () => void vela.tabs.create({ url: 'vela://history' }),
     },
     {
+      id: 'cmd:privacy-report',
+      title: 'Privacy report',
+      icon: ShieldCheck,
+      keywords: 'trackers blocked stats statistics privacy report ads',
+      run: () => void vela.tabs.create({ url: 'vela://privacy' }),
+    },
+    {
       id: 'cmd:extensions-store',
       title: 'Extensions store',
       icon: Puzzle,
