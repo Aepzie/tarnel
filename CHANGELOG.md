@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The memory number in the perf chip, its popover and the task manager now matches Windows Task Manager (private working set). It showed private commit before, ~30% higher. macOS/Linux unchanged; the memory saver still uses private commit.
+
 ## [0.8.2] - 2026-11-11
 
 ### Fixed

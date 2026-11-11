@@ -200,17 +200,17 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
   return results;
 }
 
-function perfStats() {
+async function perfStats() {
   const counts = tabs.countTabs();
   const chromePid = getChromeView()?.webContents.getOSProcessId();
   return {
-    ...collectPerfStats({
+    ...(await collectPerfStats({
       tabsAwake: counts.awake,
       tabsAsleep: counts.asleep,
       blockedTotal: getBlockedTotal(),
       sleptRendererKB: counts.freedKB,
       uiRendererPids: chromePid ? [chromePid] : [],
-    }),
+    })),
     tabsFrozen: counts.frozen,
     memorySaver: getMemorySaverNotice(),
   };
