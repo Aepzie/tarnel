@@ -84,7 +84,7 @@ Builds are not code-signed yet, and every release lists SHA-256 checksums in `SH
 
 ## Shortcuts
 
-| | | | |
+| Shortcut | Action | Shortcut | Action |
 |---|---|---|---|
 | `Ctrl+K` | Command palette | `Ctrl+Shift+N` | New Burner space |
 | `Ctrl+T` | New tab | `Ctrl+Shift+D` | Split view on / off |
