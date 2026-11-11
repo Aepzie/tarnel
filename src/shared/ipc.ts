@@ -1,4 +1,5 @@
 import type { PrivacyReport } from './privacy-report';
+import type { DefaultBrowserStatus, MakeDefaultResult } from './default-browser';
 import type {
   BrowserState,
   ContentBounds,
@@ -580,6 +581,12 @@ export interface VelaPagesAPI {
     /** Validates the key with the provider, then stores it encrypted; null removes it. */
     setKey(key: string | null): Promise<AliasSettingsView>;
     options(): Promise<AliasOptions>;
+  };
+  /** vela://settings only (Settings → General → Default browser). */
+  defaultBrowser?: {
+    status(): Promise<DefaultBrowserStatus>;
+    /** Windows: opens Settings → Default apps; macOS/Linux: registers http/https directly. */
+    makeDefault(): Promise<MakeDefaultResult>;
   };
 }
 

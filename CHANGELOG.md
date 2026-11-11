@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open local files in tabs: PDF (Chromium's PDF viewer), HTML, images, SVG, text, JSON, audio and video. Paths on the command line ("Open with", double-click, `vela C:\pathile.pdf`, relative paths, `file://` URLs, a bare `--` before targets) and macOS `open-file` / `open-url` open in new tabs; tabs of untitled files show the file name.
 - Drag and drop: files or links dropped on the tab strip, vertical tab list or other browser UI open in new tabs (subtle accent ring while dragging); drops on the new-tab page or a local file open next to it, links dropped on a web page open in a new tab.
 
-### Security
-- Web pages can never navigate, frame or open `file://`; only the user, other local files and Vela's own pages can. Local files never get the `window.vela` / `window.velaPages` bridges.
+### Changed
+- README: shorter and focused, with a demo recording of the real app at the top (`docs/media/vela-demo.gif`, full quality as `vela-demo.mp4`). The complete feature list, all keyboard shortcuts, the Spaces details, performance notes and the security model moved to the new [docs/FEATURES.md](docs/FEATURES.md); features missing from the old README (VPN, passwords, translation, site rules, privacy report, cookie banners and more) are listed there now.
 
 ### Fixed
 - Clock seconds keep each digit fully visible instead of inheriting the main time’s negative letter spacing.
@@ -21,8 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Segmented controls use consistent padding and concentric selection corners in light and dark themes.
 - Toolbar and caption buttons use the shared 10px radius token.
 
-### Changed
-- README: shorter and focused, with a demo recording of the real app at the top (`docs/media/vela-demo.gif`, full quality as `vela-demo.mp4`). The complete feature list, all keyboard shortcuts, the Spaces details, performance notes and the security model moved to the new [docs/FEATURES.md](docs/FEATURES.md); features missing from the old README (VPN, passwords, translation, site rules, privacy report, cookie banners and more) are listed there now.
+### Security
+- Web pages can never navigate, frame or open `file://`; only the user, other local files and Vela's own pages can. Local files never get the `window.vela` / `window.velaPages` bridges.
+- Default browser: Settings → General shows whether Vela is your default browser and has a "Make default" button (on Windows it opens Settings → Default apps on Vela's page; on macOS and Linux it sets it directly). The Windows installer now registers Vela as a full browser, so it appears in Default apps and in "Open with" for web links, HTML, XHTML, MHTML, PDF, SVG and WebP files, without taking any file type over. The portable version can't be the default browser.
 
 ## [0.9.0] - 2026-11-11
 
