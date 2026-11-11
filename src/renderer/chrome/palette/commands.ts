@@ -10,6 +10,7 @@ import { audioCommands } from '../audio/audio-commands';
 import { mixerCommands } from '../mixer/mixer-commands';
 import { vpnCommands } from '../vpn/vpn-commands';
 import { taskManagerCommands } from '../task-manager/task-manager-commands';
+import { archiveCommands } from '../archive/archive-commands';
 
 export interface PaletteCommand {
   id: string;
@@ -124,6 +125,13 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       run: () => void vela.tabs.create({ url: 'vela://history' }),
     },
     {
+      id: 'cmd:privacy-report',
+      title: 'Privacy report',
+      icon: ShieldCheck,
+      keywords: 'trackers blocked stats statistics privacy report ads',
+      run: () => void vela.tabs.create({ url: 'vela://privacy' }),
+    },
+    {
       id: 'cmd:extensions-store',
       title: 'Extensions store',
       icon: Puzzle,
@@ -143,6 +151,7 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
   commands.push(...mixerCommands());
   commands.push(...vpnCommands());
   commands.push(...taskManagerCommands());
+  commands.push(...archiveCommands(activeTabId));
   commands.push(...audioCommands(state));
   if (activeTabId !== null) {
     commands.push({

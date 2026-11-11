@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
+  ArchiveIcon,
   CopyIcon,
   FolderInputIcon,
   LayersIcon,
@@ -108,6 +109,12 @@ function GroupItems({ tab }: { tab: TabState }) {
   );
 }
 
+function archiveOthers(tab: TabState): void {
+  const { tabs } = getBrowserStateSnapshot();
+  const ids = tabs.filter((other) => other.spaceId === tab.spaceId && other.id !== tab.id && !other.pinned).map((other) => other.id);
+  if (ids.length > 0) settle(vela().tabArchive.archiveTabs(ids));
+}
+
 function closeOthers(tab: TabState): void {
   const { tabs } = getBrowserStateSnapshot();
   for (const other of tabs) {
@@ -165,6 +172,15 @@ export function TabContextMenu({ tab, children }: TabContextMenuProps) {
           <GroupItems tab={tab} />
           <ContextMenuSeparator className={MENU_SEPARATOR} />
           <SplitMenuItems tab={tab} />
+          <ContextMenuItem className={ITEM} disabled={tab.pinned} onSelect={() => settle(vela().tabArchive.archiveTabs([tab.id]))}>
+            <ArchiveIcon strokeWidth={1.75} />
+            Move to archive
+            <Hint>{mod} Shift E</Hint>
+          </ContextMenuItem>
+          <ContextMenuItem className={ITEM} onSelect={() => archiveOthers(tab)}>
+            <ArchiveIcon strokeWidth={1.75} />
+            Archive other tabs
+          </ContextMenuItem>
           <ContextMenuItem className={ITEM} onSelect={() => void api.close(tab.id)}>
             <XIcon strokeWidth={1.75} />
             Close tab

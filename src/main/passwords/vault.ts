@@ -1,4 +1,5 @@
 import type { SavedLogin } from '../../shared/passwords';
+import type { AliasRef } from '../../shared/aliases';
 import type { SpaceId } from '../../shared/types';
 import { normaliseOrigin } from './origin';
 
@@ -22,6 +23,7 @@ export interface StoredLogin {
   createdAt: number;
   updatedAt: number;
   lastUsedAt: number | null;
+  alias?: AliasRef;
 }
 
 export interface VaultFile {
@@ -58,14 +60,22 @@ export function parseVault(raw: unknown): VaultFile {
       createdAt: login.createdAt,
       updatedAt: isTime(login.updatedAt) ? login.updatedAt : login.createdAt,
       lastUsedAt: isTime(login.lastUsedAt) ? login.lastUsedAt : null,
+      ...parseAliasRef(login.alias),
     });
   }
   const never = (Array.isArray(record.never) ? record.never : []).filter((origin): origin is string => typeof origin === 'string' && normaliseOrigin(origin) === origin);
   return { version: 1, logins: logins.slice(0, MAX_LOGINS), never: [...new Set(never)] };
 }
 
+function parseAliasRef(raw: unknown): { alias?: AliasRef } {
+  if (!raw || typeof raw !== 'object') return {};
+  const { provider, id, email } = raw as Record<string, unknown>;
+  if ((provider !== 'simplelogin' && provider !== 'addy') || !isString(id, 64) || !isString(email, 320) || !email.includes('@')) return {};
+  return { alias: { provider, id, email } };
+}
+
 export function toSavedLogin(spaceId: SpaceId, login: StoredLogin): SavedLogin {
-  return { id: login.id, spaceId, origin: login.origin, username: login.username, createdAt: login.createdAt, lastUsedAt: login.lastUsedAt };
+  return { id: login.id, spaceId, origin: login.origin, username: login.username, createdAt: login.createdAt, lastUsedAt: login.lastUsedAt, ...(login.alias ? { alias: login.alias } : {}) };
 }
 
 /** Logins of exactly this origin, most recently used first. */

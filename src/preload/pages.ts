@@ -5,6 +5,8 @@ import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
 import { SITE_RULES_IPC } from '../shared/site-rules';
+import { ALIAS_IPC } from '../shared/aliases';
+import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -102,6 +104,10 @@ if (isVelaPage()) {
       install: () => call(ch.updateInstall),
       openRelease: () => call(ch.updateOpenRelease),
     },
+    privacyReport: {
+      get: () => call(PRIVACY_REPORT_IPC.get),
+      reset: () => call(PRIVACY_REPORT_IPC.reset),
+    },
   };
 
   if (location.host === 'passwords') {
@@ -115,6 +121,15 @@ if (isVelaPage()) {
       remove: (spaceId, loginId) => call(pw.remove, spaceId, loginId),
       exportCsv: (spaceId) => call(pw.exportCsv, spaceId),
       removeNever: (spaceId, origin) => call(pw.neverRemove, spaceId, origin),
+    };
+  }
+
+  if (location.host === 'settings') {
+    api.aliases = {
+      get: () => call(ALIAS_IPC.get),
+      set: (patch) => call(ALIAS_IPC.set, patch),
+      setKey: (key) => call(ALIAS_IPC.setKey, key),
+      options: () => call(ALIAS_IPC.options),
     };
   }
 

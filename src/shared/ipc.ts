@@ -1,3 +1,4 @@
+import type { PrivacyReport } from './privacy-report';
 import type {
   BrowserState,
   ContentBounds,
@@ -28,9 +29,12 @@ import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
 import type { SiteRule, SiteRuleDraft, SiteRuleNotice, SiteRuleResolution, SiteRulesContext } from './site-rules';
+import type { BatterySaverState } from './battery';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
+import type { AliasOffer, AliasOptions, AliasSettingsPatch, AliasSettingsView } from './aliases';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
+import type { PeekState } from './peek';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -339,6 +343,11 @@ export interface VelaPagesAPI {
     /** Check now; resolves when the check finished (status carries the result). */
     check(): Promise<void>;
   };
+  /** Local privacy report (vela://privacy, start-page stat line). */
+  privacyReport: {
+    get(): Promise<PrivacyReport>;
+    reset(): Promise<void>;
+  };
 }
 
 declare global {
@@ -526,6 +535,23 @@ export interface VelaChromeAPI {
     fill(offerId: string, loginId: string): Promise<void>;
     dismissOffer(offerId: string): Promise<void>;
   };
+  aliases: {
+    onOffer(cb: (offer: AliasOffer) => void): Unsubscribe;
+    onOfferCancel(cb: (id: string) => void): Unsubscribe;
+    /** Main creates the alias at the provider and fills the focused field of that frame only. */
+    create(offerId: string): Promise<{ email: string }>;
+    dismiss(offerId: string): Promise<void>;
+  };
+}
+
+/** Battery saver (chrome only). Channels live in BATTERY_IPC (shared/battery.ts). */
+export interface VelaChromeAPI {
+  battery: {
+    state(): Promise<BatterySaverState>;
+    /** Battery level 0–1 from navigator.getBattery (null when unknown); only needed for the "Below 20 %" mode. */
+    report(level: number | null): Promise<void>;
+    onChange(cb: (state: BatterySaverState) => void): Unsubscribe;
+  };
 }
 
 /** vela://passwords only (main rejects every other page). */
@@ -542,6 +568,31 @@ export interface VelaPagesAPI {
     /** Save dialog + file write happen in main. */
     exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
     removeNever(spaceId: SpaceId, origin: string): Promise<void>;
+  };
+  /** vela://settings only. The API key goes in, never comes back out. */
+  aliases?: {
+    get(): Promise<AliasSettingsView>;
+    set(patch: AliasSettingsPatch): Promise<AliasSettingsView>;
+    /** Validates the key with the provider, then stores it encrypted; null removes it. */
+    setKey(key: string | null): Promise<AliasSettingsView>;
+    options(): Promise<AliasOptions>;
+  };
+}
+
+/** Peek link previews (chrome only). Channels live in PEEK_IPC (shared/peek.ts). */
+export interface VelaChromeAPI {
+  peek: {
+    /** Preview an address-bar input (URL or search) over the active tab. */
+    open(input: string): Promise<boolean>;
+    close(): Promise<void>;
+    /** The open animation finished: main attaches the page view. */
+    reveal(): Promise<void>;
+    back(): Promise<void>;
+    reload(): Promise<void>;
+    /** Move the live preview into a real tab (no reload). */
+    toTab(): Promise<number | null>;
+    toSplit(): Promise<void>;
+    onState(cb: (state: PeekState) => void): Unsubscribe;
   };
 }
 

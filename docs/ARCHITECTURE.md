@@ -198,6 +198,31 @@ preloads don't get the `window.chrome` shape.
 * **Sleeping**: `isOnScreen()` replaces "is active" for the sleeper and crash handling; showing a split wakes all panes.
 * **Cost when unused**: no listeners, no extra views; `clusterSplits` returns early and the chrome renders nothing.
 
+## Peek (`src/main/peek.ts`, UI: `src/renderer/chrome/peek/PeekLayer.tsx`)
+
+A link preview in a floating `WebContentsView` above the active tab. One Peek at a time.
+
+- **Layering:** `window.setFloatingView(view, place)` adds a view *after* the raised chrome in `restack`,
+  so the order is chrome · pages · chrome (overlay) · Peek. `PeekLayer` holds the overlay while open, which
+  raises the chrome to draw the dimmed backdrop and the card (toolbar + frame); `layout()` places the view
+  with `peekGeometry` (`src/shared/peek.ts`, ~80 % of the page area, below a 40 px toolbar) — the chrome uses
+  the same function, so both agree to the pixel.
+- **Open:** shift-click reaches a tab's window-open handler as disposition `new-window` without features
+  (`isShiftClickOpen`; scripted popups always carry features). tabs.ts asks the interceptor set with
+  `setWindowOpenInterceptor` first; Peek takes it when `peekOnShiftClick` is on and the click came from the
+  active tab. Also the page context menu and the palette (`peek.open(input)`, resolved like the address bar).
+- **Session:** built with `pageWebPreferences(spaceId, vpn)` of the source tab (same partition, preloads and
+  VPN route) and loaded after `whenSessionReady`. It has its own history; the source tab is not touched.
+- **Animation:** the chrome animates the card in (200 ms scale/fade, ease-out) and then calls `peek.reveal`,
+  which attaches the page view (a 400 ms fallback in main covers a renderer that never answers). Reduced
+  motion reveals at once.
+- **Close:** Esc (peek `before-input-event` or chrome keydown), a click on the backdrop, the close button,
+  switching tab/Space, or a crashed renderer. Closing detaches the view and `close()`s its webContents
+  (measured: renderer and process count back to baseline after 10 open/close cycles).
+- **Open as tab / split:** the live view is handed to `createTab({ view })`, which adopts it like a freshly
+  created tab view (events, context menu, hooks) — no reload, page state and history survive. Split joins
+  the source's split while it has room, otherwise creates one with the source tab.
+
 ## Per-tab audio devices
 
 * **Model** (`src/main/audio-devices/state.ts`): per tab, an optional pick per slot `output | input | camera`, stored as
@@ -375,6 +400,7 @@ All main modules are ES modules compiled by esbuild into one CJS bundle. Import 
 export interface JsonStore<T> { get(): T; set(next: T): void; update(fn: (current: T) => T): void; flush(): void; }
 export function createStore<T>(name: string, defaults: T): JsonStore<T>; // file: userData/<name>.json, debounced atomic write (tmp + rename), 400ms
 export function flushAllStores(): void; // sync flush, called on before-quit
+export function onBeforeFlushAll(hook: () => void): void; // runs first in flushAllStores (in-memory counters → their store)
 ```
 
 ### `src/main/settings.ts`
@@ -511,6 +537,15 @@ first, mute every unmuted tab (reversible), `vpn.disconnectAll()` (restore the S
 routes; the account stays signed in), then `removeSpaceWithTabs()` for every Burner Space (normal disposal wipes
 its in-memory session; its tabs are not kept in the reopen stack). Only with `panicClearRecentHistory` on does it
 touch persistent data: `deleteHistorySince(now - 15 min)` removes entries whose last visit is in that window.
+## Tab archive (`src/main/tab-archive/*`)
+
+- Contract: `src/shared/tab-archive.ts` (`TAB_ARCHIVE_IPC`, `ArchivedTab`, `ClosedTabEntry`, `TabArchiveSnapshot`, pure list helpers `addArchived` / `removeArchived` / `searchArchived` / `groupByDay`, unit-tested). Chrome API `vela.tabArchive.*` (list, archiveTabs, archiveGroup, restore, remove, clear, reopenClosed, onChange); every argument is validated in `tab-archive/index.ts` and registered through `handleChrome`.
+- Policy (`policy.ts`, pure, unit-tested): a tab is archivable unless pinned, on screen, audible, capturing (mic/camera), downloading or a start page; `pickArchiveTargets` takes those idle for `archiveAfterHours` (setting, 0 = off, default 24), oldest first, at most 25 per check. The check runs on the sleeper's 30 s tick (`SleeperDeps.onTick`), so it costs no extra timer.
+- `tabs.detachTabsForArchive()` closes tabs without pushing them to the reopen stack and replaces a Space's last tab with a start page (so a Burner Space is never discarded by archiving). Restore recreates tabs (asleep when several) in their Space and re-registers the saved group by id (`restoreGroup`).
+- Storage: persistent Spaces in `tab-archive.json` (`Record<SpaceId, ArchivedTab[]>`, max 500 per Space, a re-archived URL replaces its older entry); Burner Spaces in memory only. `onSpacesChanged` prunes archives of removed Spaces. Every write sends `chrome-event:tab-archive` (Space id).
+- Recently closed: the reopen stack (`Ctrl+Shift+T`, 20 entries) now stores id, title, favicon and time; `listClosedTabs(spaceId)` / `reopenClosedById` back the second list of the archive view.
+- UI: `renderer/chrome/archive/*`. `TabArchivePanel` (dialog, holds the overlay) opens from `ArchiveButton` (strip / vertical list, only while the Space has archived tabs) and the palette; `Ctrl+Shift+E` (shortcuts.ts) archives the active tab. Suggestions include up to 3 archived tabs (`kind: 'archived'`), restored on Enter.
+
 ## Bookmarks (`src/main/bookmarks/*`)
 
 - Contract: `src/shared/bookmarks.ts` (`BookmarkNode`, `ImportedBookmark`) and `src/shared/bookmarks-ipc.ts` (`BOOKMARKS_IPC`, `BOOKMARK_ROOTS`, `BookmarkInput`/`BookmarkUpdate`, API types). Chrome API `vela.bookmarks.*` (plus `onChange`, `openManager`), pages API `velaPages.bookmarks.*`; both default to the active Space (chrome) or the hosting tab's Space (pages). Every argument is validated in `bookmarks/ipc.ts`; handlers go through the sender-checked `handleChrome` / `handlePages`.
@@ -704,7 +739,13 @@ The Electron listener of an event exists only while the event has stages: with G
 using declarativeNetRequest, no `onBeforeRequest` / `onHeadersReceived` hook is installed at all. A throwing
 stage is skipped (fail open). Ghostery keeps its own library code path: `perf/adblock.ts` hands
 `enableBlockingInSession` a session facade whose `webRequest.onBeforeRequest/onHeadersReceived` register
-dispatcher stages, so its blocking, redirects, CSP injection and stats are unchanged. `net/domain.ts` holds the
+dispatcher stages, so its blocking, redirects, CSP injection and stats are unchanged. Cosmetic scriptlets are the
+one change: the library runs each as a top-level script in the page's main world, and uBO scriptlets declare their
+helpers (`safeSelf`, `proxyApplyFn`, `class JSONPath`) at top level, so on YouTube (~30 scriptlets) they clobbered
+each other ("Identifier 'JSONPath' has already been declared", then "Maximum call stack size exceeded" in the
+proxied `JSON.parse` / fetch / XHR) and the player stayed black or showed "Video unavailable".
+`perf/adblock-scriptlets.ts` wraps every scriptlet in its own function scope, as uBO does (regression note:
+keep this when upgrading `@ghostery/adblocker-electron`; recheck YouTube watch pages for those console errors). `net/domain.ts` holds the
 registrable-domain heuristic shared by privacy, fingerprinting and DNR (pure, unit-testable).
 
 ## Phishing & malware protection (`src/main/safety/*`)
@@ -768,13 +809,49 @@ Third-party storage partitioning (iframes keyed by top-level site for localStora
 by default in Chromium since M115 and needs no flag. Checked on Electron 45.2.3 / Chromium 156: an iframe of site B
 embedded under site A writes localStorage, and B opened top-level reads `null`.
 
+## Privacy report (`src/main/privacy-report/*`, `src/shared/privacy-report.ts`)
+
+Local-only daily aggregates behind `vela://privacy`, the start-page stat line and the optional weekly notice.
+
+- **Hot path** (`privacy-report/collector.ts`, no Electron imports): `countBlockedRequest(wcId, url, type)` and
+  `countPrivacyEvent(counter, wcId, n)` only add to an in-memory map keyed by local day. Callers: Ghostery's
+  `request-blocked`/`request-redirected` (`perf/adblock.ts`), extension DNR `block` outcomes
+  (`extensions/dnr/engine.ts`), the url-clean stage (`paramsStripped`), the privacy header stage when a Referer is
+  shortened or dropped (`referrersTrimmed`), and the safety stage (`dangerousWarned`). The webContents id is resolved
+  to a Space through a resolver injected from `index.ts` (tabs → spaces); unresolvable requests (service workers,
+  browser requests) count in the totals only. The same URL blocked again in the same tab before the next flush counts
+  once (pages that retry a blocked beacon in a loop would otherwise add tens of thousands per minute).
+- **Persistence** (`privacy-report/index.ts`): the first increment starts a one-minute timer that folds the pending
+  buckets into `userData/privacy-report.json` (`mergeLog`, pure) and drops days older than 90 (rollover). No timer
+  runs while nothing is counted; `onBeforeFlushAll` drains on quit / update install.
+- **Stored per day:** counter totals, the same counters per Space id, and blocked requests per *tracker* registrable
+  domain (eTLD+1 of the blocked request, capped at 150 per day). Never page URLs, paths or the sites visited. Burner
+  Spaces: totals only (no Space row, no domains). Deleted Spaces show as "Removed Space".
+- **Estimates** (`shared/privacy-report.ts`): data saved = typical transfer size per blocked resource type (script
+  25 KB, sub-frame 40 KB, image 8 KB, stylesheet 8 KB, font 20 KB, media 120 KB, xhr/fetch 1.5 KB, ping 0.3 KB,
+  other 2 KB). Time saved = bytes ÷ 1250 bytes/ms (10 Mbit/s) + 5 ms per blocked request ("work avoided", not
+  wall-clock page-load time).
+- **Companies:** `shared/tracker-companies.ts` is a small hand-written domain → owner map (no third-party database
+  is bundled; Ghostery's TrackerDB is not a dependency). Unknown domains are listed without a company.
+- **Adding a counter:** one line in `PRIVACY_COUNTERS` plus a `countPrivacyEvent('<name>', wcId)` call. A module
+  that keeps its own running total can instead register it once —
+  `registerPrivacySource('cookieBannersHandled', () => getCookieBannerStats().handled)` — and each flush records
+  the growth (totals only; the first read is the baseline). Unknown counter names in stored files are preserved.
+- **IPC:** `velaPages.privacyReport.get()` (flushes, then builds the report: this week = last 7 days incl. today vs
+  the 7 before, 14-day series, top domains/companies, per Space) and `.reset()`; any `vela://` page may call them
+  (the start page reads this week's count when Settings → Appearance → Privacy stat is on).
+- **Weekly notice** (`privacyWeeklySummary`, off by default): checked at flush time; the first check after enabling
+  records a baseline day, then at most every 7 days a silent system notification; clicking opens `vela://privacy`.
+- Not counted yet: fingerprinting readbacks (canvas/WebGL/audio). The counter exists (`fingerprintMitigated`), but
+  the main-world shims would need a batched renderer → main channel; the report shows it only when non-zero.
+
 ## vela:// protocol
 
 `vela://<page>/<file>` → `dist/renderer/pages/<page>/<file>` (default `index.html`).
 `vela://shared/<file>` → `dist/renderer/shared/<file>`. Registered as privileged
 (`standard`, `secure`, `supportFetchAPI`) before ready, and handled via `session.protocol.handle`
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
-Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`, or the dangerous-site warning `vela://error/?threat=…&source=…&url=…`).
+Pages: `newtab`, `settings`, `privacy`, `error` (`vela://error/?code=…&url=…&desc=…`, or the dangerous-site warning `vela://error/?threat=…&source=…&url=…`).
 
 ## Extensions (`src/main/extensions/*`)
 
@@ -944,6 +1021,41 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
 - **External managers.** vela://passwords installs Bitwarden (`nngceckbapebfimnlniiiahkandclblb`) or 1Password
   (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) through the normal extension review flow and offers to turn off
   `offerToSavePasswords` / `passwordAutofill`.
+
+## Email aliases (`src/main/aliases/*`)
+
+Optional forwarding addresses from **SimpleLogin** or **addy.io**, offered on sign-up forms.
+
+- **Settings.** Settings → Privacy → Email aliases (provider Off / SimpleLogin / addy.io, API key, style, domain,
+  mailbox). Stored in `userData/aliases.json` (0600); the API key is sealed with `safeStorage` (same "basic_text
+  counts as unavailable" rule as passwords) and is write-only: `pages:aliases-*` (vela://settings only) return
+  whether a key is set plus the account email/username and plan, never the key. A new key is validated with one
+  cheap call (SimpleLogin `GET /api/user_info`, addy.io `GET /api/v1/account-details`) before it is stored.
+- **Detection.** No extra preload: the passwords preload gets `alias: true` in its frame flags only when a
+  provider and key are set (zero cost otherwise). On `focusin` of an email field (`type=email`, `autocomplete=email`
+  or e-mail name/id/placeholder/label) in a form that looks like a sign-up form (`autocomplete=new-password`, two
+  password fields, or sign-up wording in its buttons/headings/action/path and no sign-in-only wording) it sends
+  `frame:alias-field-seen` once per field. Pure heuristics: `src/shared/alias-form.ts` (unit-tested). Limit: the
+  preload only wakes up on pages with a password field.
+- **Offer + create.** Main derives tab, Space and origin from the sending frame (top frame or same-origin with it),
+  pushes `chrome-event:alias-offer` ({ site = registrable domain, provider }) to the chrome UI and keeps the frame
+  ref. "Create alias" (`chrome:alias-create`) re-checks the frame and its origin, creates the alias, sends the
+  address to that frame only (`frame:alias-fill`), which fills the field the user focused if it is still empty.
+  "Not now" suppresses offers for that tab + origin until the next navigation.
+- **Provider calls** (`providers.ts` builds requests / parses responses, pure + unit-tested; `index.ts` sends them
+  with `net.fetch`, `redirect: 'error'`, `credentials: 'omit'`, 10 s timeout, 256 KB response cap). SimpleLogin
+  (`Authentication: <key>`): `POST /api/alias/random/new?hostname=&mode=word|uuid` `{ note }`; site-name style:
+  `GET /api/v5/alias/options?hostname=` then `POST /api/v3/alias/custom/new?hostname=` `{ alias_prefix,
+  signed_suffix, mailbox_ids, note }`; mailboxes `GET /api/v2/mailboxes`. addy.io (`Authorization: Bearer`,
+  `X-Requested-With: XMLHttpRequest`): `POST /api/v1/aliases` `{ domain, description, format, local_part?,
+  recipient_ids? }`, `GET /api/v1/domain-options`, `GET /api/v1/recipients`. Note: "Created by Vela".
+- **Saved logins.** Created aliases are remembered in memory for 30 min per Space + origin. When the user saves a
+  password whose username is that alias, the login stores `alias: { provider, id, email }` (vault field, optional)
+  and vela://passwords shows it with a link to the provider's dashboard.
+- **Security notes.** The key never reaches a renderer, the chrome UI or a page; pages never learn whether
+  aliases are configured (the frame only gets a fill after the user's click). Provider errors are reduced to a
+  short message. `VELA_ALIAS_API_BASE` (tests only) replaces the provider origin but is accepted only for
+  loopback `http(s)://127.0.0.1|localhost|[::1]:port` origins, so it cannot redirect a key to another host.
 
 ## Auto-update (`src/main/updater.ts`)
 

@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { ChevronsDownUpIcon, ChevronsUpDownIcon, PencilIcon, PlusIcon, UngroupIcon, XIcon } from 'lucide-react';
+import { ArchiveIcon, ChevronsDownUpIcon, ChevronsUpDownIcon, PencilIcon, PlusIcon, UngroupIcon, XIcon } from 'lucide-react';
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui';
 import { SPACE_COLORS, type TabGroup } from '@shared/types';
 import {
@@ -91,6 +91,10 @@ export function GroupContextMenu({ group, count, children }: { group: TabGroup; 
         <ContextMenuItem className={MENU_ITEM} onSelect={() => settle(api.ungroup(group.id))}>
           <UngroupIcon strokeWidth={1.75} />
           Ungroup
+        </ContextMenuItem>
+        <ContextMenuItem className={MENU_ITEM} onSelect={() => settle(vela().tabArchive.archiveGroup(group.id))}>
+          <ArchiveIcon strokeWidth={1.75} />
+          Archive group
         </ContextMenuItem>
         <ContextMenuItem className={MENU_ITEM} variant="destructive" onSelect={() => settle(api.close(group.id))}>
           <XIcon strokeWidth={1.75} />
