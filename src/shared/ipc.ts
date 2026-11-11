@@ -32,6 +32,7 @@ import type { SiteRule, SiteRuleDraft, SiteRuleNotice, SiteRuleResolution, SiteR
 import type { BatterySaverState } from './battery';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
+import type { CookieBannerTabInfo } from './cookie-banners';
 import type { TranslateOverview, TranslatePrefs, TranslateTabState } from './translate';
 import type { AliasOffer, AliasOptions, AliasSettingsPatch, AliasSettingsView } from './aliases';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
@@ -640,5 +641,23 @@ export interface VelaPagesAPI {
     deleteModel(pair: string): Promise<TranslateOverview>;
     /** Re-fetches Mozilla's model list (the only network call besides model downloads). */
     refreshCatalog(): Promise<TranslateOverview>;
+  };
+}
+
+/** Cookie banner auto-reject. Channels live in COOKIE_BANNER_IPC (shared/cookie-banners.ts). */
+export interface VelaChromeAPI {
+  cookieBanners: {
+    /** Setting, exception and handled-banner count of a tab's site. */
+    tab(tabId: number): Promise<CookieBannerTabInfo>;
+    /** "Allow banners on this site": adds / removes the tab's site as an exception. */
+    setAllowed(tabId: number, allowed: boolean): Promise<CookieBannerTabInfo>;
+  };
+}
+
+export interface VelaPagesAPI {
+  cookieBanners: {
+    /** Sites where banners are left alone. */
+    exceptions(): Promise<string[]>;
+    removeException(site: string): Promise<string[]>;
   };
 }

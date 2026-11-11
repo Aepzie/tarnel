@@ -241,6 +241,8 @@ export interface Settings {
   offerToSavePasswords: boolean;
   /** Password manager: offer saved accounts on login forms (filling always needs a click). */
   passwordAutofill: boolean;
+  /** Click "reject" / "only necessary" on cookie consent banners (src/main/cookie-banners). */
+  rejectCookieBanners: boolean;
   /** Shift-click on a link previews it in Peek instead of opening a new window. */
   peekOnShiftClick: boolean;
   /** Start page: a small "N trackers blocked this week" line linking to vela://privacy. */
@@ -389,6 +391,7 @@ export const DEFAULT_SETTINGS: Settings = {
   userAgent: '',
   offerToSavePasswords: true,
   passwordAutofill: true,
+  rejectCookieBanners: true,
   peekOnShiftClick: true,
   newtabPrivacyStat: true,
   privacyWeeklySummary: false,

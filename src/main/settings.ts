@@ -29,6 +29,7 @@ const BOOLEAN_KEYS = [
   'secureDnsStrict',
   'offerToSavePasswords',
   'passwordAutofill',
+  'rejectCookieBanners',
   'peekOnShiftClick',
   'newtabPrivacyStat',
   'privacyWeeklySummary',

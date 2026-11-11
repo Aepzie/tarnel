@@ -1022,6 +1022,38 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) through the normal extension review flow and offers to turn off
   `offerToSavePasswords` / `passwordAutofill`.
 
+## Cookie banners (`src/main/cookie-banners/*`)
+
+Settings → Privacy → "Reject cookie banners" (default on) answers consent pop-ups with "reject" / "only
+necessary" and hides them. Engine and rules: DuckDuckGo's [autoconsent](https://github.com/duckduckgo/autoconsent)
+(`@duckduckgo/autoconsent`, MPL-2.0, pinned exact version, devDependency because it is bundled at build time).
+
+- **No remote code.** The rule list (`rules/compact-rules.json`, ~550 KB, CMP rules for OneTrust, Sourcepoint,
+  Didomi, Cookiebot, Usercentrics, Quantcast, TrustArc, Google's consent page, consentmanager … plus generated
+  site rules) is copied to `dist/main/cookie-banner-rules.json` by `scripts/build.mjs`. Rule updates arrive by
+  bumping the package. Nothing is fetched or reported anywhere.
+- **Preload.** `src/preload/cookie-banners.ts` (always minified, ~125 KB) runs in every web frame of every Space
+  session (`onSessionCreated`, so VPN-routed partitions too), in the isolated world. It creates the autoconsent
+  content-side instance, which asks main for rules once per frame (`cookie-banners:frame-init`, async invoke).
+  Main answers `null` when the setting is off, the sender is not a tab, or the tab's top-level site is an
+  exception — then the preload does nothing more. Rule steps that need page state ("eval" rules) run one of
+  autoconsent's bundled snippet functions in the main world via `webFrame.executeJavaScript`; code strings
+  from messages are never evaluated.
+- **Lazy main side.** `src/main/cookie-banners/rules.ts` is its own bundle (`dist/main/cookie-banners.js`),
+  `require`d on the first frame-init; it parses the rule list once and answers each frame with only the rules
+  that can match its URL (`filterCompactRules`: generic + frame rules + that site's specific rules).
+- **Config.** `autoAction: 'optOut'`, prehide on (2 s cap), curated cosmetic rules on (they hide a banner that has
+  no reject option, e.g. "pay or accept" sites — nothing is accepted), heuristic detection of unknown banners
+  **off**: guessing buttons on arbitrary pages is what breaks sites, so unknown banners are left alone. There is
+  no extra generic cosmetic hiding beyond autoconsent's curated rules.
+- **Exceptions.** Global list of sites (host without `www.`, matches subdomains) in `userData/cookie-banners.json`,
+  added from the site-info popover ("Allow banners") and removed in Settings → Privacy. They are matched
+  against the tab's top-level site, so an embedded CMP iframe follows its page.
+- **Counts.** The preload reports `autoconsentDone`; main keeps in-memory counters per tab (reset on top-level
+  navigation, shown in the site-info popover) and per site. `getCookieBannerStats()` returns
+  `{ total, cosmetic, byTab, bySite }` for other features (privacy report). Never persisted.
+- **Cost.** Per web frame: parsing the preload bundle plus one IPC round trip; the rule engine then polls for
+  known CMPs (autoconsent's `detectRetries`). Numbers in `docs/PERFORMANCE.md` are not tracked yet; see the PR.
 ## Email aliases (`src/main/aliases/*`)
 
 Optional forwarding addresses from **SimpleLogin** or **addy.io**, offered on sign-up forms.

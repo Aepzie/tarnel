@@ -7,6 +7,7 @@ import { useActiveSpace } from '@/hooks/browser';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { SPACE_HEX, vela } from '@/lib/vela';
+import { CookieBannerLine } from './CookieBannerLine';
 
 const PANEL_WIDTH = 320;
 const EDGE = 8;
@@ -154,6 +155,7 @@ function SiteInfoPanel({ tabId, anchor, onClose }: { tabId: number; anchor: Reac
           onSetOnClose={(action) => apply(vela().site.setOnClose(tabId, action))}
         />
       )}
+      {info && <CookieBannerLine tabId={tabId} />}
     </motion.div>
   );
 }

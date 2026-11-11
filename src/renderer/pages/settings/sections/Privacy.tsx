@@ -11,6 +11,7 @@ import { UserAgentPicker } from '../components/user-agent';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 import { SiteDataOnClose } from './SiteDataOnClose';
+import { CookieBanners } from './CookieBanners';
 import { EmailAliases } from './EmailAliases';
 
 const DNS_OPTIONS: readonly { value: SecureDnsMode; label: string }[] = [
@@ -174,6 +175,7 @@ export function Privacy() {
         />
         <UserAgentRow />
       </Group>
+      <CookieBanners />
       <Group title="Privacy report">
         <Row title="Your privacy report" description="What Vela blocked this week, per Space. Counted on this device only.">
           <button
