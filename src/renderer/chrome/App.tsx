@@ -19,6 +19,7 @@ import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
+import { PeekLayer } from './peek/PeekLayer';
 import { TabArchivePanel } from './archive/TabArchivePanel';
 import { useBatteryLevelReport, useBatterySaver } from './perf/battery';
 
@@ -144,6 +145,7 @@ export function App() {
         <CommandPalette />
         <BookmarkEditor />
         <TaskManager />
+        <PeekLayer />
         <TabArchivePanel />
       </LayoutGroup>
       </MotionConfig>

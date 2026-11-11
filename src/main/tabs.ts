@@ -52,7 +52,12 @@ export interface CreateTabOpts {
   afterId?: number;
   /** Join this group (same space only). Defaults to the group of `afterId`'s tab. */
   groupId?: TabGroupId | null;
+  /** Adopt this live page view (built with `pageWebPreferences`) instead of loading `url` (Peek → tab). */
+  view?: WebContentsView;
 }
+
+/** Return true to take over a window-open request of a tab (e.g. a shift-click opening Peek). */
+type WindowOpenInterceptor = (tabId: number, url: string, disposition: string, features: string) => boolean;
 
 interface Tab {
   id: number;
@@ -101,6 +106,7 @@ const wcHooks: WebContentsHook[] = [];
 let nextId = 1;
 let emitPending = false;
 let spacesHooked = false;
+let windowOpenInterceptor: WindowOpenInterceptor | null = null;
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -295,7 +301,8 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   });
   wc.on('will-attach-webview', (event) => event.preventDefault());
 
-  wc.setWindowOpenHandler(({ url, disposition }) => {
+  wc.setWindowOpenHandler(({ url, disposition, features }) => {
+    if (windowOpenInterceptor?.(tab.id, url, disposition, features)) return { action: 'deny' };
     if (disposition === 'new-window') {
       if (!isOpenableFromWeb(url)) return { action: 'deny' };
       return {
@@ -330,22 +337,28 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   });
 }
 
+/** Web preferences of every page view (tabs and Peek), so a Peek view can become a tab as is. */
+export function pageWebPreferences(spaceId: SpaceId, vpn: string | null): Electron.WebPreferences {
+  return {
+    session: getSpaceSession(spaceId, vpn),
+    sandbox: true,
+    contextIsolation: true,
+    nodeIntegration: false,
+    webviewTag: false,
+    // Sandboxed, so no Node anywhere: this only lets the fingerprint session preload run in
+    // iframes too. The pages and cosmetic-filter preloads ignore subframes.
+    nodeIntegrationInSubFrames: true,
+    preload: PAGES_PRELOAD,
+    backgroundThrottling: true,
+    spellcheck: false,
+  };
+}
+
 function createView(tab: Tab): WebContentsView {
-  const view = new WebContentsView({
-    webPreferences: {
-      session: getSpaceSession(tab.spaceId, tab.vpn),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      webviewTag: false,
-      // Sandboxed, so no Node anywhere: this only lets the fingerprint session preload run in
-      // iframes too. The pages and cosmetic-filter preloads ignore subframes.
-      nodeIntegrationInSubFrames: true,
-      preload: PAGES_PRELOAD,
-      backgroundThrottling: true,
-      spellcheck: false,
-    },
-  });
+  return adoptView(tab, new WebContentsView({ webPreferences: pageWebPreferences(tab.spaceId, tab.vpn) }));
+}
+
+function adoptView(tab: Tab, view: WebContentsView): WebContentsView {
   tab.view = view;
   attachViewBackdrop(view, tab.errorUrl ?? tab.url);
   const wc = view.webContents;
@@ -427,6 +440,10 @@ export function initTabs(win: BaseWindow): void {
   if (activeTabId !== null && tabs.has(activeTabId)) activateTab(activeTabId);
 }
 
+export function setWindowOpenInterceptor(fn: WindowOpenInterceptor | null): void {
+  windowOpenInterceptor = fn;
+}
+
 export function onTabWebContents(hook: WebContentsHook): void {
   wcHooks.push(hook);
 }
@@ -461,6 +478,10 @@ export function createTab(opts: CreateTabOpts = {}): number {
     groupId: !opts.pinned && groupId && getGroup(groupId)?.spaceId === spaceId ? groupId : null,
   };
   tabs.set(tab.id, tab);
+  if (opts.view && !opts.view.webContents.isDestroyed()) {
+    adoptView(tab, opts.view);
+    tab.loading = opts.view.webContents.isLoading();
+  }
   const afterIndex = opts.afterId === undefined ? -1 : order.indexOf(opts.afterId);
   if (afterIndex === -1) order.push(tab.id);
   else order.splice(afterIndex + 1, 0, tab.id);

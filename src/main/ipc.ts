@@ -42,6 +42,7 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { registerPeekIpc } from './peek';
 import { registerAliasIpc } from './aliases';
 import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
 import { USER_AGENT_MAX } from '../shared/user-agent';
@@ -356,6 +357,7 @@ export function registerIpc(): void {
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
+  registerPeekIpc(handleChrome);
   registerAliasIpc(handleChrome, handlePages);
   registerTabArchiveIpc(handleChrome);
 

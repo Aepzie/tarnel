@@ -8,6 +8,7 @@ import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { PEEK_IPC } from '../shared/peek';
 import { ALIAS_IPC } from '../shared/aliases';
 import { TAB_ARCHIVE_IPC } from '../shared/tab-archive';
 
@@ -207,6 +208,16 @@ const api: VelaChromeAPI = {
     onFillCancel: (cb) => subscribe(PASSWORD_IPC.fillCancel, cb),
     fill: (offerId, loginId) => invoke(PASSWORD_IPC.fill, offerId, loginId),
     dismissOffer: (offerId) => invoke(PASSWORD_IPC.dismissOffer, offerId),
+  },
+  peek: {
+    open: (input) => invoke(PEEK_IPC.open, input),
+    close: () => invoke(PEEK_IPC.close),
+    reveal: () => invoke(PEEK_IPC.reveal),
+    back: () => invoke(PEEK_IPC.back),
+    reload: () => invoke(PEEK_IPC.reload),
+    toTab: () => invoke(PEEK_IPC.toTab),
+    toSplit: () => invoke(PEEK_IPC.toSplit),
+    onState: (cb) => subscribe(PEEK_IPC.changed, cb),
   },
   aliases: {
     onOffer: (cb) => subscribe(ALIAS_IPC.offer, cb),

@@ -33,6 +33,7 @@ import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } fro
 import type { TaskSnapshot } from './task-manager';
 import type { AliasOffer, AliasOptions, AliasSettingsPatch, AliasSettingsView } from './aliases';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
+import type { PeekState } from './peek';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -574,5 +575,22 @@ export interface VelaPagesAPI {
     /** Validates the key with the provider, then stores it encrypted; null removes it. */
     setKey(key: string | null): Promise<AliasSettingsView>;
     options(): Promise<AliasOptions>;
+  };
+}
+
+/** Peek link previews (chrome only). Channels live in PEEK_IPC (shared/peek.ts). */
+export interface VelaChromeAPI {
+  peek: {
+    /** Preview an address-bar input (URL or search) over the active tab. */
+    open(input: string): Promise<boolean>;
+    close(): Promise<void>;
+    /** The open animation finished: main attaches the page view. */
+    reveal(): Promise<void>;
+    back(): Promise<void>;
+    reload(): Promise<void>;
+    /** Move the live preview into a real tab (no reload). */
+    toTab(): Promise<number | null>;
+    toSplit(): Promise<void>;
+    onState(cb: (state: PeekState) => void): Unsubscribe;
   };
 }

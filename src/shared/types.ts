@@ -241,6 +241,8 @@ export interface Settings {
   offerToSavePasswords: boolean;
   /** Password manager: offer saved accounts on login forms (filling always needs a click). */
   passwordAutofill: boolean;
+  /** Shift-click on a link previews it in Peek instead of opening a new window. */
+  peekOnShiftClick: boolean;
   /** Start page: a small "N trackers blocked this week" line linking to vela://privacy. */
   newtabPrivacyStat: boolean;
   /** A weekly system notification summarising the privacy report. */
@@ -387,6 +389,7 @@ export const DEFAULT_SETTINGS: Settings = {
   userAgent: '',
   offerToSavePasswords: true,
   passwordAutofill: true,
+  peekOnShiftClick: true,
   newtabPrivacyStat: true,
   privacyWeeklySummary: false,
 };

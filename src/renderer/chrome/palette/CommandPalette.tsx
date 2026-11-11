@@ -12,6 +12,8 @@ import { SPACE_HEX } from '@/lib/vela';
 import { ui, useChromeUI, type ChromeUIState } from '../ui-store';
 import { buildCommands, rankCommands } from './commands';
 import { classifyInput, preconnectTarget } from './input';
+import { Eye } from 'lucide-react';
+import { peekHost } from '@shared/peek';
 import { LeadingIcon } from './LeadingIcon';
 import { SiteInfoTrigger } from '../site-info/SiteInfoPanel';
 import { PaletteRow, type PaletteRowModel } from './PaletteRow';
@@ -99,6 +101,10 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
       kind: kind === 'url' ? 'url' : 'search',
       resolved,
     };
+    const peekRow: PaletteRowModel[] =
+      kind === 'url' && palette.mode === 'current'
+        ? [{ type: 'command', id: 'peek', command: { id: 'cmd:peek', title: 'Peek', icon: Eye, keywords: 'preview float', hint: peekHost(resolved ?? text), run: () => settle(window.vela.peek.open(resolved ?? text)) } }]
+        : [];
     const tabRows: PaletteRowModel[] = server
       .filter((s) => s.kind === 'tab' && s.tabId !== undefined && s.tabId !== activeTabId)
       .map((s) => ({
@@ -130,7 +136,7 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
       }));
     const commandRows = text.length >= 2 ? rankCommands(commands, text, 40).slice(0, 3).map(toCommandRow) : [];
     return [
-      { heading: null, rows: [go] },
+      { heading: null, rows: [go, ...peekRow] },
       { heading: 'Open tabs', rows: tabRows },
       { heading: 'Commands', rows: commandRows },
       { heading: 'Bookmarks', rows: bookmarkRows },
@@ -138,7 +144,7 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
       { heading: 'History', rows: historyRows },
       { heading: 'Other devices', rows: remoteRows },
     ].filter((group) => group.rows.length > 0);
-  }, [kind, commands, commandText, query, suggestions, faviconsById, activeTabId]);
+  }, [kind, commands, commandText, query, suggestions, faviconsById, activeTabId, palette.mode]);
 
   const flatRows = useMemo(() => groups.flatMap((group) => group.rows), [groups]);
   const firstId = flatRows[0]?.id ?? '';

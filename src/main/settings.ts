@@ -29,6 +29,7 @@ const BOOLEAN_KEYS = [
   'secureDnsStrict',
   'offerToSavePasswords',
   'passwordAutofill',
+  'peekOnShiftClick',
   'newtabPrivacyStat',
   'privacyWeeklySummary',
 ] as const satisfies readonly (keyof Settings)[];
