@@ -115,6 +115,8 @@ function handle(input: Input): boolean {
         });
       case 'KeyM':
         return once(() => sendCommand('audio-mixer'));
+      case 'KeyX':
+        return once(() => sendCommand('screenshot'));
       case 'KeyB':
         return once(() => updateSettings({ showBookmarksBar: !getSettings().showBookmarksBar }));
       case 'Delete':

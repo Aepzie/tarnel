@@ -29,6 +29,7 @@ import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mix
 import type { VpnResult, VpnState } from './vpn';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
+import type { ScreenshotCapture, ScreenshotFormat, ScreenshotSaveResult } from './screenshot';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
 
 /**
@@ -541,5 +542,18 @@ export interface VelaPagesAPI {
     /** Save dialog + file write happen in main. */
     exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
     removeNever(spaceId: SpaceId, origin: string): Promise<void>;
+  };
+}
+
+/** Screenshots (chrome only). Channels live in SCREENSHOT_IPC (shared/screenshot.ts). Always the active tab. */
+export interface VelaChromeAPI {
+  screenshot: {
+    captureVisible(): Promise<ScreenshotCapture>;
+    /** Whole page (long pages are cut, see FULL_PAGE_MAX_CSS_HEIGHT). */
+    captureFullPage(): Promise<ScreenshotCapture>;
+    /** PNG/JPEG data URL → system clipboard. */
+    copy(dataUrl: string): Promise<void>;
+    /** Native save dialog (default `Vela screenshot <date>.png`) + file write in main. */
+    save(dataUrl: string, format: ScreenshotFormat): Promise<ScreenshotSaveResult>;
   };
 }

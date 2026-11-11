@@ -577,6 +577,11 @@ export function getTabWebContents(id: number): WebContents | null {
   return liveWc(tabs.get(id));
 }
 
+/** Where the tab's page view currently sits in the window (null while it has no view). */
+export function getTabViewBounds(id: number): Electron.Rectangle | null {
+  return tabs.get(id)?.view?.getBounds() ?? null;
+}
+
 export function tabIdForWebContents(wcId: number): number | null {
   return wcToTab.get(wcId) ?? null;
 }

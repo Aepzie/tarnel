@@ -323,6 +323,7 @@ export type UICommand =
   | 'audio-mixer'
   | 'task-manager'
   | 'bookmark-page'
+  | 'screenshot'
   | 'escape';
 
 export const SPACE_COLORS: readonly SpaceColor[] = [
