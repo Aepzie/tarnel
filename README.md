@@ -65,6 +65,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Command palette** (`Ctrl+K`) — navigate, search history, switch tabs and run commands from the keyboard.
 - **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
 - **Tab groups and vertical tabs** — named, colored, collapsible groups (drag tabs in and out, reorder groups), and an optional floating vertical tab island (`Ctrl+Shift+,`) that resizes and folds to an icon rail.
+- **Screenshots** (`Ctrl+Shift+X`) — area, visible part or full page, then a small editor: crop, arrows, boxes, pen, text, highlighter and blur for personal data; copy or save as PNG/JPEG.
 - **Web panels** — pin web apps (chat, music, calendar, any URL) to a slim rail on the right and open them beside the page in a resizable side view. Each panel has its own isolated session and an optional mobile layout, shows unread counts, and sleeps like a tab when you haven't used it (never while it plays music).
 - **Peek** — shift-click a link to preview it in a floating window over the page; open it as a tab (no reload) or in split view, Esc to dismiss.
 - **Tab archive** — tabs you haven't used for a while (Settings → Performance: off, 6 h … 1 week; 24 h by default; pinned tabs never) move out of the strip into the Space's archive instead of piling up. Archive by hand with `Ctrl+Shift+E` or the tab / group menu; search, restore (back into its group) or clear it from the archive button, the palette or its suggestions, next to your recently closed tabs.
@@ -151,6 +152,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 | `Ctrl+Shift+D`            | Split view on / off                 |
 | `Ctrl+Shift+N`            | New Burner space                    |
 | `Ctrl+Shift+M`            | Audio mixer                         |
+| `Ctrl+Shift+X`            | Screenshot (area, visible, full page) |
 | `Ctrl+Shift+Delete`       | Panic: hide, mute, wipe Burners     |
 | `Shift+Esc`               | Task manager                        |
 | `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |

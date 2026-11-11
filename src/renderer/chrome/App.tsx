@@ -20,6 +20,7 @@ import { TaskManager } from './task-manager/TaskManager';
 import { RuleNotice } from './site-rules/RuleNotice';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
+import { ScreenshotLayer } from './screenshot/ScreenshotLayer';
 import { PanelRail } from './panels/PanelRail';
 import { PeekLayer } from './peek/PeekLayer';
 import { TabArchivePanel } from './archive/TabArchivePanel';
@@ -154,6 +155,7 @@ export function App() {
         <CommandPalette />
         <BookmarkEditor />
         <TaskManager />
+        <ScreenshotLayer />
         <RuleNotice />
         <PeekLayer />
         <TabArchivePanel />

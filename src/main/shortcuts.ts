@@ -116,6 +116,8 @@ function handle(input: Input): boolean {
         });
       case 'KeyM':
         return once(() => sendCommand('audio-mixer'));
+      case 'KeyX':
+        return once(() => sendCommand('screenshot'));
       case 'KeyE':
         return once(archiveActiveTab);
       case 'KeyB':

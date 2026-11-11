@@ -1048,6 +1048,23 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) through the normal extension review flow and offers to turn off
   `offerToSavePasswords` / `passwordAutofill`.
 
+## Screenshots (`src/main/screenshot.ts`, `src/renderer/chrome/screenshot/*`)
+
+- Triggers: `Ctrl/Cmd+Shift+X` (main/shortcuts.ts) and the page context menu send the `screenshot` UI command;
+  the palette calls the store directly. Always the **active** tab (the focused pane in a split).
+- Visible part: `webContents.capturePage()`, retried briefly (it fails with `UnknownVizError` while views are
+  restacked when an overlay closes), falling back to CDP `Page.captureScreenshot` when there is no compositor
+  frame. Full page: CDP `Page.getLayoutMetrics` + `Page.captureScreenshot({ captureBeyondViewport, clip })` in
+  one pass — no scrolling or stitching in JS. Pages are cut at 16,000 CSS px and scaled so no side exceeds
+  16,384 px (`planFullPage` in `src/shared/screenshot.ts`). The debugger is attached only for that call and only
+  when nothing else is attached.
+- The chrome shows the frozen capture at the tab view's bounds (holds the overlay, `no-drag`) for the area
+  selection, then the lazy-loaded editor: a canvas with annotations stored in image pixels and an undo stack of
+  `{ annotations, crop }`. Blur pixelates whatever is painted under it, so the exported image never contains
+  the original pixels.
+- Copy and save go through main (`SCREENSHOT_IPC`): the data URL is validated (PNG/JPEG base64 only), decoded
+  with `nativeImage`; save shows the native dialog (default `Vela screenshot <date>.png` in Downloads) and
+  encodes PNG or JPEG (quality 92). Nothing runs while no screenshot is open.
 ## Cookie banners (`src/main/cookie-banners/*`)
 
 Settings → Privacy → "Reject cookie banners" (default on) answers consent pop-ups with "reject" / "only

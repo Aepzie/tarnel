@@ -8,6 +8,7 @@ import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { SCREENSHOT_IPC } from '../shared/screenshot';
 import { PANELS_IPC } from '../shared/panels';
 import { COOKIE_BANNER_IPC } from '../shared/cookie-banners';
 import { TRANSLATE_IPC } from '../shared/translate';
@@ -216,6 +217,12 @@ const api: VelaChromeAPI = {
     onFillCancel: (cb) => subscribe(PASSWORD_IPC.fillCancel, cb),
     fill: (offerId, loginId) => invoke(PASSWORD_IPC.fill, offerId, loginId),
     dismissOffer: (offerId) => invoke(PASSWORD_IPC.dismissOffer, offerId),
+  },
+  screenshot: {
+    captureVisible: () => invoke(SCREENSHOT_IPC.captureVisible),
+    captureFullPage: () => invoke(SCREENSHOT_IPC.captureFullPage),
+    copy: (dataUrl) => invoke(SCREENSHOT_IPC.copy, dataUrl),
+    save: (dataUrl, format) => invoke(SCREENSHOT_IPC.save, dataUrl, format),
   },
   panels: {
     list: () => invoke(PANELS_IPC.list),

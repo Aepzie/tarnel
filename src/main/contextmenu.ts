@@ -6,6 +6,7 @@ import { openPeek } from './peek';
 import { createTab, getTabSpaceId } from './tabs';
 import { isOpenableFromWeb, searchUrl } from './url';
 import { getMainWindow } from './window';
+import { sendCommand } from './shortcuts';
 
 function truncate(text: string, max: number): string {
   const single = text.replace(/\s+/g, ' ').trim();
@@ -78,6 +79,8 @@ export function attachContextMenu(wc: WebContents, tabId: number): void {
         { label: 'Back', enabled: history.canGoBack(), click: () => history.goBack() },
         { label: 'Forward', enabled: history.canGoForward(), click: () => history.goForward() },
         { label: 'Reload', click: () => wc.reload() },
+        { type: 'separator' },
+        { label: 'Take screenshot', click: () => sendCommand('screenshot') },
       );
     }
 

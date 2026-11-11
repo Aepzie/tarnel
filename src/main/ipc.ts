@@ -42,6 +42,7 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { registerScreenshotIpc } from './screenshot';
 import { registerPanelsIpc } from './panels';
 import { registerCookieBannerIpc } from './cookie-banners';
 import { registerTranslateIpc } from './translate';
@@ -362,6 +363,7 @@ export function registerIpc(): void {
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
+  registerScreenshotIpc(handleChrome);
   registerPanelsIpc(handleChrome, handlePages);
   registerCookieBannerIpc(handleChrome, handlePages);
   registerTranslateIpc(handleChrome, handlePages);
