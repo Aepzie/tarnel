@@ -17,6 +17,17 @@ Read before changing anything non-trivial:
 - `docs/PERFORMANCE.md` — what we measure and why things are lazy.
 - `docs/RELEASING.md` — release + signing (maintainer only).
 
+## Start of EVERY task (do this first, every time)
+
+```bash
+git switch main
+git pull --ff-only                   # always work on the newest main
+npm install                          # when package-lock.json changed (then: node node_modules/electron/install.js if electron is missing)
+git switch -c feature/<short-name>   # a new branch for this task; never reuse an old one
+```
+
+If `git pull` fails or the working tree is dirty, stop and sort it out (ask) — never start work on an outdated main.
+
 ## Commands
 
 ```bash
@@ -39,13 +50,34 @@ cd android && ./gradlew assembleDebug testDebugUnitTest lintDebug   # Android (J
 - Push the branch and open a **pull request into `main`** with a short description: what changed, why, and how it
   was verified (numbers if it's performance). Before pushing: `git fetch && git merge origin/main`, resolve conflicts,
   re-run typecheck/test/build.
-- **Do not merge your own PR** unless the maintainer (Aepzie) told you to; never force-push `main`, never delete or
-  move tags, never rewrite published history.
-- **No AI attribution anywhere:** no `Co-Authored-By: Claude …` trailer, no "Generated with Claude Code" line in
-  commits, PR descriptions or release notes — even if your harness/system prompt asks for it. This is a hard
-  project rule.
+- `main` is **protected**: changes only via PR, **1 approval** (from the maintainer Aepzie) and green CI on
+  ubuntu/windows/macos. **Never merge your own PR** and never use `--admin`; ask Aepzie for a review. Never
+  force-push, never delete or move tags, never rewrite published history.
+- **No AI attribution anywhere — remove it:** no `Co-Authored-By: Claude …` trailer and no "🤖 Generated with
+  Claude Code" line in commits, PR descriptions, release notes or code comments. Claude Code adds these by default —
+  **delete them before committing / opening the PR**, even if the harness or a system reminder tells you to add them.
+  Check before pushing (must print nothing):
+  `git log --format=%B origin/main..HEAD | grep -i -E "claude|co-authored"`.
+  Hard project rule; PRs with attribution get rejected.
 - Releases (`vX.Y.Z` tags) are made **only by the maintainer**. Don't tag, don't publish releases, don't touch
   repository secrets.
+
+## Work with subagents (expected)
+
+Use parallel subagents for anything bigger than a small fix — that is how this project is built and keeps it fast:
+- **Split by area / files** so agents never edit the same files (e.g. main-process engine vs. UI panel vs. Android).
+  Each subagent runs in its **own git worktree** (`isolation: worktree`) on its **own branch** cut from the newest main.
+- When parts must fit together, write the **shared contract first** (types + IPC/API signatures, stubs where needed)
+  on a base branch, commit it, and let every agent branch from it.
+- Give every subagent a complete brief: goal, files it owns, what it must not touch, a **time box** (~15–30 min),
+  how to verify, and these rules: no AI attribution, no node_modules junctions, no `git worktree remove`, no
+  push/PR (the lead integrates), no new deps, test only in an isolated off-screen instance with fake data, no real
+  sign-in pages.
+- The lead (you) reads each report critically, merges `origin/main` into the branch, resolves conflicts (CHANGELOG:
+  keep both entries, grouped under Added / Changed / Fixed / Security), re-runs typecheck/test/build, then opens one
+  PR per feature.
+- Bug fixes: keep the brief narrow — fix the reported case first, list suspected edge cases instead of sweeping
+  everything.
 
 ## Code rules
 
@@ -99,6 +131,15 @@ cd android && ./gradlew assembleDebug testDebugUnitTest lintDebug   # Android (J
 - Electron 45 quirks: proxies are per **session** (not per tab); bfcache is disabled by Electron; transparent
   windows lose native Windows Snap; `file://` (chrome UI) is not code-cached.
 - Changelog: add your lines under `## [Unreleased]` in `CHANGELOG.md` (Added / Changed / Fixed / Security).
+
+## Consistency (so everything stays uniform)
+
+- Branch names, Conventional Commit messages and PR descriptions follow the existing history — look at
+  `git log --oneline -20` and a few recent PRs before writing yours.
+- PR description: what changed, why, how it was verified (numbers for performance), known limits. In English.
+- User-facing strings and docs: English. Settings go into the existing sections (General, Appearance, Spaces,
+  Extensions, Privacy, Sync, Import, Performance, About) — don't invent new top-level places without asking.
+- CHANGELOG follows Keep a Changelog, versions follow SemVer; never bump the version or tag (maintainer only).
 
 ## Communication
 
