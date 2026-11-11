@@ -19,6 +19,7 @@ import { getSettings, onSettingsChanged } from '../settings';
 import { getSpace, listSpaces, onSessionCreated, onSpacesChanged } from '../spaces';
 import { getTabSpaceId, getTabWebContents, onTabWebContents, tabIdForWebContents } from '../tabs';
 import { getMainWindow, sendToChrome } from '../window';
+import { aliasesEnabled, claimAlias } from '../aliases';
 import { loginsToCsv } from './csv';
 import { displayHost, isSecureOrigin, normaliseOrigin } from './origin';
 import { classify, emptyVault, findLogin, loginsFor, MAX_PASSWORD, MAX_USERNAME, parseVault, toSavedLogin, upsert, validCredential, type Cipher, type VaultFile } from './vault';
@@ -209,7 +210,7 @@ function frameContext(event: IpcMainEvent): FrameContext | null {
 
 function frameFlags(): PasswordFrameFlags {
   const settings = getSettings();
-  return { save: settings.offerToSavePasswords && encryptionAvailable(), fill: settings.passwordAutofill };
+  return { save: settings.offerToSavePasswords && encryptionAvailable(), fill: settings.passwordAutofill, alias: aliasesEnabled() };
 }
 
 function cancelSave(id: string): void {
@@ -299,6 +300,11 @@ function answerSave(id: unknown, answer: unknown): void {
   }
   requireEncryption();
   const next = upsert(vault, cipher, { origin: pending.origin, username: pending.username, password: pending.password }, Date.now(), randomUUID);
+  const alias = claimAlias(pending.spaceId, pending.origin, pending.username);
+  if (alias) {
+    persist(pending.spaceId, { ...next.vault, logins: next.vault.logins.map((entry) => (entry.origin === pending.origin && entry.username === pending.username ? { ...entry, alias } : entry)) });
+    return;
+  }
   if (next.result !== 'unchanged') persist(pending.spaceId, next.vault);
 }
 
@@ -451,9 +457,9 @@ function watchTab(wc: WebContents, tabId: number): void {
 export function initPasswords(): void {
   ipcMain.on(PASSWORD_IPC.frameFlags, (event) => {
     try {
-      event.returnValue = frameContext(event) ? frameFlags() : { save: false, fill: false };
+      event.returnValue = frameContext(event) ? frameFlags() : { save: false, fill: false, alias: false };
     } catch {
-      event.returnValue = { save: false, fill: false };
+      event.returnValue = { save: false, fill: false, alias: false };
     }
   });
   ipcMain.on(PASSWORD_IPC.frameFormSeen, (event) => {

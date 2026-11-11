@@ -8,6 +8,7 @@ import { Hero } from './components/hero/Hero';
 import { ImportHint } from './components/ImportHint';
 import { bootHero, isNewtabHero } from './components/hero/heroes';
 import { SearchBar } from './components/SearchBar';
+import { PrivacyStat } from './components/PrivacyStat';
 import { StatsFooter } from './components/StatsFooter';
 import { TopSites, toSites, type Site } from './components/TopSites';
 import { bootTheme, hasBridge } from './theme';
@@ -16,6 +17,7 @@ export function App() {
   const [sites, setSites] = useState<Site[]>([]);
   const [stats, setStats] = useState<PerfStats | null>(null);
   const [importFrom, setImportFrom] = useState<string | null>(null);
+  const [weekBlocked, setWeekBlocked] = useState<number | null>(null);
   const [hero, setHero] = useState<NewtabHero | null>(() => (hasBridge() ? bootHero() : 'clock'));
 
   const changeHero = useCallback((next: NewtabHero) => {
@@ -28,7 +30,14 @@ export function App() {
     const adopt = (value: unknown): void => {
       if (isNewtabHero(value)) setHero(value);
     };
-    void bootTheme().then((settings) => adopt(settings?.newtabHero));
+    void bootTheme().then((settings) => {
+      adopt(settings?.newtabHero);
+      if (!settings?.newtabPrivacyStat) return;
+      velaPages()
+        .privacyReport.get()
+        .then((report) => setWeekBlocked(report.thisWeek.trackersBlocked ?? 0))
+        .catch(() => undefined);
+    });
     if (!hasBridge()) return;
     const onVisible = (): void => {
       if (document.hidden) return;
@@ -76,7 +85,8 @@ export function App() {
           {sites.length === 0 && importFrom && <ImportHint browserName={importFrom} onDismiss={() => setImportFrom(null)} />}
         </div>
       </main>
-      <footer className="absolute inset-x-0 bottom-5 z-10 flex justify-center px-4">
+      <footer className="absolute inset-x-0 bottom-5 z-10 flex flex-col items-center gap-2 px-4">
+        {weekBlocked !== null && weekBlocked > 0 && <PrivacyStat blocked={weekBlocked} />}
         {stats && <StatsFooter stats={stats} />}
       </footer>
     </div>

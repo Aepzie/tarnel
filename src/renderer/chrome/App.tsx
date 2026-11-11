@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { LayoutGroup } from 'motion/react';
+import { LayoutGroup, MotionConfig } from 'motion/react';
 import type { UICommand } from '@shared/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getBrowserStateSnapshot, useActiveSpace, useCommand, useSettings } from '@/hooks/browser';
@@ -14,15 +14,22 @@ import { FindBar } from './find/FindBar';
 import { CommandPalette } from './palette/CommandPalette';
 import { usePermissionQueue } from './permissions/permission-store';
 import { usePasswordQueue } from './passwords/password-store';
+import { useAliasOffers } from './aliases/alias-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
+import { RuleNotice } from './site-rules/RuleNotice';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
 import { ScreenshotLayer } from './screenshot/ScreenshotLayer';
+import { PanelRail } from './panels/PanelRail';
+import { PeekLayer } from './peek/PeekLayer';
+import { TabArchivePanel } from './archive/TabArchivePanel';
+import { useBatteryLevelReport, useBatterySaver } from './perf/battery';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
 const PermissionPrompt = lazy(() => import('./permissions/PermissionPrompt').then((module) => ({ default: module.PermissionPrompt })));
+const AliasPrompt = lazy(() => import('./aliases/AliasPrompt').then((module) => ({ default: module.AliasPrompt })));
 const PasswordPrompt = lazy(() => import('./passwords/PasswordPrompt').then((module) => ({ default: module.PasswordPrompt })));
 
 /**
@@ -44,7 +51,20 @@ export function App() {
     if (passwordQueue.saves.length + passwordQueue.offers.length > 0) setPasswordUi(true);
   }, [passwordQueue]);
 
+  const aliasOffers = useAliasOffers();
+  const [aliasUi, setAliasUi] = useState(false);
+  useEffect(() => {
+    if (aliasOffers.length > 0) setAliasUi(true);
+  }, [aliasOffers]);
+
   useEffect(() => resetOverlayOnBoot(), []);
+
+  const batterySaver = useBatterySaver();
+  useBatteryLevelReport(settings.batterySaver === 'low');
+  useEffect(() => {
+    if (batterySaver) document.documentElement.dataset.battery = '';
+    else delete document.documentElement.dataset.battery;
+  }, [batterySaver]);
 
   useEffect(() => {
     document.documentElement.dataset.material = settings.windowMaterial;
@@ -97,6 +117,7 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={500} skipDelayDuration={150}>
+      <MotionConfig reducedMotion={batterySaver ? 'always' : 'user'}>
       <LayoutGroup>
         <div className="flex h-screen w-screen gap-2 overflow-hidden p-2 select-none">
           {/* A fully transparent window ('none') must show the desktop untinted around the islands. */}
@@ -106,7 +127,14 @@ export function App() {
             <TopIsland />
             <BookmarksBar />
             <FindBar />
-            <Viewport />
+            {settings.showPanelRail ? (
+              <div className="flex min-h-0 flex-1 gap-2">
+                <Viewport className="min-w-0" />
+                <PanelRail />
+              </div>
+            ) : (
+              <Viewport />
+            )}
           </div>
         </div>
         {permissionUi && (
@@ -119,11 +147,20 @@ export function App() {
             <PasswordPrompt />
           </Suspense>
         )}
+        {aliasUi && (
+          <Suspense fallback={null}>
+            <AliasPrompt />
+          </Suspense>
+        )}
         <CommandPalette />
         <BookmarkEditor />
         <TaskManager />
         <ScreenshotLayer />
+        <RuleNotice />
+        <PeekLayer />
+        <TabArchivePanel />
       </LayoutGroup>
+      </MotionConfig>
     </TooltipProvider>
   );
 }

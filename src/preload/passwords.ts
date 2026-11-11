@@ -1,5 +1,7 @@
 import { ipcRenderer } from 'electron';
 import { PASSWORD_IPC, type CapturedLogin, type PasswordFrameFlags } from '../shared/passwords';
+import { ALIAS_IPC } from '../shared/aliases';
+import { isEmailField, isSignUpForm } from '../shared/alias-form';
 
 /**
  * Session preload for the password manager. Runs in every web frame, in the preload's isolated
@@ -92,6 +94,42 @@ function startFill(): void {
   });
 }
 
+function labelOf(input: HTMLInputElement): string {
+  const own = input.labels?.[0]?.textContent ?? '';
+  return `${own} ${input.getAttribute('aria-label') ?? ''}`.slice(0, 200);
+}
+
+function formText(scope: ParentNode): string {
+  const parts = [...scope.querySelectorAll<HTMLElement>('button, input[type="submit"], h1, h2, h3, legend, [role="button"]')]
+    .slice(0, 40)
+    .map((element) => (element instanceof HTMLInputElement ? element.value : (element.textContent ?? '')));
+  if (scope instanceof HTMLFormElement) parts.push(scope.getAttribute('action') ?? '', scope.id, scope.className);
+  return parts.join(' ').replace(/\s+/g, ' ').slice(0, 2000);
+}
+
+/** Email aliases: offer once per email field of a sign-up form; fill only the field the user focused. */
+function startAliases(): void {
+  const offered = new WeakSet<HTMLInputElement>();
+  let target: HTMLInputElement | null = null;
+  const consider = (input: EventTarget | null): void => {
+    if (!(input instanceof HTMLInputElement) || !visible(input) || input.readOnly || input.value) return;
+    if (!isEmailField({ type: input.type, name: input.name, id: input.id, autocomplete: input.autocomplete, placeholder: input.placeholder, label: labelOf(input) })) return;
+    const scope = scopeOf(input);
+    const passwords = passwordFields(scope);
+    if (!isSignUpForm({ passwords: passwords.length, newPassword: passwords.some((field) => /new-password/.test(field.autocomplete)), text: formText(scope), path: location.pathname })) return;
+    target = input;
+    if (offered.has(input)) return;
+    offered.add(input);
+    ipcRenderer.send(ALIAS_IPC.frameFieldSeen);
+  };
+  window.addEventListener('focusin', (event) => consider(event.target), true);
+  ipcRenderer.on(ALIAS_IPC.frameFill, (_event, email: unknown) => {
+    if (typeof email !== 'string' || !target || !target.isConnected || target.value) return;
+    setValue(target, email);
+  });
+  consider(document.activeElement);
+}
+
 function onLoginForm(): void {
   let flags: PasswordFrameFlags;
   try {
@@ -101,6 +139,7 @@ function onLoginForm(): void {
   }
   if (!flags) return;
   if (flags.save) startCapture();
+  if (flags.alias) startAliases();
   if (flags.fill) {
     startFill();
     ipcRenderer.send(PASSWORD_IPC.frameFormSeen);

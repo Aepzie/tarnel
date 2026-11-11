@@ -27,9 +27,14 @@ let overlayOpen = false;
 /** Chrome raised without taking keyboard focus (split pane toolbar under the pointer). */
 let peekOpen = false;
 let htmlFullscreen = false;
+/** Floating page view above everything (Peek), placed by `floatingPlace` from the page area. */
+let floatingView: WebContentsView | null = null;
+let floatingPlace: ((area: ContentBounds) => ContentBounds) | null = null;
 /** Window fullscreen state (F11) before a page entered HTML fullscreen. */
 let fullscreenBeforeHtml = false;
 let store: JsonStore<WindowFile> | null = null;
+/** Views beside the pages (web panels, src/main/panels): stacked above the pages, below a raised chrome. */
+let sideViews: () => WebContentsView[] = () => [];
 
 function getStore(): JsonStore<WindowFile> {
   store ??= createStore<WindowFile>('window', { bounds: null, maximized: false });
@@ -59,6 +64,11 @@ function layout(): void {
   if (!win || win.isDestroyed()) return;
   const size = windowSize();
   chromeView?.setBounds({ x: 0, y: 0, ...size });
+  for (const view of sideViews()) view.setVisible(!htmlFullscreen);
+  if (floatingView && floatingPlace) {
+    setRadius(floatingView, TAB_RADIUS);
+    floatingView.setBounds(roundedBounds(floatingPlace(contentBounds)));
+  }
   if (!activeView) return;
   if (htmlFullscreen) {
     setRadius(activeView, 0);
@@ -92,7 +102,9 @@ function roundedBounds(bounds: ContentBounds): Rectangle {
 function restack(target: BaseWindow): void {
   for (const view of visibleViews) if (view !== activeView) target.contentView.addChildView(view);
   if (activeView) target.contentView.addChildView(activeView);
+  for (const view of sideViews()) target.contentView.addChildView(view);
   if ((overlayOpen || peekOpen) && chromeView) target.contentView.addChildView(chromeView);
+  if (floatingView) target.contentView.addChildView(floatingView);
 }
 
 /** Bounds the window will open with at the next launch (null = default placement). Safe before app 'ready'. */
@@ -209,6 +221,8 @@ function wireWindow(current: BaseWindow): void {
       htmlFullscreen = false;
       overlayOpen = false;
       peekOpen = false;
+      floatingView = null;
+      floatingPlace = null;
     }),
   );
 }
@@ -233,7 +247,7 @@ function swapWindow(material: WindowMaterial): void {
   const minimized = old.isMinimized();
   const next = buildWindow(material, old.getNormalBounds());
 
-  for (const view of [chromeView, ...visibleViews]) if (view) old.contentView.removeChildView(view);
+  for (const view of [chromeView, ...visibleViews, ...sideViews(), floatingView]) if (view) old.contentView.removeChildView(view);
   for (const event of old.eventNames()) {
     if (typeof event !== 'string') continue;
     for (const listener of old.listeners(event)) {
@@ -375,6 +389,17 @@ export function detachView(view: WebContentsView): void {
   if (activeView === view) activeView = null;
 }
 
+/** Registers the provider of side views (web panels); `restackWindow` re-applies the layer order. */
+export function setSideViewsProvider(provider: () => WebContentsView[]): void {
+  sideViews = provider;
+}
+
+export function restackWindow(): void {
+  if (!win || win.isDestroyed()) return;
+  restack(win);
+  layout();
+}
+
 export function setContentBounds(bounds: ContentBounds): void {
   contentBounds = bounds;
   layout();
@@ -388,7 +413,7 @@ export function setOverlay(open: boolean): void {
   overlayOpen = open;
   if (!win || win.isDestroyed()) return;
   restack(win);
-  const top = open ? chromeView : activeView;
+  const top = floatingView ?? (open ? chromeView : activeView);
   // Keyboard input must follow the visible layer: palette/menus need focus while open,
   // the page gets it back once the overlay closes. Never pull focus back from another window
   // (an extension popup would close when a tooltip appears).
@@ -428,4 +453,21 @@ export function isHtmlFullscreen(): boolean {
 export function toggleFullscreen(): void {
   if (!win || win.isDestroyed()) return;
   win.setFullScreen(!win.isFullScreen());
+}
+
+/**
+ * Show `view` floating above the pages and the raised chrome (Peek), or remove it with null. The
+ * caller keeps the chrome raised (overlay) while it is shown so the dimmed backdrop is visible.
+ */
+export function setFloatingView(view: WebContentsView | null, place?: (area: ContentBounds) => ContentBounds): void {
+  if (floatingView && floatingView !== view && win && !win.isDestroyed()) win.contentView.removeChildView(floatingView);
+  floatingView = view;
+  floatingPlace = view ? (place ?? null) : null;
+  if (!win || win.isDestroyed()) return;
+  restack(win);
+  layout();
+}
+
+export function getContentBounds(): ContentBounds {
+  return contentBounds;
 }

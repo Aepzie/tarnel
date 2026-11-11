@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Cpu, Leaf, MemoryStick, Moon, ShieldBan, Zap, type LucideIcon } from 'lucide-react';
 import type { MemorySaverMode, PerfStats } from '@shared/types';
+import type { BatterySaverMode } from '@shared/battery';
 import { rise } from '@/lib/motion';
 import { formatBytesMB, formatCount, velaPages } from '@/lib/vela';
 import { AnimatedNumber } from '../components/brand';
@@ -25,10 +26,26 @@ const FREEZE_OPTIONS: readonly SegmentOption<string>[] = [
   { value: '5', label: '5 min' },
 ];
 
+const ARCHIVE_OPTIONS: readonly SegmentOption<string>[] = [
+  { value: '0', label: 'Off' },
+  { value: '6', label: '6 h' },
+  { value: '12', label: '12 h' },
+  { value: '24', label: '24 h' },
+  { value: '72', label: '3 days' },
+  { value: '168', label: '1 week' },
+];
+
 const SAVER_OPTIONS: readonly SegmentOption<MemorySaverMode>[] = [
   { value: 'off', label: 'Off' },
   { value: 'balanced', label: 'Balanced' },
   { value: 'maximum', label: 'Maximum' },
+];
+
+const BATTERY_OPTIONS: readonly SegmentOption<BatterySaverMode>[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'battery', label: 'On battery' },
+  { value: 'low', label: 'Below 20 %' },
+  { value: 'always', label: 'Always' },
 ];
 
 const THRESHOLD_OPTIONS: readonly SegmentOption<string>[] = [
@@ -136,6 +153,14 @@ export function Performance() {
             onChange={(value) => update({ freezeAfterMinutes: Number(value) })}
           />
         </Row>
+        <Row title="Archive unused tabs" description="Move tabs you haven't opened in a while out of the tab strip into the Space's tab archive, where you can search and restore them. Pinned tabs and tabs playing audio stay.">
+          <Segmented
+            label="Archive tabs after"
+            value={String(settings.archiveAfterHours)}
+            options={ARCHIVE_OPTIONS}
+            onChange={(value) => update({ archiveAfterHours: Number(value) })}
+          />
+        </Row>
         <Row title="Memory saver" description="When Vela uses more memory than the limit, sleep the tabs you used least recently. Maximum acts sooner and on more tabs.">
           <Segmented label="Memory saver" value={settings.memorySaver} options={SAVER_OPTIONS} onChange={(value) => update({ memorySaver: value })} />
         </Row>
@@ -149,6 +174,12 @@ export function Performance() {
             />
           </Row>
         )}
+        <Row
+          title="Battery saver"
+          description="Freeze and sleep background tabs twice as fast, use the stronger memory saver, skip address-bar preloading and calm the browser's animations. Security features are never reduced."
+        >
+          <Segmented label="Battery saver" value={settings.batterySaver} options={BATTERY_OPTIONS} onChange={(value) => update({ batterySaver: value })} />
+        </Row>
         <SwitchRow
           title="Preload pages from the address bar"
           setting="preloadPages"

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { SAFETY_IPC, type SafetyStatus } from '../../shared/ipc';
 import { addWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
+import { countPrivacyEvent } from '../privacy-report/collector';
 import { BlocklistIndex, LIST_SOURCES, parseList, type ListSource, type ThreatMatch } from './lists';
 
 /**
@@ -189,6 +190,7 @@ export function attachSafety(session: Session): void {
     if (details.resourceType !== 'mainFrame' && details.resourceType !== 'subFrame') return;
     const hit = checkUrl(details.url);
     if (!hit) return;
+    countPrivacyEvent('dangerousWarned', details.webContentsId);
     if (details.resourceType === 'subFrame') return { cancel: true };
     return { redirectURL: warningPageUrl(details.url, hit) };
   });

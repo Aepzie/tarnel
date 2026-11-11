@@ -11,6 +11,8 @@ import { UserAgentPicker } from '../components/user-agent';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 import { SiteDataOnClose } from './SiteDataOnClose';
+import { CookieBanners } from './CookieBanners';
+import { EmailAliases } from './EmailAliases';
 
 const DNS_OPTIONS: readonly { value: SecureDnsMode; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -173,6 +175,19 @@ export function Privacy() {
         />
         <UserAgentRow />
       </Group>
+      <CookieBanners />
+      <Group title="Privacy report">
+        <Row title="Your privacy report" description="What Vela blocked this week, per Space. Counted on this device only.">
+          <button
+            type="button"
+            onClick={() => void velaPages().navigate('vela://privacy/')}
+            className="h-8 rounded-lg px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Open
+          </button>
+        </Row>
+        <SwitchRow title="Weekly summary" description="A quiet notification once a week with the numbers." setting="privacyWeeklySummary" />
+      </Group>
       <SiteDataOnClose />
       <SecureDns />
       <Group title="Passwords">
@@ -192,6 +207,7 @@ export function Privacy() {
           </button>
         </Row>
       </Group>
+      <EmailAliases />
       <Group title="History">
         <Row title="Browsing history" description="Removes visited pages and top sites from every Space.">
           <ConfirmActions
