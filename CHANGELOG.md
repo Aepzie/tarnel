@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User agent per Space: a default in Settings → Privacy and an override in each Space (Settings → Spaces). Pick from a list of common browsers (Chrome, Edge, Firefox, Safari on desktop and mobile) or randomize.
 
 ### Fixed
-- Dropdown lists (and scrollbars) were white in the dark theme when Windows uses light mode; native controls now follow Vela's theme.
+- Dropdown lists (Spaces timezone/language/user agent, passwords Space picker) opened as a white native list in the dark theme; they now use Vela's own themed select. Scrollbars follow Vela's theme instead of Windows'.
 - Settings and other vela:// pages no longer shift sideways when switching between short and long sections (the scrollbar's space is always reserved).
 
 ## [0.8.0] - 2026-11-10

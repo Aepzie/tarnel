@@ -6,6 +6,7 @@ import { LANGUAGE_CHOICES, TIMEZONE_CHOICES } from '@shared/fingerprint';
 import { vela } from '@/lib/vela';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const LABELS: Record<FingerprintLevel, string> = { off: 'Off', standard: 'Standard', strict: 'Strict' };
 
@@ -158,26 +159,30 @@ interface RegionSelectProps {
   className?: string;
 }
 
-/** Quiet native select for the timezone / language rows. */
+/** Radix can't use '' as an item value; '' (system / default) maps to this. */
+const EMPTY = '__vela-empty__';
+
+/** Quiet select for the timezone / language / user agent rows (themed popup, unlike a native <select>). */
 export function RegionSelect({ label, value, options, onChange, disabled, className }: RegionSelectProps) {
+  const known = options.some((option) => option.value === value);
   return (
-    <select
-      aria-label={label}
-      value={value}
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-      className={cn(
-        'h-8 rounded-lg border border-border bg-background px-2 text-[12px] text-foreground outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:bg-white/[0.04]',
-        className,
-      )}
-    >
-      {!options.some((option) => option.value === value) && <option value={value}>{value}</option>}
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <Select value={value || EMPTY} onValueChange={(next) => onChange(next === EMPTY ? '' : next)} disabled={disabled}>
+      <SelectTrigger aria-label={label} size="sm" className={cn('h-8 rounded-lg text-[12px] [&>span]:truncate', className)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent position="popper" align="end" sideOffset={6} className="z-[120] max-h-72 rounded-xl p-0.5 backdrop-blur-xl">
+        {!known && value && (
+          <SelectItem value={value} className="rounded-lg text-[12px]">
+            {value}
+          </SelectItem>
+        )}
+        {options.map((option) => (
+          <SelectItem key={option.value || EMPTY} value={option.value || EMPTY} className="rounded-lg text-[12px]">
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -195,11 +200,11 @@ export function RegionFields({ timezone, language, onTimezone, onLanguage, disab
     <div className="grid grid-cols-2 gap-2">
       <label className="flex flex-col gap-1 text-[12px] font-medium text-muted-foreground">
         Timezone
-        <RegionSelect label="Timezone" value={timezone} options={TIMEZONE_OPTIONS} onChange={onTimezone} disabled={disabled} />
+        <RegionSelect label="Timezone" value={timezone} options={TIMEZONE_OPTIONS} onChange={onTimezone} disabled={disabled} className="w-full" />
       </label>
       <label className="flex flex-col gap-1 text-[12px] font-medium text-muted-foreground">
         Language
-        <RegionSelect label="Language" value={language} options={LANGUAGE_OPTIONS} onChange={onLanguage} disabled={disabled} />
+        <RegionSelect label="Language" value={language} options={LANGUAGE_OPTIONS} onChange={onLanguage} disabled={disabled} className="w-full" />
       </label>
     </div>
   );
