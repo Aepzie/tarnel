@@ -46,6 +46,8 @@
 }
 
 :root {
+  /* Native controls (select popups, scrollbars) follow Vela's theme, not the OS one. */
+  color-scheme: dark;
   --accent-space: #60a5fa;
   --radius: 0.75rem;
 
@@ -90,6 +92,7 @@
 
 :root.light,
 :root[data-theme="light"] {
+  color-scheme: light;
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.21 0.006 285.885);
   --card: oklch(1 0 0 / 0.75);

@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - User agent per Space: a default in Settings → Privacy and an override in each Space (Settings → Spaces). Pick from a list of common browsers (Chrome, Edge, Firefox, Safari on desktop and mobile) or randomize.
 
+### Fixed
+- Dropdown lists (and scrollbars) were white in the dark theme when Windows uses light mode; native controls now follow Vela's theme.
+
 ## [0.8.0] - 2026-11-10
 
 ### Added
