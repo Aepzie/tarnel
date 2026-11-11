@@ -5,6 +5,7 @@ import { ENGINE_VERSION, ElectronBlocker, type Request } from '@ghostery/adblock
 import { cacheKey, decodeCache, encodeCache } from './adblock-cache';
 import { adblockRefreshAfterMs } from './battery-policy';
 import { isBatterySaverActive } from './battery-saver';
+import { isolateScriptlet } from './adblock-scriptlets';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
 import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
@@ -134,6 +135,25 @@ function attachEvents(engine: ElectronBlocker): void {
   engine.on('request-blocked', recordBlocked);
   // Redirects replace the resource with a neutered stub (e.g. empty analytics.js): a block in effect.
   engine.on('request-redirected', recordBlocked);
+  isolateScriptlets(engine);
+}
+
+/**
+ * The library's IPC handler calls `engine.onInjectCosmeticFilters` at call time, which only touches
+ * `event.sender.insertCSS` / `executeJavaScript`: hand it a sender that runs every scriptlet in its
+ * own scope (adblock-scriptlets.ts).
+ */
+function isolateScriptlets(engine: ElectronBlocker): void {
+  const inject = engine.onInjectCosmeticFilters;
+  engine.onInjectCosmeticFilters = (event, url, msg) => {
+    const page = event.sender;
+    const sender = {
+      insertCSS: (css: string, options?: Electron.InsertCSSOptions) => page.insertCSS(css, options),
+      executeJavaScript: (code: string, userGesture?: boolean) =>
+        page.executeJavaScript(isolateScriptlet(code), userGesture).catch(() => undefined),
+    } as unknown as Electron.WebContents;
+    return inject(Object.create(event, { sender: { value: sender } }) as Electron.IpcMainInvokeEvent, url, msg);
+  };
 }
 
 type BeforeRequestListener = (details: Electron.OnBeforeRequestListenerDetails, callback: (response: Electron.CallbackResponse) => void) => void;
