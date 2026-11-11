@@ -26,6 +26,8 @@ export interface Space {
   timezone?: string;
   /** Language pages see (protected Spaces only); '' or missing = system. */
   language?: string;
+  /** User-Agent for this Space; '' or missing = the global setting. */
+  userAgent?: string;
   createdAt: number;
 }
 
@@ -40,6 +42,7 @@ export interface SpaceInput {
   fingerprint?: FingerprintLevel;
   timezone?: string;
   language?: string;
+  userAgent?: string;
 }
 
 export interface TabState {
@@ -227,6 +230,8 @@ export interface Settings {
   secureDnsNextDns: string;
   /** Custom DoH URI template; always valid or ''. */
   secureDnsTemplate: string;
+  /** User-Agent for every Space without its own; '' = Vela's default (stock Chromium). */
+  userAgent: string;
   /** Password manager: ask to save logins submitted on web pages. */
   offerToSavePasswords: boolean;
   /** Password manager: offer saved accounts on login forms (filling always needs a click). */
@@ -363,6 +368,7 @@ export const DEFAULT_SETTINGS: Settings = {
   secureDnsStrict: false,
   secureDnsNextDns: '',
   secureDnsTemplate: '',
+  userAgent: '',
   offerToSavePasswords: true,
   passwordAutofill: true,
 };

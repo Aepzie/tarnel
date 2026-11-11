@@ -40,6 +40,7 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
 
 type Handler = (...args: unknown[]) => unknown;
@@ -87,6 +88,7 @@ function spaceInput(value: unknown): SpaceInput {
   if (!SPACE_COLORS.includes(input.color)) throw new TypeError('Invalid color');
   if (raw.proxy !== undefined) input.proxy = str(raw.proxy, 256, 'proxy');
   if (raw.fingerprint !== undefined) input.fingerprint = str(raw.fingerprint, 16, 'fingerprint') as FingerprintLevel;
+  if (raw.userAgent !== undefined) input.userAgent = str(raw.userAgent, USER_AGENT_MAX, 'user agent');
   return input;
 }
 
@@ -101,6 +103,7 @@ function spacePatch(value: unknown): Partial<SpaceInput> {
   }
   if (raw.proxy !== undefined) patch.proxy = str(raw.proxy, 256, 'proxy');
   if (raw.fingerprint !== undefined) patch.fingerprint = str(raw.fingerprint, 16, 'fingerprint') as FingerprintLevel;
+  if (raw.userAgent !== undefined) patch.userAgent = str(raw.userAgent, USER_AGENT_MAX, 'user agent');
   return patch;
 }
 

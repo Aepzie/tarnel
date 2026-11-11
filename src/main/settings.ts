@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, FRAME_RATE_MODES, MEMORY_SAVER_MODES, NEWTAB_HEROES, type FrameRateMode, type MemorySaverMode, type NewtabHero, type SearchEngine, type Settings, type TabLayout, type ThemeMode, type WindowMaterial } from '../shared/types';
 import { nextDnsTemplate, SECURE_DNS_MODES, validateDohTemplate, type SecureDnsMode } from '../shared/doh';
+import { isValidUserAgent } from '../shared/user-agent';
 import { createStore, type JsonStore } from './store';
 
 const SEARCH_ENGINES: readonly SearchEngine[] = ['duckduckgo', 'google', 'brave', 'startpage', 'ecosia'];
@@ -51,6 +52,7 @@ function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>
   if (SECURE_DNS_MODES.includes(patch.secureDns as SecureDnsMode)) next.secureDns = patch.secureDns as SecureDnsMode;
   if (patch.secureDnsNextDns === '' || nextDnsTemplate(patch.secureDnsNextDns)) next.secureDnsNextDns = (patch.secureDnsNextDns as string).trim();
   if (patch.secureDnsTemplate === '' || validateDohTemplate(patch.secureDnsTemplate)) next.secureDnsTemplate = (patch.secureDnsTemplate as string).trim();
+  if (isValidUserAgent(patch.userAgent)) next.userAgent = patch.userAgent.trim();
   next.sleepAfterMinutes = clampInt(patch.sleepAfterMinutes, 0, 240) ?? next.sleepAfterMinutes;
   next.freezeAfterMinutes = clampInt(patch.freezeAfterMinutes, 0, 240) ?? next.freezeAfterMinutes;
   if (MEMORY_SAVER_MODES.includes(patch.memorySaver as MemorySaverMode)) next.memorySaver = patch.memorySaver as MemorySaverMode;

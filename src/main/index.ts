@@ -5,6 +5,7 @@ import { attachContextMenu } from './contextmenu';
 import { attachDownloads } from './downloads';
 import { initFingerprint } from './fingerprint';
 import { initIdentity } from './identity';
+import { initUserAgent } from './user-agent';
 import { initAudioDevices } from './audio-devices';
 import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
@@ -135,6 +136,7 @@ if (!app.requestSingleInstanceLock()) {
     initSpaces();
     initIdentity();
     initFingerprint();
+    initUserAgent();
     initAudioDevices();
     initAudioMixer();
     initPasswords();
