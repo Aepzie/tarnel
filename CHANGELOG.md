@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Dropdown lists (and scrollbars) were white in the dark theme when Windows uses light mode; native controls now follow Vela's theme.
+- Settings and other vela:// pages no longer shift sideways when switching between short and long sections (the scrollbar's space is always reserved).
 
 ## [0.8.0] - 2026-11-10
 

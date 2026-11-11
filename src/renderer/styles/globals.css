@@ -166,6 +166,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Always reserve the scrollbar's space so centered pages don't shift when it appears or goes. */
+  html {
+    scrollbar-gutter: stable;
+  }
   html,
   body {
     @apply font-sans text-foreground antialiased;
