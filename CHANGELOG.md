@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - The memory number in the perf chip, its popover and the task manager now matches Windows Task Manager (private working set). It showed private commit before, ~30% higher. macOS/Linux unchanged; the memory saver still uses private commit.
+- Dropdown lists were still white in the dark theme (the 0.8.2 fix didn't reach Chromium's native popup): Spaces timezone/language/user agent and the passwords Space picker now use Vela's own themed select.
+- Settings and other vela:// pages no longer shift sideways when switching between short and long sections (the scrollbar's space is always reserved).
 
 ## [0.8.2] - 2026-11-11
 

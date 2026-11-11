@@ -3,6 +3,7 @@ import { Copy, Download, Eye, EyeOff, KeyRound, Pencil, Puzzle, Search, Trash2, 
 import type { PasswordsStatus, SavedLogin } from '@shared/passwords';
 import type { ExtensionReview } from '@shared/types';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { settle, velaPages } from '@/lib/vela';
 
@@ -103,19 +104,19 @@ export function App() {
 
       <div className="mb-4 flex items-center gap-2">
         {status && status.spaces.length > 1 && (
-          <select
-            aria-label="Space"
-            value={spaceId ?? ''}
-            onChange={(event) => setSpaceId(event.target.value)}
-            className="h-9 rounded-md border border-input bg-transparent px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
-          >
-            {status.spaces.map((candidate) => (
-              <option key={candidate.spaceId} value={candidate.spaceId}>
-                {candidate.name}
-                {candidate.burner ? ' (Burner)' : ''} · {candidate.count}
-              </option>
-            ))}
-          </select>
+          <Select value={spaceId ?? undefined} onValueChange={setSpaceId}>
+            <SelectTrigger aria-label="Space" className="h-9 text-[13px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" align="start" sideOffset={6} className="rounded-xl p-0.5 backdrop-blur-xl">
+              {status.spaces.map((candidate) => (
+                <SelectItem key={candidate.spaceId} value={candidate.spaceId} className="rounded-lg text-[13px]">
+                  {candidate.name}
+                  {candidate.burner ? ' (Burner)' : ''} · {candidate.count}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" strokeWidth={1.75} />
