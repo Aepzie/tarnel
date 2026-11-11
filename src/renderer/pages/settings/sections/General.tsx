@@ -43,6 +43,11 @@ export function General() {
           description="Reopen your tabs and Spaces when Vela starts."
           setting="restoreSession"
         />
+        <SwitchRow
+          title="Shift-click opens Peek"
+          description="Preview links in a floating window over the page instead of a new window."
+          setting="peekOnShiftClick"
+        />
       </Group>
       <Languages />
     </>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Copy, Download, Eye, EyeOff, KeyRound, Pencil, Puzzle, Search, Trash2, Upload, X } from 'lucide-react';
 import type { PasswordsStatus, SavedLogin } from '@shared/passwords';
+import { aliasManageUrl, aliasProviderLabel } from '@shared/aliases';
 import type { ExtensionReview } from '@shared/types';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -204,6 +205,14 @@ function LoginRow({ login, run }: { login: SavedLogin; run: (task: Promise<unkno
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{login.origin.replace(/^https:\/\//, '')}</p>
           <p className="truncate text-[12px] text-muted-foreground">{login.username || 'No username'}</p>
+          {login.alias && (
+            <p className="truncate text-[11px] text-muted-foreground">
+              {login.alias.email === login.username ? 'Email alias' : `Alias ${login.alias.email}`} via {aliasProviderLabel(login.alias.provider)} ·{' '}
+              <button type="button" className="underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:underline" onClick={() => settle(velaPages().navigate(aliasManageUrl(login.alias!.provider)))}>
+                Manage
+              </button>
+            </p>
+          )}
         </div>
         <code className="w-40 truncate text-right font-mono text-[12px] text-muted-foreground select-text">{revealed ?? '••••••••••'}</code>
         {revealed === null ? (

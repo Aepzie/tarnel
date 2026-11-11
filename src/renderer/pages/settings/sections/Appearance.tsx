@@ -85,6 +85,13 @@ export function Appearance() {
           />
         </Row>
       </Group>
+      <Group title="Start page">
+        <SwitchRow
+          title="Privacy stat"
+          description="A small line with this week’s blocked trackers, linking to your privacy report."
+          setting="newtabPrivacyStat"
+        />
+      </Group>
       <Group title="Bookmarks">
         <SwitchRow
           title="Show bookmarks bar"

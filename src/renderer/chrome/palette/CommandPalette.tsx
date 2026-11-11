@@ -12,12 +12,15 @@ import { SPACE_HEX } from '@/lib/vela';
 import { ui, useChromeUI, type ChromeUIState } from '../ui-store';
 import { buildCommands, rankCommands } from './commands';
 import { classifyInput, preconnectTarget } from './input';
+import { Eye } from 'lucide-react';
+import { peekHost } from '@shared/peek';
 import { LeadingIcon } from './LeadingIcon';
 import { SiteInfoTrigger } from '../site-info/SiteInfoPanel';
 import { PaletteRow, type PaletteRowModel } from './PaletteRow';
 import { useSuggestions } from './useSuggestions';
 import { BookmarkStar } from '../bookmarks/BookmarkStar';
 import { TranslateButton } from '../translate/TranslateButton';
+import { relativeAge } from '@shared/tab-archive';
 
 const MAX_STAGGER = 8;
 const STAGGER_STEP = 0.022;
@@ -99,6 +102,10 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
       kind: kind === 'url' ? 'url' : 'search',
       resolved,
     };
+    const peekRow: PaletteRowModel[] =
+      kind === 'url' && palette.mode === 'current'
+        ? [{ type: 'command', id: 'peek', command: { id: 'cmd:peek', title: 'Peek', icon: Eye, keywords: 'preview float', hint: peekHost(resolved ?? text), run: () => settle(window.vela.peek.open(resolved ?? text)) } }]
+        : [];
     const tabRows: PaletteRowModel[] = server
       .filter((s) => s.kind === 'tab' && s.tabId !== undefined && s.tabId !== activeTabId)
       .map((s) => ({
@@ -118,16 +125,27 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
     const remoteRows: PaletteRowModel[] = server
       .filter((s) => s.kind === 'remote-tab')
       .map((s) => ({ type: 'history', id: `remote:${s.device ?? ''}:${s.url}`, title: s.title, url: s.url, device: s.device }));
+    const now = Date.now();
+    const archivedRows: PaletteRowModel[] = server
+      .filter((s) => s.kind === 'archived' && s.archiveId !== undefined)
+      .map((s) => ({
+        type: 'history',
+        id: `archived:${s.archiveId}`,
+        title: s.title,
+        url: s.url,
+        archived: { id: s.archiveId!, age: relativeAge(s.archivedAt ?? now, now) },
+      }));
     const commandRows = text.length >= 2 ? rankCommands(commands, text, 40).slice(0, 3).map(toCommandRow) : [];
     return [
-      { heading: null, rows: [go] },
+      { heading: null, rows: [go, ...peekRow] },
       { heading: 'Open tabs', rows: tabRows },
       { heading: 'Commands', rows: commandRows },
       { heading: 'Bookmarks', rows: bookmarkRows },
+      { heading: 'Archived', rows: archivedRows },
       { heading: 'History', rows: historyRows },
       { heading: 'Other devices', rows: remoteRows },
     ].filter((group) => group.rows.length > 0);
-  }, [kind, commands, commandText, query, suggestions, faviconsById, activeTabId]);
+  }, [kind, commands, commandText, query, suggestions, faviconsById, activeTabId, palette.mode]);
 
   const flatRows = useMemo(() => groups.flatMap((group) => group.rows), [groups]);
   const firstId = flatRows[0]?.id ?? '';
@@ -208,7 +226,8 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
           open(row.input);
           break;
         case 'history':
-          open(row.url);
+          if (row.archived) settle(vela.tabArchive.restore([row.archived.id]));
+          else open(row.url);
           break;
         case 'tab':
           settle(vela.tabs.activate(row.tabId));

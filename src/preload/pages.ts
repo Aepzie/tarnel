@@ -5,6 +5,9 @@ import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
 import { TRANSLATE_IPC } from '../shared/translate';
+import { SITE_RULES_IPC } from '../shared/site-rules';
+import { ALIAS_IPC } from '../shared/aliases';
+import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -63,6 +66,13 @@ if (isVelaPage()) {
       deleteModel: (pair) => call(TRANSLATE_IPC.deleteModel, pair),
       refreshCatalog: () => call(TRANSLATE_IPC.refreshCatalog),
     },
+    siteRules: {
+      list: () => call(SITE_RULES_IPC.list),
+      save: (rules) => call(SITE_RULES_IPC.save, rules),
+      test: (url) => call(SITE_RULES_IPC.test, url),
+      draft: () => call(SITE_RULES_IPC.draft),
+      context: () => call(SITE_RULES_IPC.context),
+    },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),
       set: (spaceId, policy) => call(SITE_IPC.pagesSetPolicy, spaceId, policy),
@@ -101,6 +111,10 @@ if (isVelaPage()) {
       install: () => call(ch.updateInstall),
       openRelease: () => call(ch.updateOpenRelease),
     },
+    privacyReport: {
+      get: () => call(PRIVACY_REPORT_IPC.get),
+      reset: () => call(PRIVACY_REPORT_IPC.reset),
+    },
   };
 
   if (location.host === 'passwords') {
@@ -114,6 +128,15 @@ if (isVelaPage()) {
       remove: (spaceId, loginId) => call(pw.remove, spaceId, loginId),
       exportCsv: (spaceId) => call(pw.exportCsv, spaceId),
       removeNever: (spaceId, origin) => call(pw.neverRemove, spaceId, origin),
+    };
+  }
+
+  if (location.host === 'settings') {
+    api.aliases = {
+      get: () => call(ALIAS_IPC.get),
+      set: (patch) => call(ALIAS_IPC.set, patch),
+      setKey: (key) => call(ALIAS_IPC.setKey, key),
+      options: () => call(ALIAS_IPC.options),
     };
   }
 
