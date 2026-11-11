@@ -4,6 +4,7 @@ import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { COOKIE_BANNER_IPC } from '../shared/cookie-banners';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -55,6 +56,10 @@ if (isVelaPage()) {
       update: (id, patch, spaceId) => call(BOOKMARKS_IPC.pagesUpdate, id, patch, spaceId ?? null),
       remove: (id, spaceId) => call(BOOKMARKS_IPC.pagesRemove, id, spaceId ?? null),
       search: (query, limit, spaceId) => call(BOOKMARKS_IPC.pagesSearch, query, limit ?? null, spaceId ?? null),
+    },
+    cookieBanners: {
+      exceptions: () => call(COOKIE_BANNER_IPC.pagesList),
+      removeException: (site) => call(COOKIE_BANNER_IPC.pagesRemove, site),
     },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),

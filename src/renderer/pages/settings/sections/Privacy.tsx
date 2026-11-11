@@ -11,6 +11,7 @@ import { UserAgentPicker } from '../components/user-agent';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 import { SiteDataOnClose } from './SiteDataOnClose';
+import { CookieBanners } from './CookieBanners';
 
 const DNS_OPTIONS: readonly { value: SecureDnsMode; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -173,6 +174,7 @@ export function Privacy() {
         />
         <UserAgentRow />
       </Group>
+      <CookieBanners />
       <SiteDataOnClose />
       <SecureDns />
       <Group title="Passwords">

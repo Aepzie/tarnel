@@ -40,6 +40,7 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { registerCookieBannerIpc } from './cookie-banners';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
 
@@ -349,6 +350,7 @@ export function registerIpc(): void {
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
+  registerCookieBannerIpc(handleChrome, handlePages);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());

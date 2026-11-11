@@ -7,6 +7,7 @@ import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { COOKIE_BANNER_IPC } from '../shared/cookie-banners';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -181,6 +182,10 @@ const api: VelaChromeAPI = {
     onChange: (cb) => subscribe(BOOKMARKS_IPC.changed, cb),
     openManager: () => invoke(BOOKMARKS_IPC.chromeOpenManager),
     },
+  cookieBanners: {
+    tab: (tabId) => invoke(COOKIE_BANNER_IPC.tabInfo, tabId),
+    setAllowed: (tabId, allowed) => invoke(COOKIE_BANNER_IPC.setAllowed, tabId, allowed),
+  },
   passwords: {
     onSavePrompt: (cb) => subscribe(PASSWORD_IPC.savePrompt, cb),
     onSaveCancel: (cb) => subscribe(PASSWORD_IPC.saveCancel, cb),
