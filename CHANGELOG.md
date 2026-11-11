@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Tab archive: tabs unused for a while (Settings → Performance: Off / 6 h / 12 h / 24 h / 3 days / 1 week, default 24 h) move into a per-Space archive with URL, title, favicon, group and time; pinned tabs, tabs playing audio, using the mic/camera or downloading are never archived, Burner Spaces keep their archive in memory only. `Ctrl+Shift+E`, "Move to archive", "Archive other tabs" and "Archive group" archive by hand. The archive view (archive button in the tab strip / vertical list, palette command "Tab archive") has search, days, restore (into its Space and group), restore all of a day, delete and clear, plus the Space's recently closed tabs. Address-bar suggestions include archived tabs ("Archived · 2 days ago").
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
