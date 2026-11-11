@@ -11,7 +11,7 @@ import {
 } from '../../shared/site-rules';
 import { registrableDomain } from '../privacy';
 import { getSpace } from '../spaces';
-import { createTab, getTabSpaceId, getTabVpn, getTabWebContents, moveToSpace, navigateTab, onTabWebContents } from '../tabs';
+import { createTab, getBrowserState, getTabSpaceId, getTabVpn, getTabWebContents, moveToSpace, navigateTab, onTabWebContents } from '../tabs';
 import { canRouteTabs, routableCountries, routeTabByRule } from '../vpn';
 import { sendToChrome } from '../window';
 import { fingerprintOverrideOf, setFingerprintOverride, setUserAgentOverride, userAgentOverrideOf } from './overrides';
@@ -169,8 +169,8 @@ function testUrl(raw: unknown): SiteRuleResolution {
 /** "Create rule for this site…" in the tab menu: remember a draft and open the editor. */
 function createFor(rawTabId: unknown): void {
   if (typeof rawTabId !== 'number' || !Number.isInteger(rawTabId)) throw new TypeError('Invalid tab');
-  const wc = getTabWebContents(rawTabId);
-  const pattern = wc ? suggestPattern(wc.getURL()) : null;
+  const url = getBrowserState().tabs.find((tab) => tab.id === rawTabId)?.url;
+  const pattern = url ? suggestPattern(url) : null;
   draftToken += 1;
   pendingDraft = pattern ? { pattern, token: draftToken } : null;
   createTab({ url: 'vela://settings/#rules', active: true, afterId: rawTabId });

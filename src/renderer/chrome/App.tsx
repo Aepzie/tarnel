@@ -16,6 +16,7 @@ import { usePermissionQueue } from './permissions/permission-store';
 import { usePasswordQueue } from './passwords/password-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
+import { RuleNotice } from './site-rules/RuleNotice';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
 
@@ -121,6 +122,7 @@ export function App() {
         <CommandPalette />
         <BookmarkEditor />
         <TaskManager />
+        <RuleNotice />
       </LayoutGroup>
     </TooltipProvider>
   );
