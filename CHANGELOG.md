@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Reject cookie banners (Settings → Privacy, on by default): consent pop-ups from common consent tools (OneTrust, Sourcepoint, Didomi, Cookiebot, Usercentrics, Google's consent page and more) are answered with "reject" / "only necessary" and hidden. Built on DuckDuckGo's autoconsent rules (MPL-2.0), bundled at build time — nothing is fetched or sent. The site-info popover shows how many banners were rejected on the page and can allow banners on a site; exceptions are listed in Settings → Privacy.
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
