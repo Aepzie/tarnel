@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Web panels: pin web apps (WhatsApp Web, Telegram, Discord, Spotify, a calendar, any URL) to a slim rail on the right edge and open them as a resizable side view next to the page. Each panel has its own isolated session, an optional mobile layout, an unread badge from the page title and a menu to reload, mute, change the URL, open as a tab or remove it. Collapsed panels stay signed in and follow the tab freeze/sleep timeouts (never while playing sound). Settings → Appearance → Web panels.
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
