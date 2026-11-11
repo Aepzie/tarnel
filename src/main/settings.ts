@@ -2,6 +2,7 @@ import { DEFAULT_SETTINGS, FRAME_RATE_MODES, MEMORY_SAVER_MODES, NEWTAB_HEROES, 
 import { BATTERY_SAVER_MODES, type BatterySaverMode } from '../shared/battery';
 import { nextDnsTemplate, SECURE_DNS_MODES, validateDohTemplate, type SecureDnsMode } from '../shared/doh';
 import { isValidUserAgent } from '../shared/user-agent';
+import { MAX_ARCHIVE_AFTER_HOURS } from '../shared/tab-archive';
 import { createStore, type JsonStore } from './store';
 
 const SEARCH_ENGINES: readonly SearchEngine[] = ['duckduckgo', 'google', 'brave', 'startpage', 'ecosia'];
@@ -56,6 +57,9 @@ function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>
   if (isValidUserAgent(patch.userAgent)) next.userAgent = patch.userAgent.trim();
   next.sleepAfterMinutes = clampInt(patch.sleepAfterMinutes, 0, 240) ?? next.sleepAfterMinutes;
   next.freezeAfterMinutes = clampInt(patch.freezeAfterMinutes, 0, 240) ?? next.freezeAfterMinutes;
+  if (typeof patch.archiveAfterHours === 'number' && Number.isFinite(patch.archiveAfterHours)) {
+    next.archiveAfterHours = Math.min(MAX_ARCHIVE_AFTER_HOURS, Math.max(0, patch.archiveAfterHours));
+  }
   if (MEMORY_SAVER_MODES.includes(patch.memorySaver as MemorySaverMode)) next.memorySaver = patch.memorySaver as MemorySaverMode;
   if (BATTERY_SAVER_MODES.includes(patch.batterySaver as BatterySaverMode)) next.batterySaver = patch.batterySaver as BatterySaverMode;
   next.memorySaverThresholdGB = clampInt(patch.memorySaverThresholdGB, 1, 64) ?? next.memorySaverThresholdGB;

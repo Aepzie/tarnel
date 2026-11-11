@@ -19,6 +19,8 @@ import { onPaneFocus, trackPanes, type Pane } from './split-panes';
 import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTabMediaDevices, tabMediaDevices } from './audio-devices/state';
 import { forgetTabAudio, onTabAudioChanged, restoreTabAudio, tabAudioSettings } from './audio-mixer/state';
 import type { TabAudioSettings } from '../shared/audio-mixer';
+import type { ArchivedGroup, ClosedTabEntry } from '../shared/tab-archive';
+import type { ArchiveCandidate } from './tab-archive/policy';
 import { normalizeCountry } from '../shared/vpn-route';
 import { attachViewBackdrop } from './page-theme';
 
@@ -92,7 +94,8 @@ let order: number[] = [];
 let activeTabId: number | null = null;
 const activeBySpace = new Map<SpaceId, number>();
 const wcToTab = new Map<number, number>();
-const closedStack: { url: string; spaceId: SpaceId }[] = [];
+const closedStack: ClosedTabEntry[] = [];
+let closedSeq = 0;
 const stateListeners = new Set<() => void>();
 const wcHooks: WebContentsHook[] = [];
 let nextId = 1;
@@ -516,14 +519,14 @@ function showActive(): void {
   trackPanes(panes);
 }
 
-function closeTabInternal(id: number, replace: boolean): void {
+function closeTabInternal(id: number, replace: boolean, remember = true): void {
   const tab = tabs.get(id);
   if (!tab) return;
   const siblings = tabsInSpace(tab.spaceId);
   const index = siblings.indexOf(tab);
   const url = tab.errorUrl ?? tab.url;
-  if (url !== NEWTAB_URL) {
-    closedStack.push({ url, spaceId: tab.spaceId });
+  if (remember && url !== NEWTAB_URL) {
+    closedStack.push({ id: `c${++closedSeq}`, url, spaceId: tab.spaceId, title: tab.title, favicon: tab.favicon, closedAt: Date.now() });
     if (closedStack.length > CLOSED_STACK_MAX) closedStack.shift();
   }
   const wasOnScreen = isOnScreen(id);
@@ -563,6 +566,72 @@ export function reopenClosedTab(): number | null {
   const entry = closedStack.pop();
   if (!entry) return null;
   return createTab({ url: entry.url, spaceId: getSpace(entry.spaceId) ? entry.spaceId : getActiveSpaceId(), active: true });
+}
+
+/** Recently closed tabs of a Space, newest first. */
+export function listClosedTabs(spaceId: SpaceId): ClosedTabEntry[] {
+  return closedStack.filter((entry) => entry.spaceId === spaceId).reverse();
+}
+
+export function reopenClosedById(id: string): number | null {
+  const index = closedStack.findIndex((entry) => entry.id === id);
+  if (index === -1) return null;
+  const [entry] = closedStack.splice(index, 1);
+  if (!entry || !getSpace(entry.spaceId)) return null;
+  return createTab({ url: entry.url, spaceId: entry.spaceId, active: true });
+}
+
+export function listArchiveCandidates(): Omit<ArchiveCandidate, 'downloading'>[] {
+  return order.map((id) => {
+    const tab = tabs.get(id)!;
+    return {
+      id: tab.id,
+      url: tab.errorUrl ?? tab.url,
+      lastActiveAt: tab.lastActiveAt,
+      pinned: tab.pinned,
+      active: isOnScreen(tab.id),
+      audible: tab.audible,
+      capturing: isMicActive(tab.id),
+    };
+  });
+}
+
+export interface DetachedTab {
+  spaceId: SpaceId;
+  url: string;
+  title: string;
+  favicon: string | null;
+  group?: ArchivedGroup;
+}
+
+/**
+ * Close tabs for the archive: not pushed to the recently-closed stack, pinned tabs skipped. A Space
+ * never ends up empty (a Burner Space would be discarded): its last tab is replaced by a start page.
+ */
+export function detachTabsForArchive(ids: readonly number[]): DetachedTab[] {
+  const detached: DetachedTab[] = [];
+  for (const id of ids) {
+    const tab = tabs.get(id);
+    if (!tab || tab.pinned) continue;
+    const url = tab.errorUrl ?? tab.url;
+    if (url.startsWith(NEWTAB_URL)) continue;
+    const group = savedGroup(tab.groupId);
+    detached.push({
+      spaceId: tab.spaceId,
+      url,
+      title: tab.title,
+      favicon: tab.favicon,
+      ...(group ? { group: { id: group.id, name: group.name, color: group.color } } : {}),
+    });
+    if (tabsInSpace(tab.spaceId).length === 1) createTab({ spaceId: tab.spaceId, active: activeTabId === id });
+    closeTabInternal(id, true, false);
+  }
+  return detached;
+}
+
+/** Tabs of a group in display order. */
+export function tabIdsInGroup(groupId: TabGroupId): number[] {
+  return order.filter((id) => tabs.get(id)?.groupId === groupId);
 }
 
 export function getActiveTab(): number | null {

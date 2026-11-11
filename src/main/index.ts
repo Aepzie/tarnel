@@ -16,6 +16,7 @@ import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock'
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
 import { initSleeper, stopSleeper, trackDownloadsForSleep } from './perf/sleeper';
+import { runAutoArchive } from './tab-archive';
 import { initBatterySaver } from './perf/battery-saver';
 import { initSecureDns } from './dns';
 import { chromePermissionPrompter } from './permissions';
@@ -195,6 +196,7 @@ if (!app.requestSingleInstanceLock()) {
       getFreezeAfterMinutes: () => getSettings().freezeAfterMinutes,
       getMemorySaver: () => ({ mode: getSettings().memorySaver, thresholdGB: getSettings().memorySaverThresholdGB }),
       tabIdForWebContents,
+      onTick: () => runAutoArchive(),
     });
     initSync();
     initUpdater({

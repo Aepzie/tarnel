@@ -41,6 +41,7 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
 
@@ -185,7 +186,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
   const results: Suggestion[] = [];
   const seen = new Set<string>();
   const push = (s: Suggestion): void => {
-    const key = `${s.kind === 'tab' ? `tab:${s.tabId}` : s.url}`;
+    const key = s.kind === 'tab' ? `tab:${s.tabId}` : s.kind === 'archived' ? `archived:${s.archiveId}` : s.url;
     if (seen.has(key)) return;
     seen.add(key);
     results.push(s);
@@ -196,6 +197,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
     push({ kind: 'tab', title: tab.title || tab.url, url: tab.url, tabId: tab.id });
   }
   for (const entry of bookmarkSuggestions(input, 3)) push(entry);
+  for (const entry of archiveSuggestions(input, 3)) push(entry);
   for (const entry of suggest(input, 6)) push(entry);
   for (const entry of remoteTabSuggestions(input, 3)) push(entry);
   return results;
@@ -352,6 +354,7 @@ export function registerIpc(): void {
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
+  registerTabArchiveIpc(handleChrome);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());

@@ -511,6 +511,15 @@ first, mute every unmuted tab (reversible), `vpn.disconnectAll()` (restore the S
 routes; the account stays signed in), then `removeSpaceWithTabs()` for every Burner Space (normal disposal wipes
 its in-memory session; its tabs are not kept in the reopen stack). Only with `panicClearRecentHistory` on does it
 touch persistent data: `deleteHistorySince(now - 15 min)` removes entries whose last visit is in that window.
+## Tab archive (`src/main/tab-archive/*`)
+
+- Contract: `src/shared/tab-archive.ts` (`TAB_ARCHIVE_IPC`, `ArchivedTab`, `ClosedTabEntry`, `TabArchiveSnapshot`, pure list helpers `addArchived` / `removeArchived` / `searchArchived` / `groupByDay`, unit-tested). Chrome API `vela.tabArchive.*` (list, archiveTabs, archiveGroup, restore, remove, clear, reopenClosed, onChange); every argument is validated in `tab-archive/index.ts` and registered through `handleChrome`.
+- Policy (`policy.ts`, pure, unit-tested): a tab is archivable unless pinned, on screen, audible, capturing (mic/camera), downloading or a start page; `pickArchiveTargets` takes those idle for `archiveAfterHours` (setting, 0 = off, default 24), oldest first, at most 25 per check. The check runs on the sleeper's 30 s tick (`SleeperDeps.onTick`), so it costs no extra timer.
+- `tabs.detachTabsForArchive()` closes tabs without pushing them to the reopen stack and replaces a Space's last tab with a start page (so a Burner Space is never discarded by archiving). Restore recreates tabs (asleep when several) in their Space and re-registers the saved group by id (`restoreGroup`).
+- Storage: persistent Spaces in `tab-archive.json` (`Record<SpaceId, ArchivedTab[]>`, max 500 per Space, a re-archived URL replaces its older entry); Burner Spaces in memory only. `onSpacesChanged` prunes archives of removed Spaces. Every write sends `chrome-event:tab-archive` (Space id).
+- Recently closed: the reopen stack (`Ctrl+Shift+T`, 20 entries) now stores id, title, favicon and time; `listClosedTabs(spaceId)` / `reopenClosedById` back the second list of the archive view.
+- UI: `renderer/chrome/archive/*`. `TabArchivePanel` (dialog, holds the overlay) opens from `ArchiveButton` (strip / vertical list, only while the Space has archived tabs) and the palette; `Ctrl+Shift+E` (shortcuts.ts) archives the active tab. Suggestions include up to 3 archived tabs (`kind: 'archived'`), restored on Enter.
+
 ## Bookmarks (`src/main/bookmarks/*`)
 
 - Contract: `src/shared/bookmarks.ts` (`BookmarkNode`, `ImportedBookmark`) and `src/shared/bookmarks-ipc.ts` (`BOOKMARKS_IPC`, `BOOKMARK_ROOTS`, `BookmarkInput`/`BookmarkUpdate`, API types). Chrome API `vela.bookmarks.*` (plus `onChange`, `openManager`), pages API `velaPages.bookmarks.*`; both default to the active Space (chrome) or the hosting tab's Space (pages). Every argument is validated in `bookmarks/ipc.ts`; handlers go through the sender-checked `handleChrome` / `handlePages`.

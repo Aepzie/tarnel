@@ -35,6 +35,8 @@ export interface SleeperDeps {
   getFreezeAfterMinutes?(): number;
   getMemorySaver?(): { mode: MemorySaverMode; thresholdGB: number };
   tabIdForWebContents?(wcId: number): number | null;
+  /** Extra idle work on the same tick (tab archive). */
+  onTick?(now: number): void;
 }
 
 export interface MemorySaverNotice {
@@ -74,6 +76,10 @@ export function trackDownloadsForSleep(session: Session): void {
       else activeDownloads.delete(tabId);
     });
   });
+}
+
+export function hasActiveDownload(tabId: number): boolean {
+  return activeDownloads.has(tabId);
 }
 
 /** Last time the memory saver slept tabs, for the perf chip; null until it acts. */
@@ -134,6 +140,7 @@ function underMemoryPressure(): boolean {
 }
 
 function tick(deps: SleeperDeps): void {
+  deps.onTick?.(Date.now());
   const minutes = deps.getSleepAfterMinutes();
   // Battery saver halves the timeouts: every awake renderer costs timers, GC and wakeups.
   const factor = batteryDelayDivisor(isBatterySaverActive());
