@@ -11,7 +11,7 @@ import { initAudioDevices } from './audio-devices';
 import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
 import { initPasswords } from './passwords';
-import { initCookieBanners } from './cookie-banners';
+import { getCookieBannerStats, initCookieBanners } from './cookie-banners';
 import { registerIpc } from './ipc';
 import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
@@ -29,7 +29,7 @@ import { getSettings, onSettingsChanged } from './settings';
 import { clearSiteDataOnQuit, siteDataClearPending } from './site-data';
 import { attachShortcuts } from './shortcuts';
 import { disposeEphemeralSpaces, getActiveSpaceId, getSpace, initSpaces, onSessionCreated } from './spaces';
-import { initPrivacyReport } from './privacy-report';
+import { initPrivacyReport, registerPrivacySource } from './privacy-report';
 import { createStore, flushAllStores, type JsonStore } from './store';
 import { initSync, stopSync } from './sync/loader';
 import {
@@ -157,6 +157,7 @@ if (!app.requestSingleInstanceLock()) {
       },
       openReport: () => createTab({ url: 'vela://privacy', active: true }),
     });
+    registerPrivacySource('cookieBannersHandled', () => getCookieBannerStats().total);
     void initAdblock().catch(() => undefined);
     initSafety();
     initFrameRate();

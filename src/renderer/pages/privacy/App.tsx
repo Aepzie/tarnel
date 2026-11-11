@@ -194,7 +194,7 @@ export function App() {
                 <Stat label="Data saved" value={`≈ ${formatBytes(count(week, 'bytesSaved'))}`} note={`${formatBytes(count(last, 'bytesSaved'))} last week`} />
                 <Stat label="Time saved" value={`≈ ${formatDuration(report.timeSavedMs.thisWeek)}`} note="Estimated, see below" />
                 <Stat label="Tracking parameters removed" value={formatNumber(count(week, 'paramsStripped'))} note={`${formatNumber(count(last, 'paramsStripped'))} last week`} />
-                <Stat label="Referrers trimmed" value={formatNumber(count(week, 'referrersTrimmed'))} note={`${formatNumber(count(last, 'referrersTrimmed'))} last week`} />
+                <Stat label="Cookie banners rejected" value={formatNumber(count(week, 'cookieBannersHandled'))} note={`${formatNumber(count(last, 'cookieBannersHandled'))} last week`} />
                 <Stat
                   label={fingerprinting > 0 ? 'Fingerprinting mitigated' : 'Dangerous sites warned'}
                   value={formatNumber(fingerprinting > 0 ? fingerprinting : count(week, 'dangerousWarned'))}

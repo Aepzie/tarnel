@@ -17,6 +17,7 @@ export const PRIVACY_COUNTERS = {
   referrersTrimmed: 'Referrers trimmed',
   dangerousWarned: 'Dangerous sites warned',
   fingerprintMitigated: 'Fingerprinting attempts mitigated',
+  cookieBannersHandled: 'Cookie banners rejected',
   bytesSaved: 'Data saved (bytes, estimated)',
 } as const;
 
