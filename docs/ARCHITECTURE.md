@@ -703,7 +703,13 @@ The Electron listener of an event exists only while the event has stages: with G
 using declarativeNetRequest, no `onBeforeRequest` / `onHeadersReceived` hook is installed at all. A throwing
 stage is skipped (fail open). Ghostery keeps its own library code path: `perf/adblock.ts` hands
 `enableBlockingInSession` a session facade whose `webRequest.onBeforeRequest/onHeadersReceived` register
-dispatcher stages, so its blocking, redirects, CSP injection and stats are unchanged. `net/domain.ts` holds the
+dispatcher stages, so its blocking, redirects, CSP injection and stats are unchanged. Cosmetic scriptlets are the
+one change: the library runs each as a top-level script in the page's main world, and uBO scriptlets declare their
+helpers (`safeSelf`, `proxyApplyFn`, `class JSONPath`) at top level, so on YouTube (~30 scriptlets) they clobbered
+each other ("Identifier 'JSONPath' has already been declared", then "Maximum call stack size exceeded" in the
+proxied `JSON.parse` / fetch / XHR) and the player stayed black or showed "Video unavailable".
+`perf/adblock-scriptlets.ts` wraps every scriptlet in its own function scope, as uBO does (regression note:
+keep this when upgrading `@ghostery/adblocker-electron`; recheck YouTube watch pages for those console errors). `net/domain.ts` holds the
 registrable-domain heuristic shared by privacy, fingerprinting and DNR (pure, unit-testable).
 
 ## Phishing & malware protection (`src/main/safety/*`)

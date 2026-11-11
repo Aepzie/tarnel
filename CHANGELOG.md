@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Tab archive: tabs unused for a while (Settings → Performance: Off / 6 h / 12 h / 24 h / 3 days / 1 week, default 24 h) move into a per-Space archive with URL, title, favicon, group and time; pinned tabs, tabs playing audio, using the mic/camera or downloading are never archived, Burner Spaces keep their archive in memory only. `Ctrl+Shift+E`, "Move to archive", "Archive other tabs" and "Archive group" archive by hand. The archive view (archive button in the tab strip / vertical list, palette command "Tab archive") has search, days, restore (into its Space and group), restore all of a day, delete and clear, plus the Space's recently closed tabs. Address-bar suggestions include archived tabs ("Archived · 2 days ago").
+- Battery saver (Settings → Performance): Off, On battery (default), Below 20 % or Always. While on, background tabs freeze and sleep twice as fast, the memory saver acts as Maximum, address-bar preloading is skipped, adblock lists refresh less often, the perf chip stops polling and shows a leaf, and the browser's own animations are calmed. Security features are never reduced.
+
+### Changed
+- The "halve freeze/sleep delays on battery" rule now follows the Battery saver setting (it can be turned off).
+
+### Fixed
+- YouTube videos sometimes stayed black, never started or showed "Video unavailable" with the content blocker on: its cosmetic scriptlets ran in one shared scope and broke each other (and the player's JSON / network calls). Each scriptlet now runs in its own scope.
 
 ## [0.8.3] - 2026-11-11
 

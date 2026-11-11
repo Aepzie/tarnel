@@ -17,6 +17,7 @@ import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
 import { initSleeper, stopSleeper, trackDownloadsForSleep } from './perf/sleeper';
 import { runAutoArchive } from './tab-archive';
+import { initBatterySaver } from './perf/battery-saver';
 import { initSecureDns } from './dns';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, onTrackingStripped, setPermissionPrompter } from './privacy';
@@ -186,6 +187,7 @@ if (!app.requestSingleInstanceLock()) {
     booted = true;
     startupMark('booted');
 
+    initBatterySaver();
     initSleeper({
       listTabs: listSleepCandidates,
       sleepTab,

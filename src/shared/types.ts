@@ -1,4 +1,5 @@
 import type { SecureDnsMode } from './doh';
+import type { BatterySaverMode } from './battery';
 
 export type SpaceId = string;
 
@@ -190,6 +191,8 @@ export interface Settings {
   memorySaver: MemorySaverMode;
   /** Memory saver threshold: total memory Vela may use before it sleeps tabs (GB). */
   memorySaverThresholdGB: number;
+  /** When battery saver kicks in (shared/battery.ts, docs/PERFORMANCE.md → Battery saver). */
+  batterySaver: BatterySaverMode;
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
@@ -295,6 +298,8 @@ export interface PerfStats {
   tabsFrozen?: number;
   /** Last memory saver action: memory freed (MB) and when (epoch ms); null if it has not acted. */
   memorySaver?: { freedMB: number; at: number } | null;
+  /** Battery saver is currently on. */
+  batterySaver?: boolean;
 }
 
 export interface FindResult {
@@ -350,6 +355,7 @@ export const DEFAULT_SETTINGS: Settings = {
   archiveAfterHours: 24,
   memorySaver: 'balanced',
   memorySaverThresholdGB: 4,
+  batterySaver: 'battery',
   httpsOnly: true,
   blockThirdPartyCookies: true,
   sendDoNotTrack: true,
