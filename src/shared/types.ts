@@ -236,6 +236,8 @@ export interface Settings {
   offerToSavePasswords: boolean;
   /** Password manager: offer saved accounts on login forms (filling always needs a click). */
   passwordAutofill: boolean;
+  /** Shift-click on a link previews it in Peek instead of opening a new window. */
+  peekOnShiftClick: boolean;
 }
 
 export interface Suggestion {
@@ -371,6 +373,7 @@ export const DEFAULT_SETTINGS: Settings = {
   userAgent: '',
   offerToSavePasswords: true,
   passwordAutofill: true,
+  peekOnShiftClick: true,
 };
 
 /** Where an installed extension came from. */
