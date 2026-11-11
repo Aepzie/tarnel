@@ -3,11 +3,13 @@ import { AUDIO_IPC, EXTENSION_IPC, IPC, PANIC_IPC, type Unsubscribe, type VelaCh
 import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
+import { BATTERY_IPC } from '../shared/battery';
 import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
 import { ALIAS_IPC } from '../shared/aliases';
+import { TAB_ARCHIVE_IPC } from '../shared/tab-archive';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -152,6 +154,11 @@ const api: VelaChromeAPI = {
     watchLevels: (on) => invoke(MIXER_IPC.watchLevels, on),
     onLevels: (cb) => subscribe(MIXER_IPC.levelsEvent, cb),
   },
+  battery: {
+    state: () => invoke(BATTERY_IPC.state),
+    report: (level) => invoke(BATTERY_IPC.report, level),
+    onChange: (cb) => subscribe(BATTERY_IPC.changed, cb),
+  },
   vpn: {
     state: () => invoke(VPN_IPC.state),
     refresh: () => invoke(VPN_IPC.refresh),
@@ -182,6 +189,16 @@ const api: VelaChromeAPI = {
     onChange: (cb) => subscribe(BOOKMARKS_IPC.changed, cb),
     openManager: () => invoke(BOOKMARKS_IPC.chromeOpenManager),
     },
+  tabArchive: {
+    list: (spaceId) => invoke(TAB_ARCHIVE_IPC.list, spaceId ?? null),
+    archiveTabs: (tabIds) => invoke(TAB_ARCHIVE_IPC.archiveTabs, tabIds),
+    archiveGroup: (groupId) => invoke(TAB_ARCHIVE_IPC.archiveGroup, groupId),
+    restore: (ids, spaceId) => invoke(TAB_ARCHIVE_IPC.restore, ids, spaceId ?? null),
+    remove: (ids, spaceId) => invoke(TAB_ARCHIVE_IPC.remove, ids, spaceId ?? null),
+    clear: (spaceId) => invoke(TAB_ARCHIVE_IPC.clear, spaceId ?? null),
+    reopenClosed: (id) => invoke(TAB_ARCHIVE_IPC.reopenClosed, id),
+    onChange: (cb) => subscribe(TAB_ARCHIVE_IPC.changed, cb),
+  },
   passwords: {
     onSavePrompt: (cb) => subscribe(PASSWORD_IPC.savePrompt, cb),
     onSaveCancel: (cb) => subscribe(PASSWORD_IPC.saveCancel, cb),

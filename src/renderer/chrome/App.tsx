@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { LayoutGroup } from 'motion/react';
+import { LayoutGroup, MotionConfig } from 'motion/react';
 import type { UICommand } from '@shared/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getBrowserStateSnapshot, useActiveSpace, useCommand, useSettings } from '@/hooks/browser';
@@ -19,6 +19,8 @@ import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
+import { TabArchivePanel } from './archive/TabArchivePanel';
+import { useBatteryLevelReport, useBatterySaver } from './perf/battery';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
@@ -52,6 +54,13 @@ export function App() {
   }, [aliasOffers]);
 
   useEffect(() => resetOverlayOnBoot(), []);
+
+  const batterySaver = useBatterySaver();
+  useBatteryLevelReport(settings.batterySaver === 'low');
+  useEffect(() => {
+    if (batterySaver) document.documentElement.dataset.battery = '';
+    else delete document.documentElement.dataset.battery;
+  }, [batterySaver]);
 
   useEffect(() => {
     document.documentElement.dataset.material = settings.windowMaterial;
@@ -104,6 +113,7 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={500} skipDelayDuration={150}>
+      <MotionConfig reducedMotion={batterySaver ? 'always' : 'user'}>
       <LayoutGroup>
         <div className="flex h-screen w-screen gap-2 overflow-hidden p-2 select-none">
           {/* A fully transparent window ('none') must show the desktop untinted around the islands. */}
@@ -134,7 +144,9 @@ export function App() {
         <CommandPalette />
         <BookmarkEditor />
         <TaskManager />
+        <TabArchivePanel />
       </LayoutGroup>
+      </MotionConfig>
     </TooltipProvider>
   );
 }

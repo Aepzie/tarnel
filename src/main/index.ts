@@ -16,6 +16,8 @@ import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock'
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
 import { initSleeper, stopSleeper, trackDownloadsForSleep } from './perf/sleeper';
+import { runAutoArchive } from './tab-archive';
+import { initBatterySaver } from './perf/battery-saver';
 import { initSecureDns } from './dns';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, onTrackingStripped, setPermissionPrompter } from './privacy';
@@ -24,7 +26,8 @@ import { attachSafety, initSafety } from './safety';
 import { getSettings, onSettingsChanged } from './settings';
 import { clearSiteDataOnQuit, siteDataClearPending } from './site-data';
 import { attachShortcuts } from './shortcuts';
-import { disposeEphemeralSpaces, getActiveSpaceId, initSpaces, onSessionCreated } from './spaces';
+import { disposeEphemeralSpaces, getActiveSpaceId, getSpace, initSpaces, onSessionCreated } from './spaces';
+import { initPrivacyReport } from './privacy-report';
 import { createStore, flushAllStores, type JsonStore } from './store';
 import { initSync, stopSync } from './sync/loader';
 import {
@@ -32,6 +35,7 @@ import {
   createTab,
   getActiveTab,
   getBrowserState,
+  getTabSpaceId,
   initTabs,
   listSleepCandidates,
   noteBlocked,
@@ -141,6 +145,14 @@ if (!app.requestSingleInstanceLock()) {
     initAudioMixer();
     initPasswords();
 
+    initPrivacyReport({
+      spaceOfWebContents: (wcId) => {
+        const tabId = tabIdForWebContents(wcId);
+        const space = tabId === null ? undefined : getSpace(getTabSpaceId(tabId) ?? '');
+        return space ? { spaceId: space.id, ephemeral: space.ephemeral } : null;
+      },
+      openReport: () => createTab({ url: 'vela://privacy', active: true }),
+    });
     void initAdblock().catch(() => undefined);
     initSafety();
     initFrameRate();
@@ -185,6 +197,7 @@ if (!app.requestSingleInstanceLock()) {
     booted = true;
     startupMark('booted');
 
+    initBatterySaver();
     initSleeper({
       listTabs: listSleepCandidates,
       sleepTab,
@@ -193,6 +206,7 @@ if (!app.requestSingleInstanceLock()) {
       getFreezeAfterMinutes: () => getSettings().freezeAfterMinutes,
       getMemorySaver: () => ({ mode: getSettings().memorySaver, thresholdGB: getSettings().memorySaverThresholdGB }),
       tabIdForWebContents,
+      onTick: () => runAutoArchive(),
     });
     initSync();
     initUpdater({

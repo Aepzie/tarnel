@@ -1,3 +1,4 @@
+import type { PrivacyReport } from './privacy-report';
 import type {
   BrowserState,
   ContentBounds,
@@ -27,6 +28,7 @@ import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionReview, E
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
+import type { BatterySaverState } from './battery';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
 import type { AliasOffer, AliasOptions, AliasSettingsPatch, AliasSettingsView } from './aliases';
@@ -339,6 +341,11 @@ export interface VelaPagesAPI {
     /** Check now; resolves when the check finished (status carries the result). */
     check(): Promise<void>;
   };
+  /** Local privacy report (vela://privacy, start-page stat line). */
+  privacyReport: {
+    get(): Promise<PrivacyReport>;
+    reset(): Promise<void>;
+  };
 }
 
 declare global {
@@ -532,6 +539,16 @@ export interface VelaChromeAPI {
     /** Main creates the alias at the provider and fills the focused field of that frame only. */
     create(offerId: string): Promise<{ email: string }>;
     dismiss(offerId: string): Promise<void>;
+  };
+}
+
+/** Battery saver (chrome only). Channels live in BATTERY_IPC (shared/battery.ts). */
+export interface VelaChromeAPI {
+  battery: {
+    state(): Promise<BatterySaverState>;
+    /** Battery level 0–1 from navigator.getBattery (null when unknown); only needed for the "Below 20 %" mode. */
+    report(level: number | null): Promise<void>;
+    onChange(cb: (state: BatterySaverState) => void): Unsubscribe;
   };
 }
 

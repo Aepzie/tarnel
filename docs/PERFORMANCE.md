@@ -20,7 +20,7 @@ the OS; the tab reloads when you click it.
 
 - Background tabs sleep after *N* minutes idle (Settings, default 10; 0 = never).
 - Never slept: the active tab, pinned tabs, tabs playing audio.
-- **On battery the timeout is halved** — every awake renderer means timers, GC and wakeups.
+- **Battery saver halves the timeout** (on battery by default, see §10) — every awake renderer means timers, GC and wakeups.
 - **Memory pressure:** when free system RAM drops below 10%, the 2 least-recently-used eligible tabs
   (idle ≥ 60 s) are slept on each 30 s tick until pressure clears, regardless of the timeout.
 - The 30 s timer is `unref()`'d and does O(tabs) work — it costs nothing measurable.
@@ -30,7 +30,7 @@ the OS; the tab reloads when you click it.
 
 #### Freeze before sleep (`src/main/perf/freeze.ts`)
 Between awake and asleep there is a cheaper stage: after *N* minutes in the background (Settings →
-Performance → Freeze background tabs, default 5, 0 = never; halved on battery) a tab is **frozen**
+Performance → Freeze background tabs, default 5, 0 = never; halved while battery saver is on) a tab is **frozen**
 with the Page Lifecycle API (`Page.setWebLifecycleState({state:'frozen'})`). Its renderer, scroll
 position and form state stay; its task queues stop, so timers, rAF and callbacks cost nothing. It is
 thawed (`state:'active'`) the moment it is shown again (activation or as a split pane), and still
@@ -233,6 +233,53 @@ Startup trace (Windows 11, warm profile, `VELA_STARTUP_TRACE=1`, median of 5): b
 `load`, spawn → new-tab `load`) were measured over CDP with the window moved off-screen; occluded
 windows never record first-contentful-paint, so `load` is used instead, and the machine was busy, so
 treat run-to-run noise (±150 ms) as larger than the effect.
+
+### 10. Battery saver (`src/main/perf/battery-saver.ts`, `battery-policy.ts`)
+
+Settings → Performance → Battery saver: **Off / On battery (default) / Below 20 % / Always**. The pure
+resolver (`resolveBatterySaver`) is unit-tested; `battery-saver.ts` is the single source of truth
+(it replaced the sleeper's own `powerMonitor` check) and pushes the state to the chrome UI.
+
+Detection, per platform:
+- **Power source:** Electron `powerMonitor.isOnBatteryPower()` + `on-battery` / `on-ac` (Windows,
+  macOS; Linux via UPower — desktops without a battery always report AC).
+- **Battery level:** Electron has no API. Only while *Below 20 %* is selected, the chrome UI reads
+  `navigator.getBattery()` (Chromium's Battery Status API: Windows, macOS, Linux/UPower) and reports
+  the level over `chrome:battery-report` (validated and clamped in main). No level → that mode stays
+  inactive. Web pages still see the spoofed battery from the fingerprint layer; the chrome UI is not
+  affected by it.
+- **Testing:** `VELA_FORCE_BATTERY=1|0` forces the power source, `VELA_FORCE_BATTERY_LEVEL=0..1` the level.
+
+While active:
+- freeze and sleep delays are halved;
+- memory saver *Balanced* acts as *Maximum* (Off stays off);
+- address-bar prefetch is skipped (the cheap preconnect stays);
+- the adblock lists refresh after 72 h instead of 24 h (the phishing/malware warning lists and every
+  other security feature are untouched);
+- the perf chip stops its 10 s idle polling (it still polls while its popover is open) and shows a leaf
+  ("Battery saver on");
+- the chrome UI gets `data-battery`: CSS animations and transitions are cut to 1 ms (loading spinners
+  keep turning) and `motion` runs with `reducedMotion="always"`.
+
+Not done: a frame-rate cap for the chrome UI. `webContents.setFrameRate()` only applies to offscreen
+rendering and Chromium has no switch that caps on-screen frames (see §8); without animations the
+chrome UI produces no frames at idle anyway. Video in pages is never touched.
+
+Measured (Windows 11, Electron 45, isolated off-screen instance, 5 background tabs each running a
+100 ms timer with ~20k `Math.sqrt` per tick, freeze delay set to 1 min, CPU summed over all
+processes via CDP `SystemInfo.getProcessInfo`, 120 s after opening the tabs, one run each):
+
+| Battery saver | CPU % per 20 s window (all processes) | CPU s over 120 s | Tabs frozen at end |
+|---|---|---|---|
+| Off (`VELA_FORCE_BATTERY=0`) | 3.4 · 1.5 · 0.3 · 0.2 · 4.1 · 0.4 | 2.00 | 5 |
+| On (`VELA_FORCE_BATTERY=1`) | 4.0 · 2.6 · 3.3 · 0.9 · 0.3 · 0.4 | 2.32 | 5 |
+
+No measurable difference: Chromium already throttles timers in hidden tabs, so the earlier freeze
+saves little on top, and both runs settle at ~0.3–0.4 % once every tab is frozen. Run-to-run noise
+(single spikes of ~4 %) is larger than the effect; the gain from halved delays shows only on real
+pages over the minutes between the two freeze/sleep deadlines, which this short run does not cover.
+
+Wakeups were not measured (needs ETW / `powercfg /energy`, not available in the test setup).
 
 ## Measuring it in-app
 
