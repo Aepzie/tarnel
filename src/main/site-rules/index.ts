@@ -11,21 +11,32 @@ import {
 } from '../../shared/site-rules';
 import { registrableDomain } from '../privacy';
 import { getSpace } from '../spaces';
-import { createTab, getBrowserState, getTabSpaceId, getTabVpn, getTabWebContents, moveToSpace, navigateTab, onTabWebContents } from '../tabs';
+import {
+  createTab,
+  getBrowserState,
+  getTabSpaceId,
+  getTabVpn,
+  getTabWebContents,
+  moveToSpace,
+  navigateTab,
+  onTabWebContents,
+  setNavigationGate,
+} from '../tabs';
 import { canRouteTabs, routableCountries, routeTabByRule } from '../vpn';
 import { sendToChrome } from '../window';
 import { fingerprintOverrideOf, setFingerprintOverride, setUserAgentOverride, userAgentOverrideOf } from './overrides';
 import { getSiteRules, setSiteRules } from './store';
 
 /**
- * Applies site rules when a tab navigates top-level (link click, typed URL, new tab from a link):
- *   1. Block   → the navigation is cancelled.
- *   2. Space   → the tab moves to the target Space and loads the URL there (tabs.moveToSpace).
- *   3. VPN     → the tab is routed like the tab VPN menu does (needs a live MantelVPN session; else a hint).
- *   4. UA      → per-tab webContents.setUserAgent, then the navigation restarts so the request carries it.
- *   5. Fingerprint → a per-tab level read by the fingerprint config IPC ('random' = fresh seed per site visit).
- * Steps 2–4 re-enter this handler on the restarted navigation, which then finds nothing left to change.
+ * Applies site rules to top-level tab navigations, always before the request is made:
+ *   - the tabs.ts navigation gate (typed URL, new tab from a link, restore, wake),
+ *   - will-navigate (renderer-initiated: link clicks, location changes) → cancelled and re-run via the gate.
+ * In order: Block → cancelled. Space → the tab moves to the target Space and loads the URL there.
+ * VPN → the tab is routed like the tab VPN menu does (needs a live MantelVPN session; else a hint).
+ * UA → per-tab webContents.setUserAgent before the load. Fingerprint → a per-tab level read by the
+ * fingerprint config IPC ('random' = fresh seed per site visit).
  * Space and VPN stick after leaving the site (the tab now lives there); UA and fingerprint follow the site.
+ * Server redirects and back/forward only refresh UA/fingerprint (did-start-navigation, never cancelled).
  * Precedence: rule > Space setting > global setting.
  */
 
@@ -47,17 +58,6 @@ function notify(tabId: number, key: string, message: string): void {
   sendToChrome(SITE_RULES_IPC.notice, notice);
 }
 
-function stop(wc: WebContents, prevent?: () => void): void {
-  if (prevent) prevent();
-  else {
-    try {
-      wc.stop();
-    } catch {
-      /* destroyed meanwhile */
-    }
-  }
-}
-
 function applyFingerprint(wc: WebContents, resolution: SiteRuleResolution): void {
   const level = resolution.fingerprint;
   const host = resolution.host;
@@ -75,10 +75,9 @@ function applyFingerprint(wc: WebContents, resolution: SiteRuleResolution): void
   setFingerprintOverride(wc, { level, seed: keep ? previous.seed : randomBytes(32).toString('hex'), host: site });
 }
 
-/** UA wanted for this navigation vs. what the tab has; true when the navigation must restart. */
+/** Gives the tab the UA the rule wants (or back the session's); true when it changed. */
 function applyUserAgent(wc: WebContents, wanted: string | null): boolean {
-  const current = userAgentOverrideOf(wc);
-  if (wanted === current) return false;
+  if (wanted === userAgentOverrideOf(wc)) return false;
   setUserAgentOverride(wc, wanted);
   try {
     wc.setUserAgent(wanted ?? wc.session.getUserAgent());
@@ -88,69 +87,91 @@ function applyUserAgent(wc: WebContents, wanted: string | null): boolean {
   return true;
 }
 
+function rulesIdle(wc: WebContents): boolean {
+  return getSiteRules().length === 0 && !fingerprintOverrideOf(wc) && !userAgentOverrideOf(wc);
+}
+
+function wantsRoute(tabId: number, resolution: SiteRuleResolution): boolean {
+  return !!resolution.vpn && !!resolution.host && getTabVpn(tabId) !== resolution.vpn;
+}
+
+function wantsMove(tabId: number, resolution: SiteRuleResolution): boolean {
+  const spaceId = getTabSpaceId(tabId);
+  return !!resolution.space && !!spaceId && resolution.space !== spaceId && !!getSpace(resolution.space);
+}
+
 /**
- * Decides what a top-level navigation to `url` in tab `tabId` needs. `prevent` cancels a
- * renderer-initiated navigation (will-navigate); otherwise the started navigation is stopped.
+ * Runs before tab `tabId` loads `url`. Returns true when a rule took the navigation over
+ * (blocked, moving to a Space, being routed): the caller must not load it.
  */
-function handleNavigation(wc: WebContents, tabId: number, url: string, prevent?: () => void): void {
-  const rules = getSiteRules();
-  if (rules.length === 0 && !fingerprintOverrideOf(wc) && !userAgentOverrideOf(wc)) return;
-  const resolution = resolveSiteRules(rules, url);
+function gate(wc: WebContents, tabId: number, url: string): boolean {
+  if (rulesIdle(wc)) return false;
+  const resolution = resolveSiteRules(getSiteRules(), url);
   const host = resolution.host;
 
   if (resolution.block && host) {
-    stop(wc, prevent);
     notify(tabId, `block:${host}:${Date.now()}`, `${host} is blocked by a site rule.`);
-    return;
+    return true;
   }
 
-  const spaceId = getTabSpaceId(tabId);
-  if (resolution.space && spaceId && resolution.space !== spaceId && getSpace(resolution.space)) {
-    const target = resolution.space;
-    stop(wc, prevent);
+  if (wantsMove(tabId, resolution)) {
+    const target = resolution.space!;
     setImmediate(() => moveToSpace(tabId, target, url));
-    return;
+    return true;
   }
 
-  const country = resolution.vpn;
-  if (country && host && getTabVpn(tabId) !== country) {
+  if (wantsRoute(tabId, resolution)) {
+    const country = resolution.vpn!;
     const routeKey = `${country}:${host}`;
     if (!canRouteTabs()) {
       notify(tabId, `vpn:${routeKey}`, `Sign in to MantelVPN to route ${host} through ${country.toUpperCase()} (site rule).`);
     } else if (failedRoutes.get(tabId) !== routeKey) {
-      stop(wc, prevent);
+      const fail = (message: string): void => {
+        failedRoutes.set(tabId, routeKey);
+        notify(tabId, `vpn-fail:${routeKey}`, message);
+      };
       void routeTabByRule(tabId, country).then(
         (result) => {
-          if (!result.ok) {
-            failedRoutes.set(tabId, routeKey);
-            notify(tabId, `vpn-fail:${routeKey}`, result.error ?? 'The site rule could not route this tab through MantelVPN.');
-          }
+          if (!result.ok) fail(result.error ?? 'The site rule could not route this tab through MantelVPN.');
           navigateTab(tabId, url);
         },
         () => {
-          failedRoutes.set(tabId, routeKey);
+          fail('The site rule could not route this tab through MantelVPN.');
           navigateTab(tabId, url);
         },
       );
-      return;
+      return true;
     }
   }
 
   applyFingerprint(wc, resolution);
-  if (applyUserAgent(wc, resolution.userAgent)) {
-    stop(wc, prevent);
-    setImmediate(() => navigateTab(tabId, url));
-  }
+  applyUserAgent(wc, resolution.userAgent);
+  return false;
+}
+
+/** Must a renderer-initiated navigation go through the gate (anything beyond the fingerprint level)? */
+function needsGate(wc: WebContents, tabId: number, url: string): boolean {
+  if (rulesIdle(wc)) return false;
+  const resolution = resolveSiteRules(getSiteRules(), url);
+  if (resolution.block || wantsMove(tabId, resolution)) return true;
+  if (wantsRoute(tabId, resolution) && canRouteTabs() && failedRoutes.get(tabId) !== `${resolution.vpn}:${resolution.host}`) return true;
+  return resolution.userAgent !== userAgentOverrideOf(wc);
 }
 
 function watch(wc: WebContents, tabId: number): void {
   wc.on('will-navigate', (details) => {
-    if (!details.isMainFrame || details.isSameDocument) return;
-    handleNavigation(wc, tabId, details.url, () => details.preventDefault());
+    if (!details.isMainFrame || details.isSameDocument || !needsGate(wc, tabId, details.url)) return;
+    details.preventDefault();
+    const url = details.url;
+    setImmediate(() => {
+      if (!wc.isDestroyed() && !gate(wc, tabId, url)) navigateTab(tabId, url);
+    });
   });
   wc.on('did-start-navigation', (details) => {
-    if (!details.isMainFrame || details.isSameDocument) return;
-    handleNavigation(wc, tabId, details.url);
+    if (!details.isMainFrame || details.isSameDocument || rulesIdle(wc)) return;
+    const resolution = resolveSiteRules(getSiteRules(), details.url);
+    applyFingerprint(wc, resolution);
+    applyUserAgent(wc, resolution.userAgent);
   });
   wc.once('destroyed', () => {
     if (getTabWebContents(tabId)) return;
@@ -178,6 +199,7 @@ function createFor(rawTabId: unknown): void {
 
 export function initSiteRules(): void {
   onTabWebContents(watch);
+  setNavigationGate(gate);
 }
 
 export function registerSiteRulesIpc(handleChrome: ChromeHandler, handlePages: PagesHandler): void {
