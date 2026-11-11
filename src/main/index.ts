@@ -10,6 +10,7 @@ import { initAudioDevices } from './audio-devices';
 import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
 import { initPasswords } from './passwords';
+import { initCookieBanners } from './cookie-banners';
 import { registerIpc } from './ipc';
 import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
@@ -140,6 +141,7 @@ if (!app.requestSingleInstanceLock()) {
     initAudioDevices();
     initAudioMixer();
     initPasswords();
+    initCookieBanners();
 
     void initAdblock().catch(() => undefined);
     initSafety();

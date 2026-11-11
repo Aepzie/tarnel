@@ -236,6 +236,8 @@ export interface Settings {
   offerToSavePasswords: boolean;
   /** Password manager: offer saved accounts on login forms (filling always needs a click). */
   passwordAutofill: boolean;
+  /** Click "reject" / "only necessary" on cookie consent banners (src/main/cookie-banners). */
+  rejectCookieBanners: boolean;
 }
 
 export interface Suggestion {
@@ -371,6 +373,7 @@ export const DEFAULT_SETTINGS: Settings = {
   userAgent: '',
   offerToSavePasswords: true,
   passwordAutofill: true,
+  rejectCookieBanners: true,
 };
 
 /** Where an installed extension came from. */
