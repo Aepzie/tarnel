@@ -158,15 +158,17 @@ if (isVelaPage()) {
 
 interface BootTheme {
   theme: 'dark' | 'light';
+  glassTheme?: boolean;
   mode?: string;
   accent: string | null;
   hero?: string;
 }
 
-function applyPageTheme(root: HTMLElement, { theme, mode, accent, hero }: BootTheme): void {
+function applyPageTheme(root: HTMLElement, { theme, mode, accent, hero, glassTheme }: BootTheme): void {
   root.classList.toggle('light', theme === 'light');
   root.classList.toggle('dark', theme !== 'light');
   root.dataset.theme = theme;
+  root.toggleAttribute('data-glass', glassTheme === true);
   if (typeof mode === 'string' && /^[a-z]{1,8}$/.test(mode)) root.dataset.themeMode = mode;
   if (typeof hero === 'string' && /^[a-z-]{1,24}$/.test(hero)) root.dataset.hero = hero;
   if (accent && /^#[0-9a-f]{3,8}$/i.test(accent)) root.style.setProperty('--accent-space', accent);

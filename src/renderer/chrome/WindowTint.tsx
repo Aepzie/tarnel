@@ -32,7 +32,7 @@ export function WindowTint({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={cn('pointer-events-none fixed inset-0 -z-10 transition-colors duration-300', className)}
+      className={cn('vela-window-tint pointer-events-none fixed inset-0 -z-10 transition-colors duration-300', className)}
       style={mask ? { maskImage: mask, maskMode: 'luminance', maskRepeat: 'no-repeat', maskSize: '100% 100%' } : undefined}
     />
   );

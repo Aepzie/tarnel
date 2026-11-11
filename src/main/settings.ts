@@ -10,6 +10,7 @@ const THEMES: readonly ThemeMode[] = ['system', 'dark', 'light'];
 const MATERIALS: readonly WindowMaterial[] = ['mica', 'acrylic', 'none'];
 const TAB_LAYOUTS: readonly TabLayout[] = ['horizontal', 'vertical'];
 const BOOLEAN_KEYS = [
+  'glassTheme',
   'adblock',
   'httpsOnly',
   'blockThirdPartyCookies',

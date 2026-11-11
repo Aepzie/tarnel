@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Optional Glass theme (Preview) in Appearance: frosted surfaces, subtle reflections and luminous edges for light and dark, with live switching and reduced-transparency fallbacks. Disabled by default.
+
+### Fixed
+- Segmented controls use consistent padding and concentric selection corners in all themes. The new-tab background fills the full page width without a reserved scrollbar strip.
+- New-tab clock seconds no longer inherit the main time's negative letter spacing, keeping each digit fully visible.
+- Vertical tabs align with the top toolbar and have more space inside the list; pinned tabs fit and stay centered in the collapsed rail.
+- Button corners follow consistent, size-appropriate radii across actions, toolbar controls and window controls.
+
 ### Changed
+- Glass preview now applies a consistent translucent material to buttons, toolbar controls, tabs, switches, form fields and tooltips, including hover, pressed and keyboard-focus states.
 - README: shorter and focused, with a demo recording of the real app at the top (`docs/media/vela-demo.gif`, full quality as `vela-demo.mp4`). The complete feature list, all keyboard shortcuts, the Spaces details, performance notes and the security model moved to the new [docs/FEATURES.md](docs/FEATURES.md); features missing from the old README (VPN, passwords, translation, site rules, privacy report, cookie banners and more) are listed there now.
 
 ## [0.9.0] - 2026-11-11

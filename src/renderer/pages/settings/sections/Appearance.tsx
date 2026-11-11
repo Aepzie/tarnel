@@ -42,6 +42,11 @@ export function Appearance() {
         <Row title="Theme" description="Follow the system, or pin light or dark.">
           <Segmented label="Theme" value={settings.theme} options={THEMES} onChange={(theme) => update({ theme })} />
         </Row>
+        <SwitchRow
+          title="Glass theme (Preview)"
+          description="Try frosted surfaces, soft reflections and luminous edges in light or dark."
+          setting="glassTheme"
+        />
         <Row
           title="Window material"
           description={

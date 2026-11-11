@@ -117,7 +117,7 @@ export function VerticalTabList({ iconOnly }: { iconOnly: boolean }) {
             aria-label="Tabs"
             aria-orientation="vertical"
             onKeyDown={onKeyDown}
-            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="min-h-0 flex-1 scroll-py-2 overflow-x-hidden overflow-y-auto overscroll-contain p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage: `linear-gradient(to bottom, transparent 0, #000 ${fade.top ? 16 : 0}px, #000 calc(100% - ${fade.bottom ? 16 : 0}px), transparent 100%)`,
             }}

@@ -53,7 +53,7 @@ const PinnedTile = memo(function PinnedTile({ tab, active, reduced }: { tab: Tab
 export function PinnedGrid({ tabs, activeTabId }: { tabs: TabState[]; activeTabId: number | null }) {
   const reduced = !!useReducedMotion();
   return (
-    <div role="tablist" aria-label="Pinned tabs" className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5 px-2 pb-2">
+    <div role="tablist" aria-label="Pinned tabs" className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(min(100%,40px),1fr))] gap-1.5 p-2">
       <AnimatePresence initial={false} mode="popLayout">
         {tabs.map((tab) => (
           <PinnedTile key={tab.id} tab={tab} active={tab.id === activeTabId} reduced={reduced} />

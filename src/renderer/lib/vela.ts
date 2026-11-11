@@ -32,14 +32,15 @@ export const SPACE_HEX: Record<SpaceColor, string> = {
   teal: '#2dd4bf',
 };
 
-/** Sets <html> theme class + the animated accent color. */
-export function applyTheme(theme: ThemeMode, accent?: SpaceColor): void {
+/** Sets theme + accent; color-scheme-only updates preserve the current surface style. */
+export function applyTheme(theme: ThemeMode, accent?: SpaceColor, glassTheme?: boolean): void {
   const root = document.documentElement;
   const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
   const light = theme === 'light' || (theme === 'system' && prefersLight);
   root.classList.toggle('light', light);
   root.classList.toggle('dark', !light);
   root.dataset.theme = light ? 'light' : 'dark';
+  if (typeof glassTheme === 'boolean') root.toggleAttribute('data-glass', glassTheme);
   if (accent) root.style.setProperty('--accent-space', SPACE_HEX[accent]);
 }
 

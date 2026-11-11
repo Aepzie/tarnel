@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./glass-preview.css";
+@import "./glass-controls.css";
 
 /* Latin + Latin Extended only (every vela:// page and the chrome UI import this). Other scripts
    fall back to the system UI font instead of shipping cyrillic/vietnamese/symbol subsets. */

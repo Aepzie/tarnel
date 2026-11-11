@@ -181,6 +181,8 @@ export type MemorySaverMode = (typeof MEMORY_SAVER_MODES)[number];
 export interface Settings {
   searchEngine: SearchEngine;
   theme: ThemeMode;
+  /** Experimental glass surfaces; independent of the light/dark color scheme. */
+  glassTheme: boolean;
   adblock: boolean;
   /** Minutes of inactivity before a background tab is put to sleep. 0 = never. */
   sleepAfterMinutes: number;
@@ -360,6 +362,7 @@ export const SPACE_COLORS: readonly SpaceColor[] = [
 export const DEFAULT_SETTINGS: Settings = {
   searchEngine: 'duckduckgo',
   theme: 'system',
+  glassTheme: false,
   adblock: true,
   sleepAfterMinutes: 10,
   freezeAfterMinutes: 5,

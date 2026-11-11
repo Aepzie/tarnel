@@ -1,0 +1,95 @@
+/* Optional prototype: no effect or extra render surfaces without data-glass. */
+:root[data-glass] {
+  --island: rgb(29 36 46 / 0.56);
+  --island-ring: rgb(255 255 255 / 0.19);
+  --island-highlight: rgb(255 255 255 / 0.27);
+  --card: rgb(34 42 54 / 0.68);
+  --popover: rgb(24 31 42 / 0.91);
+  --border: rgb(255 255 255 / 0.13);
+  --input: rgb(255 255 255 / 0.16);
+  --accent: rgb(255 255 255 / 0.1);
+  --glass-reflection: rgb(255 255 255 / 0.13);
+  --glass-rim: rgb(255 255 255 / 0.08);
+  --glass-shadow: rgb(0 6 18 / 0.3);
+  --glass-page: #111923;
+}
+
+:root[data-glass].light {
+  --island: rgb(255 255 255 / 0.48);
+  --island-ring: rgb(255 255 255 / 0.78);
+  --island-highlight: rgb(255 255 255 / 0.94);
+  --card: rgb(255 255 255 / 0.65);
+  --popover: rgb(249 252 255 / 0.9);
+  --border: rgb(47 65 88 / 0.12);
+  --input: rgb(47 65 88 / 0.15);
+  --accent: rgb(47 65 88 / 0.07);
+  --glass-reflection: rgb(255 255 255 / 0.72);
+  --glass-rim: rgb(255 255 255 / 0.5);
+  --glass-shadow: rgb(29 51 78 / 0.12);
+  --glass-page: #e9eef3;
+}
+
+/* Keep an opaque-enough fallback for windows without a native frosted backdrop. */
+:root[data-glass][data-material="none"] { --island: rgb(29 36 46 / 0.9); }
+:root[data-glass].light[data-material="none"] { --island: rgb(248 251 255 / 0.9); }
+
+/* Chrome islands use the native window material; CSS blur cannot sample another WebContentsView. */
+:root[data-glass] .island,
+:root[data-glass].light .island,
+:root[data-glass] [data-slot="settings-group"] {
+  background: linear-gradient(145deg, var(--glass-reflection), transparent 46%), var(--island);
+  box-shadow:
+    0 0 0 1px var(--island-ring),
+    inset 0 1px 0 var(--island-highlight),
+    inset 1px 0 0 var(--glass-rim),
+    inset 0 -1px 0 var(--glass-rim),
+    0 12px 32px -14px var(--glass-shadow);
+}
+
+:root[data-glass] .vela-window-tint {
+  background-color: color-mix(in srgb, var(--window) 25%, transparent);
+}
+
+/* Blur only surfaces with something to sample in their own document. */
+:root[data-glass] :is(
+  [data-slot="popover-content"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"],
+  [data-slot="context-menu-content"],
+  [data-slot="context-menu-sub-content"],
+  [data-slot="select-content"],
+  [data-slot="dialog-content"],
+  [data-slot="palette-surface"]
+) {
+  background: linear-gradient(145deg, var(--glass-reflection), transparent 52%), var(--popover);
+  backdrop-filter: blur(24px) saturate(1.35);
+  border-color: var(--island-ring);
+  box-shadow: 0 0 0 1px var(--island-ring), inset 0 1px 0 var(--island-highlight), 0 20px 56px -20px var(--glass-shadow);
+}
+
+:root[data-glass] .vt-backdrop .island:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+:root[data-glass] :is(.vt-backdrop, [data-slot="settings-page"]) {
+  background:
+    radial-gradient(ellipse at 18% 8%, color-mix(in srgb, var(--accent-space) 19%, transparent), transparent 58%),
+    radial-gradient(ellipse at 88% 100%, color-mix(in srgb, var(--accent-space) 10%, transparent), transparent 60%),
+    var(--glass-page);
+}
+
+:root[data-glass] .vt-backdrop .island { backdrop-filter: blur(20px) saturate(1.25); }
+
+/* Accessibility and low-cost fallbacks keep the same hierarchy with solid surfaces. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-glass],
+  :root[data-glass][data-material="none"] { --island: #1d242e; --popover: #181f2a; }
+  :root[data-glass].light,
+  :root[data-glass].light[data-material="none"] { --island: #f8fbff; --popover: #f8fbff; }
+  :root[data-glass] :is(.island, [data-slot]),
+  :root[data-glass] .vt-backdrop .island { backdrop-filter: none; }
+}
+
+:root[data-glass][data-battery] :is(.island, [data-slot]),
+:root[data-glass][data-battery] .vt-backdrop .island { backdrop-filter: none; }

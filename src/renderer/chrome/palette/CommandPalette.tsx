@@ -310,6 +310,7 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
           <motion.div
             layoutId="omnibox"
             layoutDependency={0}
+            data-slot="palette-surface"
             className="absolute inset-0 bg-popover shadow-[0_0_0_1px_var(--island-ring),inset_0_1px_0_var(--island-highlight),0_24px_80px_-12px_rgb(0_0_0/0.55),0_0_0_1px_color-mix(in_oklab,var(--accent-space)_10%,transparent)]"
             style={{ borderRadius: 16 }}
             transition={spring.soft}

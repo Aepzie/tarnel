@@ -164,7 +164,7 @@ export function ActiveSurface({ paletteOpen, reduced }: { paletteOpen: boolean; 
   if (paletteOpen) {
     return <span className="absolute inset-0 rounded-[10px] bg-white/[0.03] ring-1 ring-white/[0.06] light:bg-black/[0.03] light:ring-black/[0.05]" />;
   }
-  return <motion.span layoutId="omnibox" transition={reduced ? INSTANT : spring.snappy} style={{ borderRadius: 10 }} className={ACTIVE_TAB_SURFACE} />;
+  return <motion.span data-slot="glass-control-highlight" layoutId="omnibox" transition={reduced ? INSTANT : spring.snappy} style={{ borderRadius: 10 }} className={ACTIVE_TAB_SURFACE} />;
 }
 
 /** Group membership line under a tab; bridges the 4px gap to the next tab unless it ends the group. */

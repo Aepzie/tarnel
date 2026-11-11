@@ -30,6 +30,7 @@ const WEB_BACKDROP = '#ffffff';
 export interface PageTheme {
   theme: 'dark' | 'light';
   mode: ThemeMode;
+  glassTheme: boolean;
   accent: string | null;
   hero: string;
 }
@@ -44,13 +45,14 @@ export function themeBackdrop(): string {
 
 /** Theme + Space accent for the vela:// page hosted in `wc` (accent is null outside a tab). */
 export function pageThemeFor(wc: WebContents): PageTheme {
-  const { theme, newtabHero } = getSettings();
+  const { theme, newtabHero, glassTheme } = getSettings();
   const tabId = tabs.tabIdForWebContents(wc.id);
   const spaceId = tabId === null ? null : tabs.getTabSpaceId(tabId);
   const space = spaceId ? getSpace(spaceId) : undefined;
   return {
     theme: isDarkTheme() ? 'dark' : 'light',
     mode: theme,
+    glassTheme,
     accent: space ? SPACE_HEX[space.color] : null,
     hero: newtabHero,
   };

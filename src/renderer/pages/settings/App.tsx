@@ -117,6 +117,7 @@ function Nav({ section, onSelect }: { section: SectionId; onSelect: (id: Section
                 {active && (
                   <motion.span
                     layoutId="settings-nav-active"
+                    data-slot="glass-control-highlight"
                     transition={spring.snappy}
                     aria-hidden
                     className="absolute inset-0 rounded-lg bg-accent ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]"
@@ -158,7 +159,7 @@ export function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="relative isolate min-h-screen bg-background text-foreground">
+      <div data-slot="settings-page" className="relative isolate min-h-screen bg-background text-foreground">
         <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute -top-56 -left-48 size-[640px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--accent-space)_18%,transparent),transparent)] blur-2xl" />
           <div className="absolute -top-32 left-40 size-[420px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--accent-space)_9%,transparent),transparent)] blur-2xl" />

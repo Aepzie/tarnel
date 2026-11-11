@@ -32,13 +32,13 @@ export function Segmented<T extends string>({
   return (
     <ToggleGroup
       type="single"
-      spacing={0.5}
+      spacing={1}
       value={value}
       aria-label={label}
       onValueChange={(next) => {
         if (next && next !== value) onChange(next as T);
       }}
-      className="rounded-[10px] bg-muted p-0.5 ring-1 ring-border ring-inset"
+      className="gap-1 rounded-lg bg-muted p-1 ring-1 ring-border ring-inset"
     >
       {options.map((option) => {
         const active = option.value === value;
@@ -50,7 +50,7 @@ export function Segmented<T extends string>({
             aria-label={option.label}
             title={compact ? option.label : undefined}
             className={cn(
-              'relative h-7 min-w-0 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150',
+              'relative h-7 min-w-0 rounded-sm px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150',
               'hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-foreground',
               'active:scale-[0.96] focus-visible:ring-2',
             )}
@@ -60,7 +60,8 @@ export function Segmented<T extends string>({
                 layoutId={layoutId}
                 transition={spring.snappy}
                 aria-hidden
-                className="absolute inset-0 rounded-lg bg-white shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06)] dark:bg-white/[0.09] dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_0_0_1px_rgb(255_255_255/0.06)]"
+                data-slot="glass-control-highlight"
+                className="absolute inset-0 rounded-[inherit] bg-white shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06)] dark:bg-white/[0.09] dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_0_0_1px_rgb(255_255_255/0.06)]"
               />
             )}
             <span className="relative z-10 flex items-center gap-1.5">
