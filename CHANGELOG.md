@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Open local files in tabs: PDF (Chromium's PDF viewer), HTML, images, SVG, text, JSON, audio and video. Paths on the command line ("Open with", double-click, `vela C:\pathile.pdf`, relative paths, `file://` URLs, a bare `--` before targets) and macOS `open-file` / `open-url` open in new tabs; tabs of untitled files show the file name.
+- Drag and drop: files or links dropped on the tab strip, vertical tab list or other browser UI open in new tabs (subtle accent ring while dragging); drops on the new-tab page or a local file open next to it, links dropped on a web page open in a new tab.
+
+### Security
+- Web pages can never navigate, frame or open `file://`; only the user, other local files and Vela's own pages can. Local files never get the `window.vela` / `window.velaPages` bridges.
+
 ### Fixed
 - Clock seconds keep each digit fully visible instead of inheriting the main time’s negative letter spacing.
 - The new-tab background fills the whole page without reserving an unused scrollbar gutter.
