@@ -4,6 +4,7 @@ import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { SITE_RULES_IPC } from '../shared/site-rules';
 import { ALIAS_IPC } from '../shared/aliases';
 import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
 import type { UpdateStatus } from '../shared/types';
@@ -57,6 +58,13 @@ if (isVelaPage()) {
       update: (id, patch, spaceId) => call(BOOKMARKS_IPC.pagesUpdate, id, patch, spaceId ?? null),
       remove: (id, spaceId) => call(BOOKMARKS_IPC.pagesRemove, id, spaceId ?? null),
       search: (query, limit, spaceId) => call(BOOKMARKS_IPC.pagesSearch, query, limit ?? null, spaceId ?? null),
+    },
+    siteRules: {
+      list: () => call(SITE_RULES_IPC.list),
+      save: (rules) => call(SITE_RULES_IPC.save, rules),
+      test: (url) => call(SITE_RULES_IPC.test, url),
+      draft: () => call(SITE_RULES_IPC.draft),
+      context: () => call(SITE_RULES_IPC.context),
     },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),

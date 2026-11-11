@@ -17,6 +17,7 @@ import { usePasswordQueue } from './passwords/password-store';
 import { useAliasOffers } from './aliases/alias-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
+import { RuleNotice } from './site-rules/RuleNotice';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
 import { PeekLayer } from './peek/PeekLayer';
@@ -145,6 +146,7 @@ export function App() {
         <CommandPalette />
         <BookmarkEditor />
         <TaskManager />
+        <RuleNotice />
         <PeekLayer />
         <TabArchivePanel />
       </LayoutGroup>

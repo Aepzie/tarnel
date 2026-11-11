@@ -28,6 +28,7 @@ import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionReview, E
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
+import type { SiteRule, SiteRuleDraft, SiteRuleNotice, SiteRuleResolution, SiteRulesContext } from './site-rules';
 import type { BatterySaverState } from './battery';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
@@ -592,5 +593,28 @@ export interface VelaChromeAPI {
     toTab(): Promise<number | null>;
     toSplit(): Promise<void>;
     onState(cb: (state: PeekState) => void): Unsubscribe;
+  };
+}
+
+/** Site rules (Settings → Rules). Channels live in SITE_RULES_IPC (shared/site-rules.ts); see docs/ARCHITECTURE.md → Site rules. */
+export interface VelaPagesAPI {
+  siteRules: {
+    list(): Promise<SiteRule[]>;
+    /** Replaces every rule; main validates and returns what it stored. */
+    save(rules: SiteRule[]): Promise<SiteRule[]>;
+    /** Which rules apply to this URL (bare hosts are read as https://). */
+    test(url: string): Promise<SiteRuleResolution>;
+    /** Pattern prefilled by the tab menu's "Create rule for this site…" (consumed on read). */
+    draft(): Promise<SiteRuleDraft | null>;
+    context(): Promise<SiteRulesContext>;
+  };
+}
+
+export interface VelaChromeAPI {
+  siteRules: {
+    /** Opens Settings → Rules with a rule for the tab's site prefilled. */
+    createFor(tabId: number): Promise<void>;
+    /** A rule could not fully apply (e.g. VPN while signed out). */
+    onNotice(cb: (notice: SiteRuleNotice) => void): Unsubscribe;
   };
 }

@@ -87,6 +87,8 @@ interface Tab {
 }
 
 type WebContentsHook = (wc: WebContents, tabId: number) => void;
+/** Consulted before a tab loads a web URL; true = the gate took over (site rules) and nothing is loaded. */
+type NavigationGate = (wc: WebContents, tabId: number, url: string) => boolean;
 
 const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 const CLOSED_STACK_MAX = 20;
@@ -103,6 +105,7 @@ const closedStack: ClosedTabEntry[] = [];
 let closedSeq = 0;
 const stateListeners = new Set<() => void>();
 const wcHooks: WebContentsHook[] = [];
+let navigationGate: NavigationGate | null = null;
 let nextId = 1;
 let emitPending = false;
 let spacesHooked = false;
@@ -168,6 +171,7 @@ function loadInTab(tab: Tab, wc: WebContents, url: string, navigate: () => Promi
     navigate().catch(() => undefined);
     return;
   }
+  if (navigationGate?.(wc, tab.id, url)) return;
   const view = tab.view;
   const stillCurrent = (): boolean => !wc.isDestroyed() && tab.view === view && tabs.get(tab.id) === tab;
   whenSessionReady(tab.spaceId, tab.vpn).then(
@@ -446,6 +450,10 @@ export function setWindowOpenInterceptor(fn: WindowOpenInterceptor | null): void
 
 export function onTabWebContents(hook: WebContentsHook): void {
   wcHooks.push(hook);
+}
+
+export function setNavigationGate(gate: NavigationGate): void {
+  navigationGate = gate;
 }
 
 export function onStateChanged(cb: () => void): void {
@@ -861,7 +869,8 @@ export function setTabVpn(id: number, country: string | null): void {
   scheduleEmit();
 }
 
-export function moveToSpace(id: number, spaceId: SpaceId): void {
+/** `url` (site rules): load this instead of the tab's current page once it is in the new Space. */
+export function moveToSpace(id: number, spaceId: SpaceId, url?: string): void {
   const tab = tabs.get(id);
   if (!tab || tab.spaceId === spaceId || !getSpace(spaceId)) return;
   const wasActive = id === activeTabId;
@@ -873,6 +882,10 @@ export function moveToSpace(id: number, spaceId: SpaceId): void {
   if (wasOnScreen && !wasActive) showActive();
   tab.savedHistory = null;
   tab.blockedCount = 0;
+  if (url) {
+    tab.url = url;
+    tab.errorUrl = null;
+  }
   tab.spaceId = spaceId;
   tab.groupId = null;
   order = order.filter((tid) => tid !== id);

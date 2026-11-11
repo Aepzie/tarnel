@@ -12,6 +12,7 @@ import {
   RotateCwIcon,
   Volume2Icon,
   VolumeXIcon,
+  WorkflowIcon,
   XIcon,
   XSquareIcon,
 } from 'lucide-react';
@@ -160,6 +161,12 @@ export function TabContextMenu({ tab, children }: TabContextMenuProps) {
           </ContextMenuItem>
           <MoveToSpace tab={tab} />
           <TabVpnMenu tab={tab} />
+          {/^https?:\/\//i.test(tab.url) && (
+            <ContextMenuItem className={ITEM} onSelect={() => settle(vela().siteRules.createFor(tab.id))}>
+              <WorkflowIcon strokeWidth={1.75} />
+              Create rule for this site…
+            </ContextMenuItem>
+          )}
           <AudioDevicesMenu tab={tab} />
           <ContextMenuSeparator className={MENU_SEPARATOR} />
           <GroupItems tab={tab} />

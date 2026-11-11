@@ -42,6 +42,7 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { registerSiteRulesIpc } from './site-rules';
 import { registerPeekIpc } from './peek';
 import { registerAliasIpc } from './aliases';
 import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
@@ -354,6 +355,7 @@ export function registerIpc(): void {
   registerBatteryIpc(handleChrome);
   handleChrome(PANIC_IPC.run, () => panic());
   registerSiteDataIpc(handleChrome, handlePages);
+  registerSiteRulesIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
