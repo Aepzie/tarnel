@@ -38,7 +38,7 @@ export function PasswordPrompt() {
   );
 }
 
-function Card({ children, label, onEscape }: { children: ReactNode; label: string; onEscape: () => void }) {
+export function Card({ children, label, onEscape }: { children: ReactNode; label: string; onEscape: () => void }) {
   const reduced = useReducedMotion();
   const [place, setPlace] = useState(placement);
   useLayoutEffect(() => {
@@ -73,7 +73,7 @@ function Card({ children, label, onEscape }: { children: ReactNode; label: strin
   );
 }
 
-const quiet = 'h-8 rounded-[8px] px-3 font-medium text-zinc-300 transition-colors duration-150 outline-none hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[var(--ring)] light:text-zinc-700 light:hover:bg-black/[0.06]';
+export const quiet = 'h-8 rounded-[8px] px-3 font-medium text-zinc-300 transition-colors duration-150 outline-none hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[var(--ring)] light:text-zinc-700 light:hover:bg-black/[0.06]';
 
 function SaveCard({ prompt }: { prompt: PasswordSavePrompt }) {
   const saveRef = useRef<HTMLButtonElement>(null);

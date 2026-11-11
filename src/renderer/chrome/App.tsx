@@ -14,6 +14,7 @@ import { FindBar } from './find/FindBar';
 import { CommandPalette } from './palette/CommandPalette';
 import { usePermissionQueue } from './permissions/permission-store';
 import { usePasswordQueue } from './passwords/password-store';
+import { useAliasOffers } from './aliases/alias-store';
 import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
@@ -22,6 +23,7 @@ import { BookmarkEditor } from './bookmarks/BookmarkEditor';
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
 const PermissionPrompt = lazy(() => import('./permissions/PermissionPrompt').then((module) => ({ default: module.PermissionPrompt })));
+const AliasPrompt = lazy(() => import('./aliases/AliasPrompt').then((module) => ({ default: module.AliasPrompt })));
 const PasswordPrompt = lazy(() => import('./passwords/PasswordPrompt').then((module) => ({ default: module.PasswordPrompt })));
 
 /**
@@ -42,6 +44,12 @@ export function App() {
   useEffect(() => {
     if (passwordQueue.saves.length + passwordQueue.offers.length > 0) setPasswordUi(true);
   }, [passwordQueue]);
+
+  const aliasOffers = useAliasOffers();
+  const [aliasUi, setAliasUi] = useState(false);
+  useEffect(() => {
+    if (aliasOffers.length > 0) setAliasUi(true);
+  }, [aliasOffers]);
 
   useEffect(() => resetOverlayOnBoot(), []);
 
@@ -116,6 +124,11 @@ export function App() {
         {passwordUi && (
           <Suspense fallback={null}>
             <PasswordPrompt />
+          </Suspense>
+        )}
+        {aliasUi && (
+          <Suspense fallback={null}>
+            <AliasPrompt />
           </Suspense>
         )}
         <CommandPalette />
