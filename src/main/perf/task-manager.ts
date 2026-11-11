@@ -1,4 +1,4 @@
-import { app, webContents, type WebContents } from 'electron';
+import { webContents, type WebContents } from 'electron';
 import {
   buildTaskSnapshot,
   TASK_MANAGER_IPC,
@@ -13,7 +13,7 @@ import { listExtensions } from '../extensions';
 import { listSpaces } from '../spaces';
 import { getBrowserState, getTabWebContents } from '../tabs';
 import { getChromeView } from '../window';
-import { processMemoryKB } from './metrics';
+import { measureAppProcesses } from './metrics';
 
 /**
  * Task manager data (Shift+Esc). Everything is computed on demand: the chrome asks for a snapshot
@@ -67,14 +67,14 @@ function extensionSamples(): ExtensionSample[] {
   }));
 }
 
-export function taskSnapshot(): TaskSnapshot {
-  const processes: ProcessSample[] = app.getAppMetrics().map((metric) => ({
+export async function taskSnapshot(): Promise<TaskSnapshot> {
+  const processes: ProcessSample[] = (await measureAppProcesses()).map(({ metric, memoryKB }) => ({
     pid: metric.pid,
     type: metric.type,
     name: metric.name,
     serviceName: metric.serviceName,
     cpuPercent: metric.cpu.percentCPUUsage,
-    memoryKB: processMemoryKB(metric),
+    memoryKB,
     creationTime: metric.creationTime,
   }));
   const state = getBrowserState();

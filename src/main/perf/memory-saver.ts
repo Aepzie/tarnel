@@ -1,7 +1,9 @@
 import type { MemorySaverMode } from '../../shared/types';
 
 /**
- * Memory saver: when Vela as a whole (every process, private bytes) uses more than the user's
+ * Memory saver: when Vela as a whole (every process, private commit — deliberately not the private
+ * working set the perf chip shows, which Windows shrinks by trimming exactly when memory gets tight,
+ * and which would need the sampler running all the time) uses more than the user's
  * threshold, the least-recently-used eligible background tabs are slept until the estimate falls
  * back under it. Pure policy; the sleeper measures and acts.
  */
