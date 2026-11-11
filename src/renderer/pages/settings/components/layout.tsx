@@ -57,7 +57,7 @@ export function Group({ title, children, className }: { title?: string; children
   return (
     <motion.section variants={rise} className={cn('mb-8 last:mb-0', className)}>
       {title && <h2 className="mb-2 px-1 text-xs font-medium text-muted-foreground">{title}</h2>}
-      <div data-slot="settings-group" className="divide-y divide-border overflow-hidden rounded-xl bg-card/50 ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]">
+      <div className="divide-y divide-border overflow-hidden rounded-xl bg-card/50 ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]">
         {children}
       </div>
     </motion.section>

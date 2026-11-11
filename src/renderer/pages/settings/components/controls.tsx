@@ -60,7 +60,6 @@ export function Segmented<T extends string>({
                 layoutId={layoutId}
                 transition={spring.snappy}
                 aria-hidden
-                data-slot="glass-control-highlight"
                 className="absolute inset-0 rounded-[inherit] bg-white shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06)] dark:bg-white/[0.09] dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_0_0_1px_rgb(255_255_255/0.06)]"
               />
             )}

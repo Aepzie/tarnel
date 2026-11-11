@@ -57,16 +57,15 @@ export function SettingsProvider({ children, fallback }: { children: ReactNode; 
   }, [loadAttempt]);
 
   const theme = settings?.theme;
-  const glassTheme = settings?.glassTheme;
   useEffect(() => {
     if (!theme) return;
-    applyTheme(theme, undefined, glassTheme);
+    applyTheme(theme);
     if (theme !== 'system') return;
     const query = window.matchMedia('(prefers-color-scheme: light)');
     const listeners = new AbortController();
     query.addEventListener('change', () => applyTheme('system'), { signal: listeners.signal });
     return () => listeners.abort();
-  }, [theme, glassTheme]);
+  }, [theme]);
 
   const markSaved = useCallback(() => setSavedTick((tick) => tick + 1), []);
 

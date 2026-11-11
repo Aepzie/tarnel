@@ -35,7 +35,6 @@ export function OmniboxBar() {
           ) : (
             <motion.span
               layoutId="omnibox"
-              data-slot="glass-control-highlight"
               transition={reduced ? { duration: 0 } : spring.snappy}
               style={{ borderRadius: 10 }}
               className={OMNIBOX_SURFACE}

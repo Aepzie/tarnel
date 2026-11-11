@@ -132,7 +132,7 @@ const LIGHTS = [
 export function TrafficLights() {
   const focused = useWindowFocused();
   return (
-    <div data-glass-exempt="" className="group/traffic no-drag flex shrink-0 items-center gap-2 px-1">
+    <div className="group/traffic no-drag flex shrink-0 items-center gap-2 px-1">
       {LIGHTS.map(({ key, label, color, idle, Icon, run }) => (
         <button
           key={key}

@@ -48,7 +48,6 @@ export function Hero({ hero, onChange }: { hero: NewtabHero | null; onChange: (h
     >
       <motion.button
         type="button"
-        data-glass-exempt=""
         aria-label="Change start page style"
         title={`${HERO_LABELS[current]} — click to change`}
         onClick={() => onChange(nextHero(current))}
@@ -80,7 +79,6 @@ export function Hero({ hero, onChange }: { hero: NewtabHero | null; onChange: (h
         <div
           role="group"
           aria-label="Start page style"
-          data-glass-exempt=""
           className={cn(
             'absolute top-full left-1/2 z-10 mt-1 flex -translate-x-1/2 items-center gap-0.5 transition-opacity duration-200',
             'group-focus-within:opacity-100 group-hover:opacity-100',

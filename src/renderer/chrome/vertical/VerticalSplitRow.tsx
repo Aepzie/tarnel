@@ -143,7 +143,7 @@ function Segment({ tab, focused, first, iconOnly, compact, grouped, reduced }: S
           !first && 'before:pointer-events-none before:absolute before:top-1/2 before:-left-px before:h-3.5 before:w-px before:-translate-y-1/2 before:bg-white/10 light:before:bg-black/10',
         )}
       >
-        {focused && <motion.span data-slot="glass-control-highlight" layoutId="vertical-active-tab" className={ACTIVE_ROW} transition={reduced ? INSTANT : spring.snappy} />}
+        {focused && <motion.span layoutId="vertical-active-tab" className={ACTIVE_ROW} transition={reduced ? INSTANT : spring.snappy} />}
         <TabFlag tab={tab} />
         <span
           className={cn(

@@ -85,7 +85,6 @@ function Tile({ site }: { site: Site }) {
   return (
     <motion.li variants={rise} className="list-none">
       <motion.a
-        data-slot="site-tile"
         href={site.url}
         onClick={open}
         title={`${site.title}\n${site.url}`}

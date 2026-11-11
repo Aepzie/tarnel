@@ -93,7 +93,7 @@ function VerticalTabRowImpl({ tab, active, iconOnly, groupColor, groupEnd = fals
         )}
       >
         {active && (
-          <motion.span data-slot="glass-control-highlight" layoutId="vertical-active-tab" className={ACTIVE_ROW} transition={reduced ? INSTANT : spring.snappy} />
+          <motion.span layoutId="vertical-active-tab" className={ACTIVE_ROW} transition={reduced ? INSTANT : spring.snappy} />
         )}
         {grouped && (
           <span

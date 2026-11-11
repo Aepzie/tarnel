@@ -5,11 +5,6 @@ React + Tailwind + shadcn/ui UI ("Floating Islands", see DESIGN.md); every web p
 
 ## Process & layer model
 
-* Experimental glass surfaces: `Settings.glassTheme` is validated as a boolean and defaults to false.
-  Chrome applies `data-glass` through `applyTheme`; `page-theme.ts` includes the flag in the synchronous
-  boot payload and live theme events so all internal pages adopt or remove it without reloading.
-  The flag changes surface styling only; the native window material and light/dark mode remain separate.
-
 ```
 BaseWindow (frame: false; no webContents of its own — saves a renderer process)
 └─ contentView

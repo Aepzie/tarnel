@@ -297,7 +297,6 @@ export function ScreenshotEditor({ image }: { image: EditorImage }) {
               key={swatch}
               type="button"
               aria-label={`Colour ${swatch}`}
-              data-glass-exempt=""
               aria-pressed={color === swatch}
               onClick={() => setColor(swatch)}
               className="grid size-7 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"

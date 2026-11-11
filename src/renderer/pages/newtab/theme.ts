@@ -16,7 +16,7 @@ export async function bootTheme(): Promise<Settings | null> {
       velaPages().getSettings(),
       resolveAccent().catch(() => undefined),
     ]);
-    applyTheme(settings.theme, accent, settings.glassTheme);
+    applyTheme(settings.theme, accent);
     if (settings.theme === 'system') {
       window
         .matchMedia('(prefers-color-scheme: light)')

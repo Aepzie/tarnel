@@ -71,8 +71,8 @@ export function App() {
   }, [settings.windowMaterial]);
 
   useEffect(() => {
-    applyTheme(settings.theme, space?.color, settings.glassTheme);
-  }, [settings.theme, space?.color, settings.glassTheme]);
+    applyTheme(settings.theme, space?.color);
+  }, [settings.theme, space?.color]);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: light)');
