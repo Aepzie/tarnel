@@ -7,6 +7,7 @@ import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { SITE_RULES_IPC } from '../shared/site-rules';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -189,6 +190,10 @@ const api: VelaChromeAPI = {
     onFillCancel: (cb) => subscribe(PASSWORD_IPC.fillCancel, cb),
     fill: (offerId, loginId) => invoke(PASSWORD_IPC.fill, offerId, loginId),
     dismissOffer: (offerId) => invoke(PASSWORD_IPC.dismissOffer, offerId),
+  },
+  siteRules: {
+    createFor: (tabId) => invoke(SITE_RULES_IPC.chromeCreateFor, tabId),
+    onNotice: (cb) => subscribe(SITE_RULES_IPC.notice, cb),
   },
 };
 

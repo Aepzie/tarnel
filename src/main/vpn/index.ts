@@ -1,6 +1,6 @@
 import { app, safeStorage } from 'electron';
 import { VPN_IPC, normalizeAccountNumber, normalizeTotp, type VpnConnection, type VpnResult, type VpnServer, type VpnState } from '../../shared/vpn';
-import { normalizeCountry, pickServer } from '../../shared/vpn-route';
+import { countriesOf, normalizeCountry, pickServer, type VpnCountry } from '../../shared/vpn-route';
 import { getActiveSpaceId, getSpace, refreshRoutedProxies, routedCountryOf, setRouteProxyProvider, updateSpace } from '../spaces';
 import { getBrowserState, getTabVpn, setTabVpn } from '../tabs';
 import { createStore, type JsonStore } from '../store';
@@ -357,6 +357,21 @@ function answerProxyAuth(): void {
     event.preventDefault();
     callback(credential.username, password);
   });
+}
+
+/** Site rules: per-tab routing needs a live MantelVPN session (signed in and reachable). */
+export function canRouteTabs(): boolean {
+  return mode === 'live';
+}
+
+/** Site rules editor: countries of the current server list (empty while signed out). */
+export function routableCountries(): VpnCountry[] {
+  return countriesOf(servers);
+}
+
+/** Site rules: route a tab exactly like the tab's VPN menu does. */
+export function routeTabByRule(tabId: number, country: string): Promise<VpnResult> {
+  return routeTab(tabId, country);
 }
 
 export function registerVpnIpc(handle: ChromeHandler): void {

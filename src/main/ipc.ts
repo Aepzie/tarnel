@@ -40,6 +40,7 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { registerSiteRulesIpc } from './site-rules';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
 
@@ -346,6 +347,7 @@ export function registerIpc(): void {
   registerVpnIpc(handleChrome);
   handleChrome(PANIC_IPC.run, () => panic());
   registerSiteDataIpc(handleChrome, handlePages);
+  registerSiteRulesIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);

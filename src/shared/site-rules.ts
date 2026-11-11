@@ -1,5 +1,5 @@
 import { isValidUserAgent, USER_AGENT_MAX } from './user-agent';
-import { normalizeCountry } from './vpn-route';
+import { normalizeCountry, type VpnCountry } from './vpn-route';
 
 /**
  * Per-site rules (pure part): a trigger (host pattern) → ordered actions, applied by main at
@@ -19,9 +19,16 @@ export const SITE_RULES_IPC = {
   save: 'pages:site-rules-save',
   test: 'pages:site-rules-test',
   draft: 'pages:site-rules-draft',
+  context: 'pages:site-rules-context',
   chromeCreateFor: 'chrome:site-rules-create-for',
   notice: 'chrome-event:site-rule-notice',
 } as const;
+
+/** What the editor needs besides the rules: can tabs be routed now, and through which countries. */
+export interface SiteRulesContext {
+  vpnSignedIn: boolean;
+  countries: VpnCountry[];
+}
 
 export const SITE_RULES_MAX = 200;
 export const SITE_RULE_ACTIONS_MAX = 8;

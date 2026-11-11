@@ -6,6 +6,7 @@ import { attachDownloads } from './downloads';
 import { initFingerprint } from './fingerprint';
 import { initIdentity } from './identity';
 import { initUserAgent } from './user-agent';
+import { initSiteRules } from './site-rules';
 import { initAudioDevices } from './audio-devices';
 import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
@@ -137,6 +138,7 @@ if (!app.requestSingleInstanceLock()) {
     initIdentity();
     initFingerprint();
     initUserAgent();
+    initSiteRules();
     initAudioDevices();
     initAudioMixer();
     initPasswords();

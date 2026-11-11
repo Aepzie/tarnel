@@ -771,7 +771,8 @@ export function setTabVpn(id: number, country: string | null): void {
   scheduleEmit();
 }
 
-export function moveToSpace(id: number, spaceId: SpaceId): void {
+/** `url` (site rules): load this instead of the tab's current page once it is in the new Space. */
+export function moveToSpace(id: number, spaceId: SpaceId, url?: string): void {
   const tab = tabs.get(id);
   if (!tab || tab.spaceId === spaceId || !getSpace(spaceId)) return;
   const wasActive = id === activeTabId;
@@ -783,6 +784,10 @@ export function moveToSpace(id: number, spaceId: SpaceId): void {
   if (wasOnScreen && !wasActive) showActive();
   tab.savedHistory = null;
   tab.blockedCount = 0;
+  if (url) {
+    tab.url = url;
+    tab.errorUrl = null;
+  }
   tab.spaceId = spaceId;
   tab.groupId = null;
   order = order.filter((tid) => tid !== id);
