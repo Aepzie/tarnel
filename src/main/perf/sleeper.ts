@@ -1,9 +1,11 @@
-import { app, powerMonitor, type Session, type WebContents } from 'electron';
+import { app, type Session, type WebContents } from 'electron';
 import os from 'node:os';
 import type { MemorySaverMode } from '../../shared/types';
 import { pickFreezeTargets } from './freeze';
 import { estimateTabMemoryKB, pickSaverTargets } from './memory-saver';
 import { committedMemoryKB } from './metrics';
+import { isBatterySaverActive } from './battery-saver';
+import { batteryDelayDivisor, effectiveMemorySaver } from './battery-policy';
 
 /**
  * Tab sleeping. A sleeping tab has its renderer process destroyed (not merely frozen), so its
@@ -53,13 +55,6 @@ let lastSaverNotice: MemorySaverNotice | null = null;
 /** Tab id -> downloads it started that are still in progress. */
 const activeDownloads = new Map<number, number>();
 const watchedSessions = new WeakSet<Session>();
-let onBattery = false;
-const onBatteryListener = (): void => {
-  onBattery = true;
-};
-const onAcListener = (): void => {
-  onBattery = false;
-};
 
 function isEligible(tab: SleepCandidate): boolean {
   return !tab.active && !tab.asleep && !tab.audible && !tab.pinned && !tab.capturing && !activeDownloads.has(tab.id);
@@ -100,8 +95,9 @@ function runFreeze(deps: SleeperDeps, tabs: SleepCandidate[], now: number, timeo
 }
 
 function runMemorySaver(deps: SleeperDeps, tabs: SleepCandidate[], now: number, slept: Set<number>): void {
-  const saver = deps.getMemorySaver?.();
-  if (!saver || saver.mode === 'off') return;
+  const configured = deps.getMemorySaver?.();
+  if (!configured || configured.mode === 'off') return;
+  const saver = { ...configured, mode: effectiveMemorySaver(configured.mode, isBatterySaverActive()) };
   const metrics = app.getAppMetrics();
   const pidKB = new Map<number, number>();
   let usedKB = 0;
@@ -139,8 +135,8 @@ function underMemoryPressure(): boolean {
 
 function tick(deps: SleeperDeps): void {
   const minutes = deps.getSleepAfterMinutes();
-  // On battery, halve the timeouts: every awake renderer costs timers, GC and wakeups.
-  const factor = onBattery ? 2 : 1;
+  // Battery saver halves the timeouts: every awake renderer costs timers, GC and wakeups.
+  const factor = batteryDelayDivisor(isBatterySaverActive());
   const timeoutMs = minutes > 0 ? (minutes * 60_000) / factor : 0;
   const now = Date.now();
   const all = deps.listTabs().map((tab) => (activeDownloads.has(tab.id) ? { ...tab, downloading: true } : { ...tab, downloading: false }));
@@ -175,13 +171,6 @@ function tick(deps: SleeperDeps): void {
 export function initSleeper(deps: SleeperDeps): void {
   stopSleeper();
   currentDeps = deps;
-  try {
-    onBattery = powerMonitor.isOnBatteryPower();
-    powerMonitor.on('on-battery', onBatteryListener);
-    powerMonitor.on('on-ac', onAcListener);
-  } catch {
-    onBattery = false; // powerMonitor unavailable (e.g. before ready): assume AC
-  }
   timer = setInterval(() => {
     try {
       tick(deps);
@@ -195,10 +184,4 @@ export function initSleeper(deps: SleeperDeps): void {
 export function stopSleeper(): void {
   if (timer) clearInterval(timer);
   timer = null;
-  try {
-    powerMonitor.removeListener('on-battery', onBatteryListener);
-    powerMonitor.removeListener('on-ac', onAcListener);
-  } catch {
-    /* powerMonitor not usable before app ready; nothing was registered */
-  }
 }

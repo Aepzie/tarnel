@@ -27,6 +27,7 @@ import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionReview, E
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
+import type { BatterySaverState } from './battery';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
@@ -524,6 +525,16 @@ export interface VelaChromeAPI {
     /** Main re-checks the frame's origin, then fills that frame only. */
     fill(offerId: string, loginId: string): Promise<void>;
     dismissOffer(offerId: string): Promise<void>;
+  };
+}
+
+/** Battery saver (chrome only). Channels live in BATTERY_IPC (shared/battery.ts). */
+export interface VelaChromeAPI {
+  battery: {
+    state(): Promise<BatterySaverState>;
+    /** Battery level 0–1 from navigator.getBattery (null when unknown); only needed for the "Below 20 %" mode. */
+    report(level: number | null): Promise<void>;
+    onChange(cb: (state: BatterySaverState) => void): Unsubscribe;
   };
 }
 

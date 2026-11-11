@@ -3,6 +3,7 @@ import { AUDIO_IPC, EXTENSION_IPC, IPC, PANIC_IPC, type Unsubscribe, type VelaCh
 import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
+import { BATTERY_IPC } from '../shared/battery';
 import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
@@ -150,6 +151,11 @@ const api: VelaChromeAPI = {
     reset: (tabId) => invoke(MIXER_IPC.reset, tabId),
     watchLevels: (on) => invoke(MIXER_IPC.watchLevels, on),
     onLevels: (cb) => subscribe(MIXER_IPC.levelsEvent, cb),
+  },
+  battery: {
+    state: () => invoke(BATTERY_IPC.state),
+    report: (level) => invoke(BATTERY_IPC.report, level),
+    onChange: (cb) => subscribe(BATTERY_IPC.changed, cb),
   },
   vpn: {
     state: () => invoke(VPN_IPC.state),

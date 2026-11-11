@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Cpu, Leaf, MemoryStick, Moon, ShieldBan, Zap, type LucideIcon } from 'lucide-react';
 import type { MemorySaverMode, PerfStats } from '@shared/types';
+import type { BatterySaverMode } from '@shared/battery';
 import { rise } from '@/lib/motion';
 import { formatBytesMB, formatCount, velaPages } from '@/lib/vela';
 import { AnimatedNumber } from '../components/brand';
@@ -29,6 +30,13 @@ const SAVER_OPTIONS: readonly SegmentOption<MemorySaverMode>[] = [
   { value: 'off', label: 'Off' },
   { value: 'balanced', label: 'Balanced' },
   { value: 'maximum', label: 'Maximum' },
+];
+
+const BATTERY_OPTIONS: readonly SegmentOption<BatterySaverMode>[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'battery', label: 'On battery' },
+  { value: 'low', label: 'Below 20 %' },
+  { value: 'always', label: 'Always' },
 ];
 
 const THRESHOLD_OPTIONS: readonly SegmentOption<string>[] = [
@@ -149,6 +157,12 @@ export function Performance() {
             />
           </Row>
         )}
+        <Row
+          title="Battery saver"
+          description="Freeze and sleep background tabs twice as fast, use the stronger memory saver, skip address-bar preloading and calm the browser's animations. Security features are never reduced."
+        >
+          <Segmented label="Battery saver" value={settings.batterySaver} options={BATTERY_OPTIONS} onChange={(value) => update({ batterySaver: value })} />
+        </Row>
         <SwitchRow
           title="Preload pages from the address bar"
           setting="preloadPages"
