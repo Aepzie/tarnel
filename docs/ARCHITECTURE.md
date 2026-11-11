@@ -198,6 +198,31 @@ preloads don't get the `window.chrome` shape.
 * **Sleeping**: `isOnScreen()` replaces "is active" for the sleeper and crash handling; showing a split wakes all panes.
 * **Cost when unused**: no listeners, no extra views; `clusterSplits` returns early and the chrome renders nothing.
 
+## Peek (`src/main/peek.ts`, UI: `src/renderer/chrome/peek/PeekLayer.tsx`)
+
+A link preview in a floating `WebContentsView` above the active tab. One Peek at a time.
+
+- **Layering:** `window.setFloatingView(view, place)` adds a view *after* the raised chrome in `restack`,
+  so the order is chrome · pages · chrome (overlay) · Peek. `PeekLayer` holds the overlay while open, which
+  raises the chrome to draw the dimmed backdrop and the card (toolbar + frame); `layout()` places the view
+  with `peekGeometry` (`src/shared/peek.ts`, ~80 % of the page area, below a 40 px toolbar) — the chrome uses
+  the same function, so both agree to the pixel.
+- **Open:** shift-click reaches a tab's window-open handler as disposition `new-window` without features
+  (`isShiftClickOpen`; scripted popups always carry features). tabs.ts asks the interceptor set with
+  `setWindowOpenInterceptor` first; Peek takes it when `peekOnShiftClick` is on and the click came from the
+  active tab. Also the page context menu and the palette (`peek.open(input)`, resolved like the address bar).
+- **Session:** built with `pageWebPreferences(spaceId, vpn)` of the source tab (same partition, preloads and
+  VPN route) and loaded after `whenSessionReady`. It has its own history; the source tab is not touched.
+- **Animation:** the chrome animates the card in (200 ms scale/fade, ease-out) and then calls `peek.reveal`,
+  which attaches the page view (a 400 ms fallback in main covers a renderer that never answers). Reduced
+  motion reveals at once.
+- **Close:** Esc (peek `before-input-event` or chrome keydown), a click on the backdrop, the close button,
+  switching tab/Space, or a crashed renderer. Closing detaches the view and `close()`s its webContents
+  (measured: renderer and process count back to baseline after 10 open/close cycles).
+- **Open as tab / split:** the live view is handed to `createTab({ view })`, which adopts it like a freshly
+  created tab view (events, context menu, hooks) — no reload, page state and history survive. Split joins
+  the source's split while it has room, otherwise creates one with the source tab.
+
 ## Per-tab audio devices
 
 * **Model** (`src/main/audio-devices/state.ts`): per tab, an optional pick per slot `output | input | camera`, stored as

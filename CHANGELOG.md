@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Peek: shift-click a link (or "Open in Peek" in the page menu, or "Peek" in the address bar) to preview it in a floating window over the page, in the same Space and VPN route. Back, reload, "Open as tab" (keeps the page, no reload), "Open in split view" and close; Esc or a click on the dimmed page closes it. Toggle in Settings → General.
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.

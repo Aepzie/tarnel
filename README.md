@@ -65,6 +65,7 @@ No account, no telemetry, no sync servers. Just the web, out of the way.
 - **Command palette** (`Ctrl+K`) — navigate, search history, switch tabs and run commands from the keyboard.
 - **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
 - **Tab groups and vertical tabs** — named, colored, collapsible groups (drag tabs in and out, reorder groups), and an optional floating vertical tab island (`Ctrl+Shift+,`) that resizes and folds to an icon rail.
+- **Peek** — shift-click a link to preview it in a floating window over the page; open it as a tab (no reload) or in split view, Esc to dismiss.
 - **Split view** — two tabs side by side (up to four in a 2×2 grid) with a draggable divider; the focused pane drives the address bar, find and zoom. Drag a tab onto the edge of the page, use the tab menu or `Ctrl+Shift+D`. Splits show as one joined tab and come back with the session.
 - **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
 - **Per-tab audio devices** — send each tab to its own speakers or headphones and pick its microphone (and camera) from the tab menu or the tab's speaker indicator; restored with the session.
