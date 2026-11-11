@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Screenshots (Ctrl+Shift+X, "Screenshot" in the command palette, or "Take screenshot" in the page context menu): drag an area over the frozen page, or take the visible part or the full page (long pages are cut at 16,000 px). The editor offers crop, arrow, rectangle, pen, text, highlighter and blur (pixelate) to hide personal data, six colours, undo/redo and zoom; copy to the clipboard or save as PNG or JPEG (`Vela screenshot <date>.png` by default).
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
