@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Peek: shift-click a link (or "Open in Peek" in the page menu, or "Peek" in the address bar) to preview it in a floating window over the page, in the same Space and VPN route. Back, reload, "Open as tab" (keeps the page, no reload), "Open in split view" and close; Esc or a click on the dimmed page closes it. Toggle in Settings → General.
+- Email aliases (Settings → Privacy): connect SimpleLogin or addy.io with an API key and Vela offers "Use an alias for <site>?" when you focus the email field of a sign-up form. The alias is created only after your click, filled into that field, and kept with the login if you save the password (shown in vela://passwords with a link to manage it). The key is encrypted by your OS and never shown to pages.
+- Privacy report (`vela://privacy`, Settings → Privacy → Privacy report, or "Privacy report" in the command palette): this week vs last week for trackers and ads blocked (Vela's blocker and extension rules), tracking parameters removed, referrers trimmed and dangerous sites warned, with estimated data and time saved, the tracker domains and companies that tried to track you most, and a per-Space breakdown. Counted on this device only as daily totals (tracker domains only, never the pages you visited), kept for 90 days; "Reset stats" clears them. Burner Spaces count towards the totals only.
+- Start page: a small "N trackers blocked this week" line that opens the report (Settings → Appearance → Start page → Privacy stat, on by default).
+- Optional weekly summary notification (Settings → Privacy → Weekly summary, off by default).
+- Tab archive: tabs unused for a while (Settings → Performance: Off / 6 h / 12 h / 24 h / 3 days / 1 week, default 24 h) move into a per-Space archive with URL, title, favicon, group and time; pinned tabs, tabs playing audio, using the mic/camera or downloading are never archived, Burner Spaces keep their archive in memory only. `Ctrl+Shift+E`, "Move to archive", "Archive other tabs" and "Archive group" archive by hand. The archive view (archive button in the tab strip / vertical list, palette command "Tab archive") has search, days, restore (into its Space and group), restore all of a day, delete and clear, plus the Space's recently closed tabs. Address-bar suggestions include archived tabs ("Archived · 2 days ago").
+- Battery saver (Settings → Performance): Off, On battery (default), Below 20 % or Always. While on, background tabs freeze and sleep twice as fast, the memory saver acts as Maximum, address-bar preloading is skipped, adblock lists refresh less often, the perf chip stops polling and shows a leaf, and the browser's own animations are calmed. Security features are never reduced.
+
+### Changed
+- The "halve freeze/sleep delays on battery" rule now follows the Battery saver setting (it can be turned off).
+
+### Fixed
+- YouTube videos sometimes stayed black, never started or showed "Video unavailable" with the content blocker on: its cosmetic scriptlets ran in one shared scope and broke each other (and the player's JSON / network calls). Each scriptlet now runs in its own scope.
 
 ## [0.8.3] - 2026-11-11
 

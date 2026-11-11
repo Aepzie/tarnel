@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { AnimatePresence, Reorder, motion, useReducedMotion } from 'motion/react';
 import { PlusIcon } from 'lucide-react';
+import { ArchiveButton } from '../archive/ArchiveButton';
 import type { TabState } from '@shared/types';
 import { useBrowserSlice, useSpaceGroups, useSpaceTabs } from '@/hooks/browser';
 import { spring } from '@/lib/motion';
@@ -176,6 +177,7 @@ export function VerticalTabList({ iconOnly }: { iconOnly: boolean }) {
                 <PlusIcon className="size-4 shrink-0" strokeWidth={1.75} />
                 {!iconOnly && 'New Tab'}
               </motion.button>
+              <ArchiveButton layoutTransition={layoutTransition} row iconOnly={iconOnly} />
             </Reorder.Group>
           </motion.div>
         </motion.div>
