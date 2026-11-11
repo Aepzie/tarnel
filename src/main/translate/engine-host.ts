@@ -67,6 +67,14 @@ export async function ensureModel(key: string, files: ModelPaths): Promise<void>
   loaded.add(key);
 }
 
+/**
+ * WASM memory never shrinks, so a model that is no longer needed is freed by restarting the engine
+ * (≈ 0.2 s) instead of keeping every pair ever used resident (~320 MB each).
+ */
+export function retainOnly(keys: readonly string[]): void {
+  if ([...loaded].some((key) => !keys.includes(key))) stopEngine();
+}
+
 export async function unloadModel(key: string): Promise<void> {
   if (!child || !loaded.has(key)) return;
   loaded.delete(key);

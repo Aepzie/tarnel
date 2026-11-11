@@ -35,8 +35,13 @@ function catalogFile(): string {
   return path.join(root(), 'catalog.json');
 }
 
+/** Mozilla's CDN rejects browser-like user agents without browser headers: identify as Vela, send no cookies. */
+function fetchModelData(url: string): Promise<Response> {
+  return net.fetch(url, { cache: 'no-store', credentials: 'omit', headers: { 'User-Agent': `Vela/${app.getVersion()} (on-device translation)` } });
+}
+
 async function fetchJson(url: string): Promise<unknown> {
-  const response = await net.fetch(url, { cache: 'no-store' });
+  const response = await fetchModelData(url);
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
   return response.json();
 }
@@ -109,7 +114,7 @@ export async function isInstalled(set: ModelSet): Promise<boolean> {
 }
 
 async function downloadFile(url: string, file: ModelFile, target: string, onBytes: (bytes: number) => void): Promise<void> {
-  const response = await net.fetch(url, { cache: 'no-store' });
+  const response = await fetchModelData(url);
   if (!response.ok || !response.body) throw new Error(`Model download failed (HTTP ${response.status})`);
   const partial = `${target}.part`;
   const hash = createHash('sha256');

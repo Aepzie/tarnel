@@ -14,7 +14,7 @@ import { getTabWebContents, onTabWebContents } from '../tabs';
 import { sendToChrome } from '../window';
 import { pairKey, route, type ModelSet } from './catalog';
 import { detectLanguage } from './detect';
-import { ensureModel, translateTexts, unloadModel } from './engine-host';
+import { ensureModel, retainOnly, translateTexts, unloadModel } from './engine-host';
 import { cachedSets, deleteInstalled, ensureDownloaded, getCatalog, listInstalled, modelPaths } from './models';
 import { TRANSLATE_WORLD_ID, pageCode, type PageCommand, type PageProbe } from './page-script';
 
@@ -95,7 +95,8 @@ export async function getTabState(tabId: number): Promise<TranslateTabState> {
   if (current.pageLang && current.targetLang === targetLang) return current;
   try {
     const page = await probe(wc);
-    return setState(tabId, { pageLang: page.lang, targetLang, available: await availability(page.lang, targetLang) });
+    const offer = prefs().get().offer;
+    return setState(tabId, { pageLang: page.lang, targetLang, available: offer && (await availability(page.lang, targetLang)) });
   } catch {
     return current;
   }
@@ -120,6 +121,7 @@ function batches(pairs: [number, string][]): [number, string][][] {
 
 async function prepareChain(tabId: number, chain: ModelSet[], stale: () => boolean): Promise<void> {
   const total = chain.length;
+  retainOnly(chain.map(pairKey));
   for (const [index, set] of chain.entries()) {
     await ensureDownloaded(set, (fraction) => {
       if (!stale()) setState(tabId, { phase: 'downloading', progress: (index + fraction) / total });
