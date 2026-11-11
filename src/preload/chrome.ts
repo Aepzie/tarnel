@@ -7,6 +7,7 @@ import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { TAB_ARCHIVE_IPC } from '../shared/tab-archive';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -181,6 +182,16 @@ const api: VelaChromeAPI = {
     onChange: (cb) => subscribe(BOOKMARKS_IPC.changed, cb),
     openManager: () => invoke(BOOKMARKS_IPC.chromeOpenManager),
     },
+  tabArchive: {
+    list: (spaceId) => invoke(TAB_ARCHIVE_IPC.list, spaceId ?? null),
+    archiveTabs: (tabIds) => invoke(TAB_ARCHIVE_IPC.archiveTabs, tabIds),
+    archiveGroup: (groupId) => invoke(TAB_ARCHIVE_IPC.archiveGroup, groupId),
+    restore: (ids, spaceId) => invoke(TAB_ARCHIVE_IPC.restore, ids, spaceId ?? null),
+    remove: (ids, spaceId) => invoke(TAB_ARCHIVE_IPC.remove, ids, spaceId ?? null),
+    clear: (spaceId) => invoke(TAB_ARCHIVE_IPC.clear, spaceId ?? null),
+    reopenClosed: (id) => invoke(TAB_ARCHIVE_IPC.reopenClosed, id),
+    onChange: (cb) => subscribe(TAB_ARCHIVE_IPC.changed, cb),
+  },
   passwords: {
     onSavePrompt: (cb) => subscribe(PASSWORD_IPC.savePrompt, cb),
     onSaveCancel: (cb) => subscribe(PASSWORD_IPC.saveCancel, cb),

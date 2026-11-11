@@ -20,6 +20,7 @@ import {
 import { getChromeView, getMainWindow, isHtmlFullscreen, sendToChrome, toggleFullscreen } from './window';
 import { toggleSplit } from './split';
 import { panic } from './panic';
+import { archiveActiveTab } from './tab-archive';
 
 const isMac = process.platform === 'darwin';
 
@@ -115,6 +116,8 @@ function handle(input: Input): boolean {
         });
       case 'KeyM':
         return once(() => sendCommand('audio-mixer'));
+      case 'KeyE':
+        return once(archiveActiveTab);
       case 'KeyB':
         return once(() => updateSettings({ showBookmarksBar: !getSettings().showBookmarksBar }));
       case 'Delete':

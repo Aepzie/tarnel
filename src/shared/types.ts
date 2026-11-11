@@ -185,6 +185,8 @@ export interface Settings {
   sleepAfterMinutes: number;
   /** Minutes of inactivity before a background tab is frozen (kept in memory, no CPU). 0 = never. */
   freezeAfterMinutes: number;
+  /** Hours of inactivity before a background tab moves to the Space's tab archive. 0 = never. */
+  archiveAfterHours: number;
   memorySaver: MemorySaverMode;
   /** Memory saver threshold: total memory Vela may use before it sleeps tabs (GB). */
   memorySaverThresholdGB: number;
@@ -239,13 +241,16 @@ export interface Settings {
 }
 
 export interface Suggestion {
-  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab' | 'bookmark';
+  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab' | 'bookmark' | 'archived';
   title: string;
   url: string;
   /** Present when kind === 'tab': switching to an existing tab. */
   tabId?: number;
   /** Present when kind === 'remote-tab': name of the device the tab is open on. */
   device?: string;
+  /** Present when kind === 'archived': the archive entry to restore. */
+  archiveId?: string;
+  archivedAt?: number;
 }
 
 export interface TopSite {
@@ -342,6 +347,7 @@ export const DEFAULT_SETTINGS: Settings = {
   adblock: true,
   sleepAfterMinutes: 10,
   freezeAfterMinutes: 5,
+  archiveAfterHours: 24,
   memorySaver: 'balanced',
   memorySaverThresholdGB: 4,
   httpsOnly: true,
