@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS, FRAME_RATE_MODES, MEMORY_SAVER_MODES, NEWTAB_HEROES, type FrameRateMode, type MemorySaverMode, type NewtabHero, type SearchEngine, type Settings, type TabLayout, type ThemeMode, type WindowMaterial } from '../shared/types';
+import { BATTERY_SAVER_MODES, type BatterySaverMode } from '../shared/battery';
 import { nextDnsTemplate, SECURE_DNS_MODES, validateDohTemplate, type SecureDnsMode } from '../shared/doh';
 import { isValidUserAgent } from '../shared/user-agent';
 import { createStore, type JsonStore } from './store';
@@ -56,6 +57,7 @@ function sanitize(base: Settings, patch: Partial<Record<keyof Settings, unknown>
   next.sleepAfterMinutes = clampInt(patch.sleepAfterMinutes, 0, 240) ?? next.sleepAfterMinutes;
   next.freezeAfterMinutes = clampInt(patch.freezeAfterMinutes, 0, 240) ?? next.freezeAfterMinutes;
   if (MEMORY_SAVER_MODES.includes(patch.memorySaver as MemorySaverMode)) next.memorySaver = patch.memorySaver as MemorySaverMode;
+  if (BATTERY_SAVER_MODES.includes(patch.batterySaver as BatterySaverMode)) next.batterySaver = patch.batterySaver as BatterySaverMode;
   next.memorySaverThresholdGB = clampInt(patch.memorySaverThresholdGB, 1, 64) ?? next.memorySaverThresholdGB;
   next.sidebarWidth = clampInt(patch.sidebarWidth, 180, 420) ?? next.sidebarWidth;
   return next;

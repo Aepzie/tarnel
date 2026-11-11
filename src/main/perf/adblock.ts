@@ -3,6 +3,8 @@ import { readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ENGINE_VERSION, ElectronBlocker, type Request } from '@ghostery/adblocker-electron';
 import { cacheKey, decodeCache, encodeCache } from './adblock-cache';
+import { adblockRefreshAfterMs } from './battery-policy';
+import { isBatterySaverActive } from './battery-saver';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
 import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
@@ -13,7 +15,8 @@ import { createStore, type JsonStore } from '../store';
  *
  * Startup path is designed to never wait on the network: the compiled engine is cached as a
  * serialized binary in userData (keyed by Ghostery version + list set, see adblock-cache.ts) and
- * deserialized in a few ms. Whenever the engine is older than 24h (checked at start and hourly) a
+ * deserialized in a few ms. Whenever the engine is older than 24h (72h while battery saver is on;
+ * checked at start and hourly) a
  * fresh one is built in the background and hot-swapped into every session in one synchronous step,
  * so no request sees a half-swapped state. New sessions gate whenSessionReady() on the first engine,
  * so the first page request is already filtered; on a cold first run without cache that gate is
@@ -247,7 +250,7 @@ async function refreshInBackground(): Promise<void> {
 }
 
 function refreshIfStale(): void {
-  if (blocker && Date.now() - engineBuiltAt > REFRESH_AFTER_MS) void refreshInBackground();
+  if (blocker && Date.now() - engineBuiltAt > adblockRefreshAfterMs(REFRESH_AFTER_MS, isBatterySaverActive())) void refreshInBackground();
 }
 
 export async function initAdblock(): Promise<void> {

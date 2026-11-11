@@ -16,6 +16,7 @@ import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
 import { getMemorySaverNotice } from './perf/sleeper';
 import { schedulePrefetch } from './perf/prerender';
+import { isBatterySaverActive, registerBatteryIpc } from './perf/battery-saver';
 import { pageThemeFor } from './page-theme';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
@@ -213,6 +214,7 @@ async function perfStats() {
     })),
     tabsFrozen: counts.frozen,
     memorySaver: getMemorySaverNotice(),
+    batterySaver: isBatterySaverActive(),
   };
 }
 
@@ -344,6 +346,7 @@ export function registerIpc(): void {
   handleChrome(AUDIO_IPC.setDevice, (id, slot, choice) => setTabMediaDeviceFromChrome(int(id), slot, choice));
   registerMixerIpc(handleChrome);
   registerVpnIpc(handleChrome);
+  registerBatteryIpc(handleChrome);
   handleChrome(PANIC_IPC.run, () => panic());
   registerSiteDataIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
