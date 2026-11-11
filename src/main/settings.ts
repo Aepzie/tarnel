@@ -20,6 +20,7 @@ const BOOLEAN_KEYS = [
   'sidebarCollapsed',
   'autoHideToolbar',
   'showBookmarksBar',
+  'showPanelRail',
   'updateAutoCheck',
   'updateAutoDownload',
   'updatePrerelease',

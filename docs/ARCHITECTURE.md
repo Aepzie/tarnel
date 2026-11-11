@@ -198,6 +198,32 @@ preloads don't get the `window.chrome` shape.
 * **Sleeping**: `isOnScreen()` replaces "is active" for the sleeper and crash handling; showing a split wakes all panes.
 * **Cost when unused**: no listeners, no extra views; `clusterSplits` returns early and the chrome renders nothing.
 
+## Web panels (`src/main/panels/*`, UI `src/renderer/chrome/panels/*`)
+
+* **Model** (`src/shared/panels.ts`, persisted in `panels.json` by `panels/store.ts`): `WebPanel = { id, name, url,
+  width, mobile, muted, favicon }`, max 20, http(s) URLs only. `PanelsState` adds runtime fields (`loaded`, `frozen`,
+  `audible`, `badge`) and `openId`. Pushed to the chrome on `panels-event:state`; the rail subscribes only while mounted.
+* **Isolation**: one persistent partition **per panel** (`persist:panel-<id>`), not a hidden Space: panels are isolated
+  from every browsing Space *and* from each other (two accounts of the same app work), they don't appear in the Space
+  switcher, and removing a panel clears its partition. The session gets the ad blocker and the safety stage, a strict
+  permission allowlist (notifications, sanitized clipboard write, fullscreen; everything else denied, no prompt), no
+  Space fingerprint/VPN/identity. "Mobile layout" sets the Chrome-Android preset UA on the panel's webContents.
+  Pop-ups/new windows open as tabs in the active Space (so OAuth pop-ups inside a panel don't work).
+* **Layout**: the chrome renders `Viewport` and the rail in one row; the open panel's slot (`PanelSlot`) sits between
+  them and takes the panel's width out of the flex row, so the page viewport shrinks by itself. The slot reports its
+  rect (`panels.setBounds`) and main places the panel view there (radius 12). Resizing drags the slot's left edge
+  (300–900 px, persisted per panel on release, double-click resets to 420).
+* **Window** (`window.ts`): the panel view is a *side view* (`setSideViewsProvider`): `restack()` re-adds it above the
+  pages and below a raised chrome; `layout()` hides it during HTML fullscreen; the transparent-window swap moves it too.
+  `restackWindow()` applies the order after expand/collapse.
+* **Lifecycle**: nothing exists until a panel is first expanded (the rail shows the favicon cached at add time). A
+  collapsed panel keeps its renderer (signed in, title badge updates) and follows the tab timeouts
+  (`panelIdleAction`): freeze (`perf/freeze.ts`, skipped while audible or doing realtime media) after
+  `freezeAfterMinutes`, sleep (renderer destroyed, partition keeps the login) after `sleepAfterMinutes`; never while
+  audible. One `setTimeout` to the next deadline, armed only while a collapsed panel has a pending stage, re-armed on
+  timeout setting changes. Expanding thaws instantly; Esc in a panel (outside text fields) collapses it.
+* **Cost when unused**: rail off (`showPanelRail`, default false; turned on when the first panel is added) = no store
+  read, no session, no listener, no timer.
 ## Peek (`src/main/peek.ts`, UI: `src/renderer/chrome/peek/PeekLayer.tsx`)
 
 A link preview in a floating `WebContentsView` above the active tab. One Peek at a time.

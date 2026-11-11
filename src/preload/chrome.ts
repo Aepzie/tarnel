@@ -8,6 +8,7 @@ import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { PANELS_IPC } from '../shared/panels';
 import { COOKIE_BANNER_IPC } from '../shared/cookie-banners';
 import { TRANSLATE_IPC } from '../shared/translate';
 import { SITE_RULES_IPC } from '../shared/site-rules';
@@ -215,6 +216,19 @@ const api: VelaChromeAPI = {
     onFillCancel: (cb) => subscribe(PASSWORD_IPC.fillCancel, cb),
     fill: (offerId, loginId) => invoke(PASSWORD_IPC.fill, offerId, loginId),
     dismissOffer: (offerId) => invoke(PASSWORD_IPC.dismissOffer, offerId),
+  },
+  panels: {
+    list: () => invoke(PANELS_IPC.list),
+    add: (input) => invoke(PANELS_IPC.add, input),
+    update: (id, patch) => invoke(PANELS_IPC.update, id, patch),
+    remove: (id) => invoke(PANELS_IPC.remove, id),
+    toggle: (id) => invoke(PANELS_IPC.toggle, id),
+    collapse: () => invoke(PANELS_IPC.collapse),
+    setBounds: (bounds) => invoke(PANELS_IPC.setBounds, bounds),
+    reload: (id) => invoke(PANELS_IPC.reload, id),
+    toggleMute: (id) => invoke(PANELS_IPC.toggleMute, id),
+    openAsTab: (id) => invoke(PANELS_IPC.openAsTab, id),
+    onState: (cb) => subscribe(PANELS_IPC.state, cb),
   },
   translate: {
     state: (tabId) => invoke(TRANSLATE_IPC.tabState, tabId),

@@ -20,6 +20,7 @@ import { TaskManager } from './task-manager/TaskManager';
 import { RuleNotice } from './site-rules/RuleNotice';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
+import { PanelRail } from './panels/PanelRail';
 import { PeekLayer } from './peek/PeekLayer';
 import { TabArchivePanel } from './archive/TabArchivePanel';
 import { useBatteryLevelReport, useBatterySaver } from './perf/battery';
@@ -125,7 +126,14 @@ export function App() {
             <TopIsland />
             <BookmarksBar />
             <FindBar />
-            <Viewport />
+            {settings.showPanelRail ? (
+              <div className="flex min-h-0 flex-1 gap-2">
+                <Viewport className="min-w-0" />
+                <PanelRail />
+              </div>
+            ) : (
+              <Viewport />
+            )}
           </div>
         </div>
         {permissionUi && (

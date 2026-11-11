@@ -4,6 +4,7 @@ import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { PANELS_IPC } from '../shared/panels';
 import { COOKIE_BANNER_IPC } from '../shared/cookie-banners';
 import { TRANSLATE_IPC } from '../shared/translate';
 import { SITE_RULES_IPC } from '../shared/site-rules';
@@ -137,6 +138,12 @@ if (isVelaPage()) {
   }
 
   if (location.host === 'settings') {
+    api.panels = {
+      list: () => call(PANELS_IPC.pageList),
+      add: (input) => call(PANELS_IPC.pageAdd, input),
+      update: (id, patch) => call(PANELS_IPC.pageUpdate, id, patch),
+      remove: (id) => call(PANELS_IPC.pageRemove, id),
+    };
     api.aliases = {
       get: () => call(ALIAS_IPC.get),
       set: (patch) => call(ALIAS_IPC.set, patch),
