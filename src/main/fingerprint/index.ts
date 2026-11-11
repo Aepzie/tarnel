@@ -247,6 +247,10 @@ export function initFingerprint(): void {
 export function regenerateFingerprint(id: SpaceId): void {
   const space = getSpace(id);
   if (!space) throw new Error(`Unknown space: ${id}`);
-  regenerateSeed(space);
+  const old = hardwareFor(seedFor(space));
+  regenerateSeed(space, (seed) => {
+    const next = hardwareFor(seed);
+    return Number(next.cores !== old.cores) + Number(next.memory !== old.memory) + Number(next.gpu !== old.gpu);
+  });
   syncAll();
 }

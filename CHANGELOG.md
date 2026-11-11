@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- "New fingerprint" now changes every seed-based value: CPU cores, memory and GPU model no longer stay the same by chance, and ClientRects (`getBoundingClientRect` / `getClientRects`) are now protected too, so their hash changes with the fingerprint.
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.

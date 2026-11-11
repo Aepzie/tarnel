@@ -338,6 +338,46 @@ export function protectMainWorld(config: FingerprintConfig): void {
       },
     );
 
+    /**
+     * Layout reads (getClientRects / getBoundingClientRect on elements and ranges) are scaled by one
+     * tiny per-site factor (|1 - f| between 1.6e-6 and 1.4e-5): geometry stays self-consistent and
+     * layout code is unaffected, but ClientRects hashes follow the Space's seed. Rects a page builds
+     * itself are never scaled; writing to a measured rect drops the scaling.
+     */
+    const rectScale = 1 + ((k1 & 0x7f) + 16) * (k1 & 0x80 ? 1e-7 : -1e-7);
+    const scaledRects = new WeakSet<object>();
+    const markRect = (original: Method): Method =>
+      function (this: unknown, ...args: unknown[]) {
+        const rect = apply(original, this, args) as object;
+        scaledRects.add(rect);
+        return rect;
+      };
+    const markRectList = (original: Method): Method =>
+      function (this: unknown, ...args: unknown[]) {
+        const list = apply(original, this, args) as DOMRectList;
+        for (let i = 0; i < list.length; i++) scaledRects.add(list[i]!);
+        return list;
+      };
+    for (const proto of [realm.Element?.prototype, realm.Range?.prototype]) {
+      wrapMethod(proto, 'getBoundingClientRect', markRect);
+      wrapMethod(proto, 'getClientRects', markRectList);
+    }
+    const scaled = (original: Getter): Getter =>
+      function (this: unknown) {
+        const value = apply(original, this, []) as number;
+        return scaledRects.has(this as object) ? value * rectScale : value;
+      };
+    for (const name of ['x', 'y', 'width', 'height', 'top', 'right', 'bottom', 'left']) {
+      wrapGetter(realm.DOMRectReadOnly?.prototype, name, scaled);
+      wrapGetter(realm.DOMRect?.prototype, name, scaled);
+      wrapSetter(realm.DOMRect?.prototype, name, (original) =>
+        function (this: unknown, value: unknown) {
+          scaledRects.delete(this as object);
+          apply(original, this, [value]);
+        },
+      );
+    }
+
     /** Workers have WorkerNavigator (and no DOM): the same getters live there. */
     const workerNavigator = (realm as unknown as { WorkerNavigator?: { prototype: object } }).WorkerNavigator;
     const navigatorProto: object | undefined = (realm.Navigator ?? workerNavigator)?.prototype;
