@@ -244,7 +244,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   wc.on('did-navigate', (_e, url) => {
     if (!current()) return;
     setTabUrl(tab, url);
-    if (untitledFile(url, wc.getTitle())) tab.title = fileTitle(url);
+    if (isFileUrl(url)) tab.title = untitledFile(url, wc.getTitle()) ? fileTitle(url) : wc.getTitle();
     if (Math.abs(wc.getZoomFactor() - tab.zoom) > 0.001) wc.setZoomFactor(tab.zoom);
     if (!isEphemeral(tab.spaceId) && !isInternalUrl(url)) recordVisit(url, wc.getTitle());
     scheduleEmit();
@@ -327,7 +327,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
       };
     }
     const allowed =
-      isOpenableFromWeb(url) || (isInternalUrl(url) && isInternalUrl(wc.getURL())) || (isFileUrl(url) && isFileUrl(wc.getURL()));
+      isOpenableFromWeb(url) || (isInternalUrl(url) && isInternalUrl(wc.getURL())) || (isFileUrl(url) && mayOpenFiles(wc.getURL()));
     if (allowed) createTab({ url, spaceId: tab.spaceId, vpn: tab.vpn, active: disposition !== 'background-tab' && tab.id === activeTabId, afterId: tab.id });
     return { action: 'deny' };
   });
@@ -351,11 +351,16 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
 }
 
 /**
- * file:// may only be entered by the user (address bar, OS open, drop: no initiator frame) or from
- * another file:// page. Web pages (http(s), data:, extensions) can never navigate any frame there.
+ * file:// may only be entered by the user (address bar, OS open, drop: no initiator frame), from
+ * another file:// page or from a vela:// page. Web pages (http(s), data:, extensions) never can.
  */
 function blocksFileNavigation(url: string, initiatorUrl: string | undefined): boolean {
-  return isFileUrl(url) && initiatorUrl !== undefined && !isFileUrl(initiatorUrl);
+  return isFileUrl(url) && initiatorUrl !== undefined && !mayOpenFiles(initiatorUrl);
+}
+
+/** Pages that may open file:// (links, drops): other local files and Vela's own pages (new tab). */
+function mayOpenFiles(fromUrl: string): boolean {
+  return isFileUrl(fromUrl) || isInternalUrl(fromUrl);
 }
 
 /** Web preferences of every page view (tabs and Peek), so a Peek view can become a tab as is. */
@@ -369,6 +374,9 @@ export function pageWebPreferences(spaceId: SpaceId, vpn: string | null): Electr
     // Only enables Chromium's built-in PDF viewer (Electron ships no other plugins). It is a
     // per-view flag, so it applies to every Space / VPN partition alike.
     plugins: true,
+    // Like Chrome: a file or link dropped on a page the page does not handle opens in that tab
+    // (still subject to the will-frame-navigate / will-navigate guards).
+    navigateOnDragDrop: true,
     // Sandboxed, so no Node anywhere: this only lets the fingerprint session preload run in
     // iframes too. The pages and cosmetic-filter preloads ignore subframes.
     nodeIntegrationInSubFrames: true,
