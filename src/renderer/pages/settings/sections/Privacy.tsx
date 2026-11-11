@@ -173,6 +173,18 @@ export function Privacy() {
         />
         <UserAgentRow />
       </Group>
+      <Group title="Privacy report">
+        <Row title="Your privacy report" description="What Vela blocked this week, per Space. Counted on this device only.">
+          <button
+            type="button"
+            onClick={() => void velaPages().navigate('vela://privacy/')}
+            className="h-8 rounded-lg px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Open
+          </button>
+        </Row>
+        <SwitchRow title="Weekly summary" description="A quiet notification once a week with the numbers." setting="privacyWeeklySummary" />
+      </Group>
       <SiteDataOnClose />
       <SecureDns />
       <Group title="Passwords">

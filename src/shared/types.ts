@@ -241,6 +241,10 @@ export interface Settings {
   offerToSavePasswords: boolean;
   /** Password manager: offer saved accounts on login forms (filling always needs a click). */
   passwordAutofill: boolean;
+  /** Start page: a small "N trackers blocked this week" line linking to vela://privacy. */
+  newtabPrivacyStat: boolean;
+  /** A weekly system notification summarising the privacy report. */
+  privacyWeeklySummary: boolean;
 }
 
 export interface Suggestion {
@@ -383,6 +387,8 @@ export const DEFAULT_SETTINGS: Settings = {
   userAgent: '',
   offerToSavePasswords: true,
   passwordAutofill: true,
+  newtabPrivacyStat: true,
+  privacyWeeklySummary: false,
 };
 
 /** Where an installed extension came from. */

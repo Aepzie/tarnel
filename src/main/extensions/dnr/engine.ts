@@ -2,6 +2,7 @@ import type { Session } from 'electron';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../../net/dispatcher';
+import { countBlockedRequest } from '../../privacy-report/collector';
 import { tabIdForWebContents } from '../../tabs';
 import type { JsonStore } from '../../store';
 import { HostAccess } from './host-access';
@@ -512,7 +513,10 @@ export class SessionDnr {
     }
     if (outcome.kind === 'allow') return;
     if (info.tabId >= 0) extension?.incrementBadge(info.tabId, 1);
-    if (outcome.kind === 'block') return { cancel: true };
+    if (outcome.kind === 'block') {
+      countBlockedRequest(details.webContentsId, details.url, info.type);
+      return { cancel: true };
+    }
     return { redirectURL: extension ? extension.redirects.target(outcome.url, isFrame) : outcome.url };
   }
 
