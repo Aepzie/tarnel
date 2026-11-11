@@ -4,6 +4,7 @@ import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
 import type { UpdateStatus } from '../shared/types';
 
 const isVelaPage = (): boolean => location.protocol === 'vela:';
@@ -93,6 +94,10 @@ if (isVelaPage()) {
       download: () => call(ch.updateDownload),
       install: () => call(ch.updateInstall),
       openRelease: () => call(ch.updateOpenRelease),
+    },
+    privacyReport: {
+      get: () => call(PRIVACY_REPORT_IPC.get),
+      reset: () => call(PRIVACY_REPORT_IPC.reset),
     },
   };
 

@@ -1,3 +1,4 @@
+import type { PrivacyReport } from './privacy-report';
 import type {
   BrowserState,
   ContentBounds,
@@ -337,6 +338,11 @@ export interface VelaPagesAPI {
   updates: VelaUpdatesAPI & {
     /** Check now; resolves when the check finished (status carries the result). */
     check(): Promise<void>;
+  };
+  /** Local privacy report (vela://privacy, start-page stat line). */
+  privacyReport: {
+    get(): Promise<PrivacyReport>;
+    reset(): Promise<void>;
   };
 }
 

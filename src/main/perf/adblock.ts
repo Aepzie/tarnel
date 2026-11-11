@@ -7,6 +7,7 @@ import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/d
 import { getSettings, onSettingsChanged } from '../settings';
 import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
 import { createStore, type JsonStore } from '../store';
+import { countBlockedRequest } from '../privacy-report/collector';
 
 /**
  * Network-level content blocking (Ghostery engine: EasyList + EasyPrivacy + uBO-style lists).
@@ -115,6 +116,7 @@ async function loadFromNetwork(): Promise<ElectronBlocker> {
 function recordBlocked(request: Request): void {
   blockedTotal += 1;
   stats?.update((current) => ({ blockedTotal: current.blockedTotal + 1 }));
+  countBlockedRequest(request.tabId, request.url, request.type);
   // tabId is the Electron webContentsId; it is 0/undefined for service-worker and browser requests.
   if (request.tabId > 0) {
     for (const cb of listeners) {
