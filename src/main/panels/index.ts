@@ -13,7 +13,7 @@ import { fetchFaviconData } from '../favicons';
 import { enableAdblockForSession } from '../perf/adblock';
 import { freezeWebContents, setLifecycleState } from '../perf/freeze';
 import { attachSafety } from '../safety';
-import { getSettings, updateSettings } from '../settings';
+import { getSettings, onSettingsChanged, updateSettings } from '../settings';
 import { createTab } from '../tabs';
 import { getMainWindow, restackWindow, sendToChrome, setSideViewsProvider } from '../window';
 import { addPanel, getPanel, isPanelId, listPanels, partitionFor, patchFromInput, removePanel, updatePanel } from './store';
@@ -85,6 +85,13 @@ function ensureProvider(): void {
   if (providerSet) return;
   providerSet = true;
   setSideViewsProvider(openView);
+  let limits = `${getSettings().freezeAfterMinutes}/${getSettings().sleepAfterMinutes}`;
+  onSettingsChanged((settings) => {
+    const next = `${settings.freezeAfterMinutes}/${settings.sleepAfterMinutes}`;
+    if (next === limits) return;
+    limits = next;
+    if (runtimes.size > 0) scheduleIdle();
+  });
 }
 
 function prepareSession(panel: WebPanel): Session {
