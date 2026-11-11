@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Privacy report (`vela://privacy`, Settings → Privacy → Privacy report, or "Privacy report" in the command palette): this week vs last week for trackers and ads blocked (Vela's blocker and extension rules), tracking parameters removed, referrers trimmed and dangerous sites warned, with estimated data and time saved, the tracker domains and companies that tried to track you most, and a per-Space breakdown. Counted on this device only as daily totals (tracker domains only, never the pages you visited), kept for 90 days; "Reset stats" clears them. Burner Spaces count towards the totals only.
+- Start page: a small "N trackers blocked this week" line that opens the report (Settings → Appearance → Start page → Privacy stat, on by default).
+- Optional weekly summary notification (Settings → Privacy → Weekly summary, off by default).
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.

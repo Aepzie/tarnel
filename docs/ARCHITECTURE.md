@@ -375,6 +375,7 @@ All main modules are ES modules compiled by esbuild into one CJS bundle. Import 
 export interface JsonStore<T> { get(): T; set(next: T): void; update(fn: (current: T) => T): void; flush(): void; }
 export function createStore<T>(name: string, defaults: T): JsonStore<T>; // file: userData/<name>.json, debounced atomic write (tmp + rename), 400ms
 export function flushAllStores(): void; // sync flush, called on before-quit
+export function onBeforeFlushAll(hook: () => void): void; // runs first in flushAllStores (in-memory counters → their store)
 ```
 
 ### `src/main/settings.ts`
@@ -758,13 +759,49 @@ Third-party storage partitioning (iframes keyed by top-level site for localStora
 by default in Chromium since M115 and needs no flag. Checked on Electron 45.2.3 / Chromium 156: an iframe of site B
 embedded under site A writes localStorage, and B opened top-level reads `null`.
 
+## Privacy report (`src/main/privacy-report/*`, `src/shared/privacy-report.ts`)
+
+Local-only daily aggregates behind `vela://privacy`, the start-page stat line and the optional weekly notice.
+
+- **Hot path** (`privacy-report/collector.ts`, no Electron imports): `countBlockedRequest(wcId, url, type)` and
+  `countPrivacyEvent(counter, wcId, n)` only add to an in-memory map keyed by local day. Callers: Ghostery's
+  `request-blocked`/`request-redirected` (`perf/adblock.ts`), extension DNR `block` outcomes
+  (`extensions/dnr/engine.ts`), the url-clean stage (`paramsStripped`), the privacy header stage when a Referer is
+  shortened or dropped (`referrersTrimmed`), and the safety stage (`dangerousWarned`). The webContents id is resolved
+  to a Space through a resolver injected from `index.ts` (tabs → spaces); unresolvable requests (service workers,
+  browser requests) count in the totals only. The same URL blocked again in the same tab before the next flush counts
+  once (pages that retry a blocked beacon in a loop would otherwise add tens of thousands per minute).
+- **Persistence** (`privacy-report/index.ts`): the first increment starts a one-minute timer that folds the pending
+  buckets into `userData/privacy-report.json` (`mergeLog`, pure) and drops days older than 90 (rollover). No timer
+  runs while nothing is counted; `onBeforeFlushAll` drains on quit / update install.
+- **Stored per day:** counter totals, the same counters per Space id, and blocked requests per *tracker* registrable
+  domain (eTLD+1 of the blocked request, capped at 150 per day). Never page URLs, paths or the sites visited. Burner
+  Spaces: totals only (no Space row, no domains). Deleted Spaces show as "Removed Space".
+- **Estimates** (`shared/privacy-report.ts`): data saved = typical transfer size per blocked resource type (script
+  25 KB, sub-frame 40 KB, image 8 KB, stylesheet 8 KB, font 20 KB, media 120 KB, xhr/fetch 1.5 KB, ping 0.3 KB,
+  other 2 KB). Time saved = bytes ÷ 1250 bytes/ms (10 Mbit/s) + 5 ms per blocked request ("work avoided", not
+  wall-clock page-load time).
+- **Companies:** `shared/tracker-companies.ts` is a small hand-written domain → owner map (no third-party database
+  is bundled; Ghostery's TrackerDB is not a dependency). Unknown domains are listed without a company.
+- **Adding a counter:** one line in `PRIVACY_COUNTERS` plus a `countPrivacyEvent('<name>', wcId)` call. A module
+  that keeps its own running total can instead register it once —
+  `registerPrivacySource('cookieBannersHandled', () => getCookieBannerStats().handled)` — and each flush records
+  the growth (totals only; the first read is the baseline). Unknown counter names in stored files are preserved.
+- **IPC:** `velaPages.privacyReport.get()` (flushes, then builds the report: this week = last 7 days incl. today vs
+  the 7 before, 14-day series, top domains/companies, per Space) and `.reset()`; any `vela://` page may call them
+  (the start page reads this week's count when Settings → Appearance → Privacy stat is on).
+- **Weekly notice** (`privacyWeeklySummary`, off by default): checked at flush time; the first check after enabling
+  records a baseline day, then at most every 7 days a silent system notification; clicking opens `vela://privacy`.
+- Not counted yet: fingerprinting readbacks (canvas/WebGL/audio). The counter exists (`fingerprintMitigated`), but
+  the main-world shims would need a batched renderer → main channel; the report shows it only when non-zero.
+
 ## vela:// protocol
 
 `vela://<page>/<file>` → `dist/renderer/pages/<page>/<file>` (default `index.html`).
 `vela://shared/<file>` → `dist/renderer/shared/<file>`. Registered as privileged
 (`standard`, `secure`, `supportFetchAPI`) before ready, and handled via `session.protocol.handle`
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
-Pages: `newtab`, `settings`, `error` (`vela://error/?code=…&url=…&desc=…`, or the dangerous-site warning `vela://error/?threat=…&source=…&url=…`).
+Pages: `newtab`, `settings`, `privacy`, `error` (`vela://error/?code=…&url=…&desc=…`, or the dangerous-site warning `vela://error/?threat=…&source=…&url=…`).
 
 ## Extensions (`src/main/extensions/*`)
 
