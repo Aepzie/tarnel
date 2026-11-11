@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { fileUrlForPath, openTargetsFromArgs, type OpenTargetEnv, type PathKind } from './open-targets';
+import { fileTitle, fileUrlForPath, openTargetsFromArgs, type OpenTargetEnv, type PathKind } from './open-targets';
 
 function env(windows: boolean, cwd: string, entries: Record<string, PathKind>): OpenTargetEnv {
   const norm = (p: string): string => (windows ? p.toLowerCase() : p);
@@ -47,6 +47,20 @@ describe('openTargetsFromArgs (Windows)', () => {
       'file:///C:/Users/me/Documents/report.pdf',
     ]);
   });
+  it('after a bare -- every argument is a target, switches before it are ignored', () => {
+    const dashed = env(true, 'C:\\Users\\me\\Documents', {
+      'C:\\Users\\me\\Documents\\--evil=1.pdf': 'file',
+      'C:\\Users\\me\\Documents\\report.pdf': 'file',
+    });
+    assert.deepEqual(openTargetsFromArgs(['--allow-file-access-from-files', '--x=y', '--', '--evil=1.pdf', 'report.pdf', '--'], dashed), [
+      'file:///C:/Users/me/Documents/--evil=1.pdf',
+      'file:///C:/Users/me/Documents/report.pdf',
+    ]);
+    assert.deepEqual(openTargetsFromArgs(['--evil=1.pdf', 'report.pdf'], dashed), ['file:///C:/Users/me/Documents/report.pdf']);
+  });
+  it('a switch-looking URL after -- is still only a URL', () => {
+    assert.deepEqual(openTargetsFromArgs(['--', 'https://example.com/?--inspect'], win), ['https://example.com/?--inspect']);
+  });
   it('a drive path is not mistaken for a URL scheme', () => {
     assert.equal(fileUrlForPath('c:\\users\\me\\documents\\report.pdf', win), 'file:///c:/users/me/documents/report.pdf');
   });
@@ -73,5 +87,12 @@ describe('openTargetsFromArgs (POSIX)', () => {
   });
   it('rejects NUL bytes', () => {
     assert.equal(fileUrlForPath('/home/me/docs/paper.pdf\0', nix), null);
+  });
+});
+
+describe('fileTitle', () => {
+  it('is the decoded file name', () => {
+    assert.equal(fileTitle('file:///C:/Users/me/my%20notes.txt'), 'my notes.txt');
+    assert.equal(fileTitle('file:///tmp/a%23b.json'), 'a#b.json');
   });
 });

@@ -13,7 +13,7 @@ import { getSettings } from './settings';
 import { getActiveSpaceId, getSpace, getSpaceSession, listSpaces, onSpacesChanged, removeSpace, setActiveSpaceId, whenSessionReady } from './spaces';
 import { bindGroupModel, clusterGroups, getGroup, groupsInOrder, pruneGroups, restoreGroup, savedGroup, type SavedGroup } from './tab-groups';
 import { NEWTAB_URL, isInternalUrl, isOpenableFromWeb, isSecureUrl, resolveInput } from './url';
-import { isFileUrl } from './open-targets';
+import { fileTitle, isFileUrl } from './open-targets';
 import * as windowLayer from './window';
 import { bindSplitModel, clusterSplits, detachFromSplit, isOnScreen, restoreSplits, savedSplit, splitIdOf, splitOf, splitsInOrder, unitOf, type SavedSplit } from './split';
 import { onPaneFocus, trackPanes, type Pane } from './split-panes';
@@ -189,6 +189,11 @@ function loadInTab(tab: Tab, wc: WebContents, url: string, navigate: () => Promi
   );
 }
 
+/** Text, JSON and media files have no title of their own (Chromium reports '' or the URL). */
+function untitledFile(url: string, title: string): boolean {
+  return isFileUrl(url) && (!title || title === url || (title.includes('/') && url.endsWith(title)));
+}
+
 function setTabUrl(tab: Tab, url: string): void {
   if (url.startsWith('vela://error/') && tab.errorUrl) return;
   tab.url = url;
@@ -208,7 +213,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   });
   wc.on('page-title-updated', (_e, title) => {
     if (!current()) return;
-    tab.title = title;
+    tab.title = untitledFile(tab.url, title) ? fileTitle(tab.url) : title;
     if (!isEphemeral(tab.spaceId) && !isInternalUrl(tab.url)) updateTitle(tab.url, title);
     scheduleEmit();
   });
@@ -239,6 +244,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   wc.on('did-navigate', (_e, url) => {
     if (!current()) return;
     setTabUrl(tab, url);
+    if (untitledFile(url, wc.getTitle())) tab.title = fileTitle(url);
     if (Math.abs(wc.getZoomFactor() - tab.zoom) > 0.001) wc.setZoomFactor(tab.zoom);
     if (!isEphemeral(tab.spaceId) && !isInternalUrl(url)) recordVisit(url, wc.getTitle());
     scheduleEmit();

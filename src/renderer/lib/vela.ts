@@ -47,6 +47,7 @@ export function hostOf(url: string): string {
   try {
     const parsed = new URL(url);
     if (parsed.protocol === 'vela:') return `vela://${parsed.hostname}`;
+    if (parsed.protocol === 'file:') return decodeURIComponent(parsed.pathname.split('/').pop() ?? '') || 'file';
     return parsed.hostname.replace(/^www\./, '');
   } catch {
     return url;

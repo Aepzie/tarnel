@@ -46,16 +46,23 @@ function pathFromFileUrl(arg: string, windows: boolean): string | null {
 
 /**
  * Tab URLs for command-line arguments, in order. `args` must already exclude the executable (and the
- * app path in development). Flags (`-x`, `--foo`, `--foo=bar`, Chromium switches) are skipped;
+ * app path in development). Before a bare `--` (the OS registration launches `Vela.exe -- "%1"`, so a
+ * crafted file name can never become a switch) flags (`-x`, `--foo`, `--foo=bar`, Chromium switches)
+ * are skipped; after it every argument is a target. Without `--` the same rules apply to all args;
  * http(s)/vela URLs are returned unchanged for the caller to resolve; everything else is treated as
  * a local path (absolute, relative to `env.cwd`, or a file:// URL) and kept only if it exists.
  */
 export function openTargetsFromArgs(args: readonly string[], env: OpenTargetEnv): string[] {
   const out: string[] = [];
+  let targetsOnly = false;
   for (const raw of args) {
     if (typeof raw !== 'string') continue;
+    if (!targetsOnly && raw === '--') {
+      targetsOnly = true;
+      continue;
+    }
     const arg = raw.trim();
-    if (!arg || arg.startsWith('-')) continue;
+    if (!arg || (!targetsOnly && arg.startsWith('-'))) continue;
     if (URL_ARG.test(arg)) {
       out.push(arg);
       continue;
@@ -67,7 +74,16 @@ export function openTargetsFromArgs(args: readonly string[], env: OpenTargetEnv)
   return out;
 }
 
-/** True for the file:// URLs `fileUrlForPath` produces (used to validate dropped/argv targets). */
 export function isFileUrl(url: string): boolean {
   return FILE_URL.test(url);
+}
+
+/** Tab title for a file:// page that has none of its own (text, JSON, media): the file name. */
+export function fileTitle(url: string): string {
+  try {
+    const name = new URL(url).pathname.split('/').filter(Boolean).pop() ?? '';
+    return decodeURIComponent(name) || url;
+  } catch {
+    return url;
+  }
 }
