@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Site rules (Settings → Rules): connect a domain card (`example.com`, `*.example.com` or a wildcard like `shop-*.example.*`) to actions — open in a Space, route through a MantelVPN country, fingerprint level (off / standard / strict / random per visit), user agent, or block the site. Applied before the page loads, also for link clicks and new tabs. A workflow editor (drag cards, connect them; fully usable by keyboard) plus a plain list view and a "Which rules apply to…" tester. The tab menu has "Create rule for this site…". When a VPN rule can't apply because you're signed out, a short hint appears.
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
