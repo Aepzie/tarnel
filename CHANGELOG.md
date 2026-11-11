@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-11
+
 ### Added
 - User agent per Space: a default in Settings → Privacy and an override in each Space (Settings → Spaces). Pick from a list of common browsers (Chrome, Edge, Firefox, Safari on desktop and mobile) or randomize.
 
@@ -252,7 +254,8 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Aepzie/vela/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/Aepzie/vela/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/Aepzie/vela/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.1
 [0.7.0]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.0
