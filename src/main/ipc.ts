@@ -25,6 +25,7 @@ import * as tabGroups from './tab-groups';
 import { getCompletedDownloadPath, getDownloadPath, isDangerousDownload } from './downloads';
 import { registerSafetyIpc } from './safety';
 import { registerPrivacyReportIpc } from './privacy-report';
+import { registerDefaultBrowserIpc } from './default-browser';
 import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { regenerateFingerprint } from './fingerprint';
@@ -423,5 +424,6 @@ export function registerIpc(): void {
   registerSyncIpc(handlePages);
   registerSafetyIpc(handlePages);
   registerPrivacyReportIpc(handlePages);
+  registerDefaultBrowserIpc(handlePages);
   registerImportIpc(handlePages);
 }
