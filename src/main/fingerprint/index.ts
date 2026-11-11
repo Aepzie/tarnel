@@ -3,7 +3,7 @@ import { availableParallelism, totalmem } from 'node:os';
 import { join } from 'node:path';
 import { FINGERPRINT_CONFIG_CHANNEL, languageList, resolveTimezone, type FingerprintConfig } from '../../shared/fingerprint';
 import type { Space, SpaceId } from '../../shared/types';
-import { acceptLanguages, cleanUserAgent, registrableDomain } from '../privacy';
+import { acceptLanguages, registrableDomain } from '../privacy';
 import { getSpace, listSpaces, onSessionCreated, onSessionRemoved, onSpacesChanged, routedCountryOf } from '../spaces';
 import { setHeaderProfile } from './headers';
 import { deriveWords, pruneSeeds, regenerateSeed, seedFor } from './seeds';
@@ -144,7 +144,7 @@ function emulationFor(session: Session): EmulationSettings {
 function applyAcceptLanguage(session: Session, language: string | null): void {
   const wanted = language ? languageList(language).join(',') : acceptLanguages();
   try {
-    if (wanted) session.setUserAgent(cleanUserAgent(session.getUserAgent()), wanted);
+    if (wanted) session.setUserAgent(session.getUserAgent(), wanted); // already clean (privacy.ts) or the Space's own UA
   } catch {
     /* session gone */
   }

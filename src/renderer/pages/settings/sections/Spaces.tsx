@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { LANGUAGE_OPTIONS, RegionSelect, TIMEZONE_HINT, TIMEZONE_OPTIONS } from '@/chrome/spaces/FingerprintPicker';
 import { ConfirmActions } from '../components/confirm';
+import { UserAgentPicker } from '../components/user-agent';
 import { Segmented, Swatches, type SegmentOption } from '../components/controls';
 import { Row, SectionHeader } from '../components/layout';
 import { errorText, hasBridge, useSettings } from '../store';
@@ -167,7 +168,7 @@ function SpaceCard({
     });
   };
 
-  const pickRegion = (patch: Pick<SpaceInput, 'timezone' | 'language'>) => {
+  const pickRegion = (patch: Pick<SpaceInput, 'timezone' | 'language' | 'userAgent'>) => {
     setFingerprintError(null);
     save(patch).catch((error) => setFingerprintError(errorText(error, 'Could not change this setting')));
   };
@@ -275,6 +276,14 @@ function SpaceCard({
             disabled={fingerprint === 'off'}
             onChange={(language) => pickRegion({ language })}
             className="w-44"
+          />
+        </Row>
+        <Row title="User agent" description="What this Space reports as its browser. Default follows Privacy settings.">
+          <UserAgentPicker
+            label={`User agent for ${space.name}`}
+            value={space.userAgent ?? ''}
+            defaultLabel="Use default"
+            onChange={(userAgent) => pickRegion({ userAgent })}
           />
         </Row>
       </div>

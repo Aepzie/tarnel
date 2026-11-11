@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { velaPages } from '@/lib/vela';
 import { ConfirmActions } from '../components/confirm';
+import { UserAgentPicker } from '../components/user-agent';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 import { SiteDataOnClose } from './SiteDataOnClose';
@@ -133,6 +134,15 @@ function SafetyDescription() {
   return `${base} ${formatCount(status.entries)} entries, updated ${when}.`;
 }
 
+function UserAgentRow() {
+  const { settings, update } = useSettings();
+  return (
+    <Row title="User agent" description="What sites see as your browser, in every Space without its own. A non-Chromium value can break some sites.">
+      <UserAgentPicker label="Default user agent" value={settings.userAgent} defaultLabel="Vela default" onChange={(userAgent) => update({ userAgent })} />
+    </Row>
+  );
+}
+
 export function Privacy() {
   return (
     <>
@@ -161,6 +171,7 @@ export function Privacy() {
           description="Other sites only learn which site you came from, never the page."
           setting="trimReferrers"
         />
+        <UserAgentRow />
       </Group>
       <SiteDataOnClose />
       <SecureDns />

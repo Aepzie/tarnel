@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { cleanLanguage, cleanTimezone } from '../shared/fingerprint';
+import { cleanUserAgentValue } from '../shared/user-agent';
 import { normalizeCountry, routeKey, routedPartition } from '../shared/vpn-route';
 import { FINGERPRINT_LEVELS, SPACE_COLORS, type FingerprintLevel, type Space, type SpaceColor, type SpaceId, type SpaceInput } from '../shared/types';
 import { applyPrivacy } from './privacy';
@@ -188,6 +189,7 @@ export function createSpace(input: SpaceInput): Space {
     fingerprint: cleanFingerprint(input?.fingerprint, input?.ephemeral === true ? 'strict' : 'standard'),
     timezone: cleanTimezone(input?.timezone),
     language: cleanLanguage(input?.language),
+    userAgent: cleanUserAgentValue(input?.userAgent),
     createdAt: Date.now(),
   };
   if (space.ephemeral) ephemeral = [...ephemeral, space];
@@ -199,7 +201,7 @@ export function createSpace(input: SpaceInput): Space {
 /** Creates a persistent space with a fixed id (a space that arrived through sync). */
 export function importSpace(id: SpaceId, input: Omit<SpaceInput, 'ephemeral'>): Space {
   if (!/^[\w-]{1,64}$/.test(id) || getSpace(id)) throw new Error(`Invalid space id: ${id}`);
-  const space: Space = { id, name: cleanName(input?.name), color: cleanColor(input?.color), ephemeral: false, proxy: cleanProxy(input?.proxy), fingerprint: cleanFingerprint(input?.fingerprint, 'standard'), timezone: cleanTimezone(input?.timezone), language: cleanLanguage(input?.language), createdAt: Date.now() };
+  const space: Space = { id, name: cleanName(input?.name), color: cleanColor(input?.color), ephemeral: false, proxy: cleanProxy(input?.proxy), fingerprint: cleanFingerprint(input?.fingerprint, 'standard'), timezone: cleanTimezone(input?.timezone), language: cleanLanguage(input?.language), userAgent: cleanUserAgentValue(input?.userAgent), createdAt: Date.now() };
   requireStore().update((f) => ({ ...f, spaces: [...f.spaces, space] }));
   emitChanged();
   return space;
@@ -216,6 +218,7 @@ export function updateSpace(id: SpaceId, patch: Partial<SpaceInput>): Space {
     fingerprint: cleanFingerprint(patch?.fingerprint, current.fingerprint),
     timezone: cleanTimezone(patch?.timezone, current.timezone ?? ''),
     language: cleanLanguage(patch?.language, current.language ?? ''),
+    userAgent: cleanUserAgentValue(patch?.userAgent, current.userAgent ?? ''),
   };
   if (next.ephemeral) ephemeral = ephemeral.map((s) => (s.id === id ? next : s));
   else requireStore().update((f) => ({ ...f, spaces: f.spaces.map((s) => (s.id === id ? next : s)) }));

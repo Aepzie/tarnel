@@ -120,6 +120,10 @@ other signals must also look like a stock Chromium browser. Vela does not claim 
 
 * **User-Agent**: `Chrome/<major>.0.0.0` (Chromium's UA reduction); the build number is only available through
   hints. Set in `app.userAgentFallback` and per session (`privacy.ts`), so workers and popups get it too.
+* **User-Agent override**: `Space.userAgent` → `Settings.userAgent` → the clean UA above (`src/main/user-agent.ts`,
+  presets/validation in `src/shared/user-agent.ts`). Applied with `session.setUserAgent` (Accept-Language kept) and
+  `webContents.setUserAgent` for open pages (takes effect on their next load). Client hints / `navigator.userAgentData`
+  still describe Vela's Chromium, so a non-Chromium UA is detectable.
 * **`window.chrome`**: the identity preload (`registerPreloadScript`, type `frame`, every session) runs
   `shapeMainWorld` in the main world of every frame with an http(s) *origin* (so `about:srcdoc` frames too):
   `chrome.app` / `csi()` / `loadTimes()` with Chromium's shape and values from Navigation Timing, functions with
