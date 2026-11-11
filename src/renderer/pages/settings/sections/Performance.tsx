@@ -25,6 +25,15 @@ const FREEZE_OPTIONS: readonly SegmentOption<string>[] = [
   { value: '5', label: '5 min' },
 ];
 
+const ARCHIVE_OPTIONS: readonly SegmentOption<string>[] = [
+  { value: '0', label: 'Off' },
+  { value: '6', label: '6 h' },
+  { value: '12', label: '12 h' },
+  { value: '24', label: '24 h' },
+  { value: '72', label: '3 days' },
+  { value: '168', label: '1 week' },
+];
+
 const SAVER_OPTIONS: readonly SegmentOption<MemorySaverMode>[] = [
   { value: 'off', label: 'Off' },
   { value: 'balanced', label: 'Balanced' },
@@ -134,6 +143,14 @@ export function Performance() {
             value={String(settings.freezeAfterMinutes)}
             options={FREEZE_OPTIONS}
             onChange={(value) => update({ freezeAfterMinutes: Number(value) })}
+          />
+        </Row>
+        <Row title="Archive unused tabs" description="Move tabs you haven't opened in a while out of the tab strip into the Space's tab archive, where you can search and restore them. Pinned tabs and tabs playing audio stay.">
+          <Segmented
+            label="Archive tabs after"
+            value={String(settings.archiveAfterHours)}
+            options={ARCHIVE_OPTIONS}
+            onChange={(value) => update({ archiveAfterHours: Number(value) })}
           />
         </Row>
         <Row title="Memory saver" description="When Vela uses more memory than the limit, sleep the tabs you used least recently. Maximum acts sooner and on more tabs.">

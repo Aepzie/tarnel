@@ -18,6 +18,7 @@ import { VerticalIsland } from './vertical/VerticalIsland';
 import { TaskManager } from './task-manager/TaskManager';
 import { BookmarksBar } from './bookmarks/BookmarksBar';
 import { BookmarkEditor } from './bookmarks/BookmarkEditor';
+import { TabArchivePanel } from './archive/TabArchivePanel';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
 // itself is eager, so no request is missed while it loads).
@@ -121,6 +122,7 @@ export function App() {
         <CommandPalette />
         <BookmarkEditor />
         <TaskManager />
+        <TabArchivePanel />
       </LayoutGroup>
     </TooltipProvider>
   );
