@@ -17,6 +17,7 @@ import { SiteInfoTrigger } from '../site-info/SiteInfoPanel';
 import { PaletteRow, type PaletteRowModel } from './PaletteRow';
 import { useSuggestions } from './useSuggestions';
 import { BookmarkStar } from '../bookmarks/BookmarkStar';
+import { relativeAge } from '@shared/tab-archive';
 
 const MAX_STAGGER = 8;
 const STAGGER_STEP = 0.022;
@@ -117,12 +118,23 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
     const remoteRows: PaletteRowModel[] = server
       .filter((s) => s.kind === 'remote-tab')
       .map((s) => ({ type: 'history', id: `remote:${s.device ?? ''}:${s.url}`, title: s.title, url: s.url, device: s.device }));
+    const now = Date.now();
+    const archivedRows: PaletteRowModel[] = server
+      .filter((s) => s.kind === 'archived' && s.archiveId !== undefined)
+      .map((s) => ({
+        type: 'history',
+        id: `archived:${s.archiveId}`,
+        title: s.title,
+        url: s.url,
+        archived: { id: s.archiveId!, age: relativeAge(s.archivedAt ?? now, now) },
+      }));
     const commandRows = text.length >= 2 ? rankCommands(commands, text, 40).slice(0, 3).map(toCommandRow) : [];
     return [
       { heading: null, rows: [go] },
       { heading: 'Open tabs', rows: tabRows },
       { heading: 'Commands', rows: commandRows },
       { heading: 'Bookmarks', rows: bookmarkRows },
+      { heading: 'Archived', rows: archivedRows },
       { heading: 'History', rows: historyRows },
       { heading: 'Other devices', rows: remoteRows },
     ].filter((group) => group.rows.length > 0);
@@ -207,7 +219,8 @@ function PaletteLayer({ palette }: { palette: ChromeUIState['palette'] }) {
           open(row.input);
           break;
         case 'history':
-          open(row.url);
+          if (row.archived) settle(vela.tabArchive.restore([row.archived.id]));
+          else open(row.url);
           break;
         case 'tab':
           settle(vela.tabs.activate(row.tabId));
