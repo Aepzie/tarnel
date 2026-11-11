@@ -957,6 +957,43 @@ The module is `require`d lazily on the first check (esbuild keeps it external), 
 * Testing: `VELA_UPDATE_FEED=<http url | local dir>` switches to a generic provider (a local dir is served on
   127.0.0.1); unpacked dev runs then check in notify mode.
 
+## Translation (`src/main/translate/*`)
+
+On-device page translation, the same stack as Firefox Translations. No page text leaves the device;
+the only network traffic is Mozilla's model catalog and the model files.
+
+- **Engine:** `vendor/bergamot/` — `bergamot-translator-worker.{js,wasm}` v0.4.5 (MPL-2.0, unmodified, from
+  the `@browsermt/bergamot-translator@0.4.9` npm tarball, sha1 `224cd32c6e89c92a0d4945dc0fceb4400dcb2ae4`;
+  license text in `vendor/bergamot/LICENSE`). Not an npm dependency: build.mjs copies it to `dist/vendor/bergamot`.
+  `engine-process.ts` (bundled to `dist/main/translate-engine.js`) runs it in an Electron **utilityProcess**
+  ("Vela Translation"): spawned on the first translation, killed after 3 min idle, restarted when the
+  needed language pair changes (WASM memory never shrinks). intgemm uses the WASM-embedded fallbacks.
+- **Models:** Mozilla Remote Settings, collection `translations-models`
+  (`firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records`),
+  files from the attachments CDN (`base_url` from the server's `capabilities.attachments`). Models are
+  **CC-BY-SA 4.0** (Mozilla / Bergamot project). `catalog.ts` (pure, tested) keeps per pair the newest stable
+  version without `filter_expression` that has model + lex + vocab (or src/trg vocab). `models.ts` caches
+  the catalog for 24 h in `userData/translation-models/catalog.json`, downloads a pair into
+  `userData/translation-models/<from>-<to>/` streaming + SHA-256 against the record hash, `.part` → rename,
+  and writes `manifest.json` last. The CDN answers 406 to browser-like user agents, so these requests send
+  `User-Agent: Vela/<version> (on-device translation)` and no cookies. Mozilla publishes xx↔en only; other
+  pairs pivot through English (`translateViaPivoting`, two models).
+- **Page:** `page-script.ts` runs in isolated world 1777 (`executeJavaScriptInIsolatedWorld`), so page
+  scripts can't see or alter it. Main pulls text batches (`collect`), translates ~2500 chars per engine call
+  and pushes results back (`apply`) — text nodes are replaced in place (markup, listeners stay), originals
+  kept for "Show original" (`restore`). Skipped: script/style/code/pre/kbd/inputs/contenteditable,
+  `translate="no"`, `.notranslate`. Language: `detect.ts` (script ranges + stop words, pure, tested),
+  falls back to `<html lang>`.
+- **State/IPC:** `TRANSLATE_IPC` in `src/shared/translate.ts`; chrome: `vela.translate.{state,page,showOriginal,onState}`,
+  pages: `velaPages.translate.{overview,setPrefs,deleteModel,refreshCatalog}`. Prefs live in their own store
+  (`translate.json`: target language — default the OS locale —, always-translate list, offer on/off).
+  Zero cost while unused: no engine process, no catalog fetch, no page probing (except on page load when the
+  always-translate list is non-empty).
+- **Limits:** each text node is translated alone, so a sentence split by inline markup (`Click <a>here</a> to …`)
+  loses context; dynamically added content after translation is not translated; subframes are not translated.
+  Measured on the dev machine (Windows 11, single-threaded WASM): ~260 words/s on running text, ~80–140 words/s on real pages with many
+  short nodes (en.wikipedia "Bergamot orange", 3188 words, ~40 s); engine ~450 MB working set with one pair.
+
 ## Android
 
 `android/` is a separate, native app (Kotlin + Jetpack Compose, Gradle) — no code is shared with the Electron app,

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- On-device page translation: pages are translated locally with Mozilla's Firefox Translations engine (Bergamot) and models; no page text leaves the device. Models (~37 MB per direction) are downloaded on demand, SHA-256 verified, and can be deleted. Translate button in the address popup when the page language differs, palette command "Translate page" / "Show original page", and Settings → General → Languages (target language, always translate, downloaded models). 109 directions (every language ↔ English; other pairs pivot through English).
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
