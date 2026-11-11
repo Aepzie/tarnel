@@ -1161,7 +1161,7 @@ The module is `require`d lazily on the first check (esbuild keeps it external), 
   in `build/installer.nsh` (`nsis.include`), Chrome-style, under `SHELL_CONTEXT` (HKCU per-user, HKLM for an
   "all users" install): `Software\Clients\StartMenuInternet\Vela` (+ `Capabilities` with URLAssociations
   http/https → `VelaURL` and FileAssociations → `VelaHTML` / `VelaPDF` / `VelaSVG` / `VelaWebP` / `VelaMHTML`),
-  `Software\RegisteredApplications\Vela`, the ProgIDs under `Software\Classes` (`"Vela.exe" "%1"`) and only an
+  `Software\RegisteredApplications\Vela`, the ProgIDs under `Software\Classes` (`"Vela.exe" -- "%1"`; the `--` ends switch parsing) and only an
   `OpenWithProgids` entry per extension, then `SHChangeNotify(SHCNE_ASSOCCHANGED)`. Uninstall removes exactly
   those keys/values. It also cleans the `HTML document` ProgID older builds let electron-builder write.
   Windows 10/11 never let an app make itself default: "Make default" opens

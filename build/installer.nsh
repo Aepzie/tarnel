@@ -8,6 +8,9 @@
 ; SHELL_CONTEXT is HKCU for a per-user install and HKLM for "all users" (assisted installer choice).
 ; The portable build never includes this file and writes nothing to the registry.
 ;
+; The `--` before "%1" ends Chromium's switch parsing, so a crafted URL or file name is never read
+; as a command-line switch (the same idea as Chrome's --single-argument).
+;
 ; Keep the names in sync with src/shared/default-browser.ts (REGISTERED_APP_NAME).
 
 !define VELA_CLIENT_KEY "Software\Clients\StartMenuInternet\Vela"
@@ -20,7 +23,7 @@
   WriteRegStr SHELL_CONTEXT "Software\Classes\${PROGID}\Application" "ApplicationIcon" "$appExe,0"
   WriteRegStr SHELL_CONTEXT "Software\Classes\${PROGID}\DefaultIcon" "" "$appExe,0"
   WriteRegStr SHELL_CONTEXT "Software\Classes\${PROGID}\shell" "" "open"
-  WriteRegStr SHELL_CONTEXT "Software\Classes\${PROGID}\shell\open\command" "" '"$appExe" "%1"'
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${PROGID}\shell\open\command" "" '"$appExe" -- "%1"'
 !macroend
 
 !macro velaAssociateFile EXT PROGID
@@ -38,7 +41,8 @@
 !macro velaForgetLegacyHtmlAssociation
   Push $0
   ReadRegStr $0 SHELL_CONTEXT "Software\Classes\HTML document\shell\open\command" ""
-  ${if} $0 == '$appExe "%1"'
+  ${if} $0 == '"$appExe" "%1"'
+  ${orIf} $0 == '$appExe "%1"'
   ${orIf} $0 == ""
     !insertmacro velaForgetLegacyHtmlExt "html"
     !insertmacro velaForgetLegacyHtmlExt "htm"
