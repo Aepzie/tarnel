@@ -31,6 +31,7 @@ import type { VpnResult, VpnState } from './vpn';
 import type { BatterySaverState } from './battery';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
+import type { AliasOffer, AliasOptions, AliasSettingsPatch, AliasSettingsView } from './aliases';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
 
 /**
@@ -532,6 +533,13 @@ export interface VelaChromeAPI {
     fill(offerId: string, loginId: string): Promise<void>;
     dismissOffer(offerId: string): Promise<void>;
   };
+  aliases: {
+    onOffer(cb: (offer: AliasOffer) => void): Unsubscribe;
+    onOfferCancel(cb: (id: string) => void): Unsubscribe;
+    /** Main creates the alias at the provider and fills the focused field of that frame only. */
+    create(offerId: string): Promise<{ email: string }>;
+    dismiss(offerId: string): Promise<void>;
+  };
 }
 
 /** Battery saver (chrome only). Channels live in BATTERY_IPC (shared/battery.ts). */
@@ -558,5 +566,13 @@ export interface VelaPagesAPI {
     /** Save dialog + file write happen in main. */
     exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
     removeNever(spaceId: SpaceId, origin: string): Promise<void>;
+  };
+  /** vela://settings only. The API key goes in, never comes back out. */
+  aliases?: {
+    get(): Promise<AliasSettingsView>;
+    set(patch: AliasSettingsPatch): Promise<AliasSettingsView>;
+    /** Validates the key with the provider, then stores it encrypted; null removes it. */
+    setKey(key: string | null): Promise<AliasSettingsView>;
+    options(): Promise<AliasOptions>;
   };
 }

@@ -987,6 +987,41 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) through the normal extension review flow and offers to turn off
   `offerToSavePasswords` / `passwordAutofill`.
 
+## Email aliases (`src/main/aliases/*`)
+
+Optional forwarding addresses from **SimpleLogin** or **addy.io**, offered on sign-up forms.
+
+- **Settings.** Settings → Privacy → Email aliases (provider Off / SimpleLogin / addy.io, API key, style, domain,
+  mailbox). Stored in `userData/aliases.json` (0600); the API key is sealed with `safeStorage` (same "basic_text
+  counts as unavailable" rule as passwords) and is write-only: `pages:aliases-*` (vela://settings only) return
+  whether a key is set plus the account email/username and plan, never the key. A new key is validated with one
+  cheap call (SimpleLogin `GET /api/user_info`, addy.io `GET /api/v1/account-details`) before it is stored.
+- **Detection.** No extra preload: the passwords preload gets `alias: true` in its frame flags only when a
+  provider and key are set (zero cost otherwise). On `focusin` of an email field (`type=email`, `autocomplete=email`
+  or e-mail name/id/placeholder/label) in a form that looks like a sign-up form (`autocomplete=new-password`, two
+  password fields, or sign-up wording in its buttons/headings/action/path and no sign-in-only wording) it sends
+  `frame:alias-field-seen` once per field. Pure heuristics: `src/shared/alias-form.ts` (unit-tested). Limit: the
+  preload only wakes up on pages with a password field.
+- **Offer + create.** Main derives tab, Space and origin from the sending frame (top frame or same-origin with it),
+  pushes `chrome-event:alias-offer` ({ site = registrable domain, provider }) to the chrome UI and keeps the frame
+  ref. "Create alias" (`chrome:alias-create`) re-checks the frame and its origin, creates the alias, sends the
+  address to that frame only (`frame:alias-fill`), which fills the field the user focused if it is still empty.
+  "Not now" suppresses offers for that tab + origin until the next navigation.
+- **Provider calls** (`providers.ts` builds requests / parses responses, pure + unit-tested; `index.ts` sends them
+  with `net.fetch`, `redirect: 'error'`, `credentials: 'omit'`, 10 s timeout, 256 KB response cap). SimpleLogin
+  (`Authentication: <key>`): `POST /api/alias/random/new?hostname=&mode=word|uuid` `{ note }`; site-name style:
+  `GET /api/v5/alias/options?hostname=` then `POST /api/v3/alias/custom/new?hostname=` `{ alias_prefix,
+  signed_suffix, mailbox_ids, note }`; mailboxes `GET /api/v2/mailboxes`. addy.io (`Authorization: Bearer`,
+  `X-Requested-With: XMLHttpRequest`): `POST /api/v1/aliases` `{ domain, description, format, local_part?,
+  recipient_ids? }`, `GET /api/v1/domain-options`, `GET /api/v1/recipients`. Note: "Created by Vela".
+- **Saved logins.** Created aliases are remembered in memory for 30 min per Space + origin. When the user saves a
+  password whose username is that alias, the login stores `alias: { provider, id, email }` (vault field, optional)
+  and vela://passwords shows it with a link to the provider's dashboard.
+- **Security notes.** The key never reaches a renderer, the chrome UI or a page; pages never learn whether
+  aliases are configured (the frame only gets a fill after the user's click). Provider errors are reduced to a
+  short message. `VELA_ALIAS_API_BASE` (tests only) replaces the provider origin but is accepted only for
+  loopback `http(s)://127.0.0.1|localhost|[::1]:port` origins, so it cannot redirect a key to another host.
+
 ## Auto-update (`src/main/updater.ts`)
 
 `electron-updater` against the GitHub releases feed (`publish` in electron-builder.yml → `app-update.yml`).

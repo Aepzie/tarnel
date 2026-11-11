@@ -11,6 +11,7 @@ import { UserAgentPicker } from '../components/user-agent';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { hasBridge, useSettings } from '../store';
 import { SiteDataOnClose } from './SiteDataOnClose';
+import { EmailAliases } from './EmailAliases';
 
 const DNS_OPTIONS: readonly { value: SecureDnsMode; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -204,6 +205,7 @@ export function Privacy() {
           </button>
         </Row>
       </Group>
+      <EmailAliases />
       <Group title="History">
         <Row title="Browsing history" description="Removes visited pages and top sites from every Space.">
           <ConfirmActions

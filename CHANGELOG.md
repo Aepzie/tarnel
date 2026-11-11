@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Email aliases (Settings → Privacy): connect SimpleLogin or addy.io with an API key and Vela offers "Use an alias for <site>?" when you focus the email field of a sign-up form. The alias is created only after your click, filled into that field, and kept with the login if you save the password (shown in vela://passwords with a link to manage it). The key is encrypted by your OS and never shown to pages.
 - Privacy report (`vela://privacy`, Settings → Privacy → Privacy report, or "Privacy report" in the command palette): this week vs last week for trackers and ads blocked (Vela's blocker and extension rules), tracking parameters removed, referrers trimmed and dangerous sites warned, with estimated data and time saved, the tracker domains and companies that tried to track you most, and a per-Space breakdown. Counted on this device only as daily totals (tracker domains only, never the pages you visited), kept for 90 days; "Reset stats" clears them. Burner Spaces count towards the totals only.
 - Start page: a small "N trackers blocked this week" line that opens the report (Settings → Appearance → Start page → Privacy stat, on by default).
 - Optional weekly summary notification (Settings → Privacy → Weekly summary, off by default).
