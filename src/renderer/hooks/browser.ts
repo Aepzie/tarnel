@@ -135,10 +135,11 @@ export function useCommand(handler: (command: UICommand) => void): void {
   useEffect(() => window.vela?.onCommand(handler), [handler]);
 }
 
-/** Polls perf stats every `intervalMs` while the window is visible. */
-export function usePerf(intervalMs = 5000): PerfStats | null {
+/** Polls perf stats every `intervalMs` while the window is visible; `null` pauses (keeps the last stats). */
+export function usePerf(intervalMs: number | null = 5000): PerfStats | null {
   const [stats, setStats] = useState<PerfStats | null>(null);
   useEffect(() => {
+    if (intervalMs === null) return;
     let timer: number | undefined;
     let alive = true;
     const tick = async (): Promise<void> => {

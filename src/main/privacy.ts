@@ -7,6 +7,7 @@ import { cleanUrl } from '../shared/url-clean';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from './net/dispatcher';
 import { trimReferrer } from './net/referrer';
 import { getSettings, onSettingsChanged } from './settings';
+import { countPrivacyEvent } from './privacy-report/collector';
 
 export { registrableDomain } from './net/domain';
 
@@ -243,6 +244,7 @@ export function onTrackingStripped(listener: StrippedListener): void {
 }
 
 function notifyStripped(webContentsId: number, count: number): void {
+  countPrivacyEvent('paramsStripped', webContentsId, count);
   try {
     strippedListener?.(webContentsId, count);
   } catch {
@@ -255,10 +257,11 @@ export function cleanUserUrl(url: string): string {
   return getSettings().removeTrackingParams ? cleanUrl(url).url : url;
 }
 
-function applyReferrerTrim(requestUrl: string, headers: Record<string, string>): void {
+function applyReferrerTrim(requestUrl: string, headers: Record<string, string>, webContentsId: number | undefined): void {
   for (const name of Object.keys(headers)) {
     if (name.toLowerCase() !== 'referer') continue;
     const trimmed = trimReferrer(headers[name], requestUrl);
+    if (trimmed !== headers[name]) countPrivacyEvent('referrersTrimmed', webContentsId);
     if (trimmed === null) delete headers[name];
     else headers[name] = trimmed;
   }
@@ -348,7 +351,7 @@ export function applyPrivacy(session: Session, space: Space): void {
 
   addWebRequestStage(session, 'beforeSendHeaders', 'privacy', STAGE_ORDER.privacy, (details, headers) => {
     const settings = getSettings();
-    if (settings.trimReferrers) applyReferrerTrim(details.url, headers);
+    if (settings.trimReferrers) applyReferrerTrim(details.url, headers, details.webContentsId);
     if (settings.sendDoNotTrack) {
       headers['DNT'] = '1';
       headers['Sec-GPC'] = '1';

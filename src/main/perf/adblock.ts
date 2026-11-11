@@ -3,17 +3,22 @@ import { readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ENGINE_VERSION, ElectronBlocker, type Request } from '@ghostery/adblocker-electron';
 import { cacheKey, decodeCache, encodeCache } from './adblock-cache';
+import { adblockRefreshAfterMs } from './battery-policy';
+import { isBatterySaverActive } from './battery-saver';
+import { isolateScriptlet } from './adblock-scriptlets';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
 import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
 import { createStore, type JsonStore } from '../store';
+import { countBlockedRequest } from '../privacy-report/collector';
 
 /**
  * Network-level content blocking (Ghostery engine: EasyList + EasyPrivacy + uBO-style lists).
  *
  * Startup path is designed to never wait on the network: the compiled engine is cached as a
  * serialized binary in userData (keyed by Ghostery version + list set, see adblock-cache.ts) and
- * deserialized in a few ms. Whenever the engine is older than 24h (checked at start and hourly) a
+ * deserialized in a few ms. Whenever the engine is older than 24h (72h while battery saver is on;
+ * checked at start and hourly) a
  * fresh one is built in the background and hot-swapped into every session in one synchronous step,
  * so no request sees a half-swapped state. New sessions gate whenSessionReady() on the first engine,
  * so the first page request is already filtered; on a cold first run without cache that gate is
@@ -115,6 +120,7 @@ async function loadFromNetwork(): Promise<ElectronBlocker> {
 function recordBlocked(request: Request): void {
   blockedTotal += 1;
   stats?.update((current) => ({ blockedTotal: current.blockedTotal + 1 }));
+  countBlockedRequest(request.tabId, request.url, request.type);
   // tabId is the Electron webContentsId; it is 0/undefined for service-worker and browser requests.
   if (request.tabId > 0) {
     for (const cb of listeners) {
@@ -131,6 +137,25 @@ function attachEvents(engine: ElectronBlocker): void {
   engine.on('request-blocked', recordBlocked);
   // Redirects replace the resource with a neutered stub (e.g. empty analytics.js): a block in effect.
   engine.on('request-redirected', recordBlocked);
+  isolateScriptlets(engine);
+}
+
+/**
+ * The library's IPC handler calls `engine.onInjectCosmeticFilters` at call time, which only touches
+ * `event.sender.insertCSS` / `executeJavaScript`: hand it a sender that runs every scriptlet in its
+ * own scope (adblock-scriptlets.ts).
+ */
+function isolateScriptlets(engine: ElectronBlocker): void {
+  const inject = engine.onInjectCosmeticFilters;
+  engine.onInjectCosmeticFilters = (event, url, msg) => {
+    const page = event.sender;
+    const sender = {
+      insertCSS: (css: string, options?: Electron.InsertCSSOptions) => page.insertCSS(css, options),
+      executeJavaScript: (code: string, userGesture?: boolean) =>
+        page.executeJavaScript(isolateScriptlet(code), userGesture).catch(() => undefined),
+    } as unknown as Electron.WebContents;
+    return inject(Object.create(event, { sender: { value: sender } }) as Electron.IpcMainInvokeEvent, url, msg);
+  };
 }
 
 type BeforeRequestListener = (details: Electron.OnBeforeRequestListenerDetails, callback: (response: Electron.CallbackResponse) => void) => void;
@@ -247,7 +272,7 @@ async function refreshInBackground(): Promise<void> {
 }
 
 function refreshIfStale(): void {
-  if (blocker && Date.now() - engineBuiltAt > REFRESH_AFTER_MS) void refreshInBackground();
+  if (blocker && Date.now() - engineBuiltAt > adblockRefreshAfterMs(REFRESH_AFTER_MS, isBatterySaverActive())) void refreshInBackground();
 }
 
 export async function initAdblock(): Promise<void> {

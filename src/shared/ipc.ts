@@ -1,3 +1,4 @@
+import type { PrivacyReport } from './privacy-report';
 import type {
   BrowserState,
   ContentBounds,
@@ -27,10 +28,15 @@ import type { ExtensionAnchor, ExtensionInfo, ExtensionPatch, ExtensionReview, E
 import type { MediaDeviceChoice, MediaDeviceSlot } from './types';
 import type { MixerTabState, TabAudioLevel, TabAudioSettings } from './audio-mixer';
 import type { VpnResult, VpnState } from './vpn';
+import type { SiteRule, SiteRuleDraft, SiteRuleNotice, SiteRuleResolution, SiteRulesContext } from './site-rules';
+import type { BatterySaverState } from './battery';
 import type { SiteCloseAction, SiteDataPolicy, SiteInfo, SitePermissionKey } from './site-data';
 import type { TaskSnapshot } from './task-manager';
 import type { CookieBannerTabInfo } from './cookie-banners';
+import type { TranslateOverview, TranslatePrefs, TranslateTabState } from './translate';
+import type { AliasOffer, AliasOptions, AliasSettingsPatch, AliasSettingsView } from './aliases';
 import type { PasswordFillOffer, PasswordSaveAnswer, PasswordSavePrompt, PasswordsStatus, SavedLogin, SavedLoginPatch } from './passwords';
+import type { PeekState } from './peek';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
@@ -339,6 +345,11 @@ export interface VelaPagesAPI {
     /** Check now; resolves when the check finished (status carries the result). */
     check(): Promise<void>;
   };
+  /** Local privacy report (vela://privacy, start-page stat line). */
+  privacyReport: {
+    get(): Promise<PrivacyReport>;
+    reset(): Promise<void>;
+  };
 }
 
 declare global {
@@ -526,6 +537,23 @@ export interface VelaChromeAPI {
     fill(offerId: string, loginId: string): Promise<void>;
     dismissOffer(offerId: string): Promise<void>;
   };
+  aliases: {
+    onOffer(cb: (offer: AliasOffer) => void): Unsubscribe;
+    onOfferCancel(cb: (id: string) => void): Unsubscribe;
+    /** Main creates the alias at the provider and fills the focused field of that frame only. */
+    create(offerId: string): Promise<{ email: string }>;
+    dismiss(offerId: string): Promise<void>;
+  };
+}
+
+/** Battery saver (chrome only). Channels live in BATTERY_IPC (shared/battery.ts). */
+export interface VelaChromeAPI {
+  battery: {
+    state(): Promise<BatterySaverState>;
+    /** Battery level 0–1 from navigator.getBattery (null when unknown); only needed for the "Below 20 %" mode. */
+    report(level: number | null): Promise<void>;
+    onChange(cb: (state: BatterySaverState) => void): Unsubscribe;
+  };
 }
 
 /** vela://passwords only (main rejects every other page). */
@@ -542,6 +570,77 @@ export interface VelaPagesAPI {
     /** Save dialog + file write happen in main. */
     exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
     removeNever(spaceId: SpaceId, origin: string): Promise<void>;
+  };
+  /** vela://settings only. The API key goes in, never comes back out. */
+  aliases?: {
+    get(): Promise<AliasSettingsView>;
+    set(patch: AliasSettingsPatch): Promise<AliasSettingsView>;
+    /** Validates the key with the provider, then stores it encrypted; null removes it. */
+    setKey(key: string | null): Promise<AliasSettingsView>;
+    options(): Promise<AliasOptions>;
+  };
+}
+
+/** Peek link previews (chrome only). Channels live in PEEK_IPC (shared/peek.ts). */
+export interface VelaChromeAPI {
+  peek: {
+    /** Preview an address-bar input (URL or search) over the active tab. */
+    open(input: string): Promise<boolean>;
+    close(): Promise<void>;
+    /** The open animation finished: main attaches the page view. */
+    reveal(): Promise<void>;
+    back(): Promise<void>;
+    reload(): Promise<void>;
+    /** Move the live preview into a real tab (no reload). */
+    toTab(): Promise<number | null>;
+    toSplit(): Promise<void>;
+    onState(cb: (state: PeekState) => void): Unsubscribe;
+  };
+}
+
+/** Site rules (Settings → Rules). Channels live in SITE_RULES_IPC (shared/site-rules.ts); see docs/ARCHITECTURE.md → Site rules. */
+export interface VelaPagesAPI {
+  siteRules: {
+    list(): Promise<SiteRule[]>;
+    /** Replaces every rule; main validates and returns what it stored. */
+    save(rules: SiteRule[]): Promise<SiteRule[]>;
+    /** Which rules apply to this URL (bare hosts are read as https://). */
+    test(url: string): Promise<SiteRuleResolution>;
+    /** Pattern prefilled by the tab menu's "Create rule for this site…" (consumed on read). */
+    draft(): Promise<SiteRuleDraft | null>;
+    context(): Promise<SiteRulesContext>;
+  };
+}
+
+export interface VelaChromeAPI {
+  siteRules: {
+    /** Opens Settings → Rules with a rule for the tab's site prefilled. */
+    createFor(tabId: number): Promise<void>;
+    /** A rule could not fully apply (e.g. VPN while signed out). */
+    onNotice(cb: (notice: SiteRuleNotice) => void): Unsubscribe;
+  };
+}
+
+/** On-device page translation (chrome). Channels live in TRANSLATE_IPC (shared/translate.ts). */
+export interface VelaChromeAPI {
+  translate: {
+    /** Detects the page language on first call (local) and reports whether a model path exists. */
+    state(tabId: number): Promise<TranslateTabState>;
+    /** Downloads models on demand, then translates the page in place. `to` defaults to the target language. */
+    page(tabId: number, to?: string): Promise<TranslateTabState>;
+    showOriginal(tabId: number): Promise<TranslateTabState>;
+    onState(cb: (state: TranslateTabState) => void): Unsubscribe;
+  };
+}
+
+/** Settings → General → Languages. */
+export interface VelaPagesAPI {
+  translate: {
+    overview(): Promise<TranslateOverview>;
+    setPrefs(patch: Partial<TranslatePrefs>): Promise<TranslateOverview>;
+    deleteModel(pair: string): Promise<TranslateOverview>;
+    /** Re-fetches Mozilla's model list (the only network call besides model downloads). */
+    refreshCatalog(): Promise<TranslateOverview>;
   };
 }
 

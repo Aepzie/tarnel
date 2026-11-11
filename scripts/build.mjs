@@ -1,6 +1,7 @@
 import { build as esbuild, context } from 'esbuild';
 import { copyFile, mkdir, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { cp, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -62,6 +63,10 @@ const nodeConfigs = [
     ...shared,
     entryPoints: [join(src, 'main', 'cookie-banners', 'rules.ts')],
     outfile: join(out, 'main', 'cookie-banners.js'),
+    // On-device translation engine: runs in its own utilityProcess, spawned only when a page is translated.
+    ...shared,
+    entryPoints: [join(src, 'main', 'translate', 'engine-process.ts')],
+    outfile: join(out, 'main', 'translate-engine.js'),
     platform: 'node',
     format: 'cjs',
     target: 'node20',
@@ -108,6 +113,8 @@ async function buildRenderer() {
 
 await rm(out, { recursive: true, force: true });
 await copyCookieBannerRules();
+// Vendored bergamot-translator WASM + glue (MPL-2.0), loaded by the translation engine at runtime.
+await cp(join(root, 'vendor', 'bergamot'), join(out, 'vendor', 'bergamot'), { recursive: true });
 
 if (watch) {
   const contexts = await Promise.all(nodeConfigs.map((config) => context(config)));

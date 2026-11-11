@@ -2,6 +2,7 @@ import { Menu, clipboard, type MenuItemConstructorOptions, type WebContents } fr
 import { cleanUserUrl } from './privacy';
 import { getSettings } from './settings';
 import { getSpace, listSpaces } from './spaces';
+import { openPeek } from './peek';
 import { createTab, getTabSpaceId } from './tabs';
 import { isOpenableFromWeb, searchUrl } from './url';
 import { getMainWindow } from './window';
@@ -23,6 +24,7 @@ export function attachContextMenu(wc: WebContents, tabId: number): void {
     if (link) {
       template.push(
         { label: 'Open link in new tab', click: () => createTab({ url: link, spaceId, active: false, afterId: tabId }) },
+        { label: 'Open in Peek', click: () => openPeek(link, tabId) },
         {
           label: 'Open link in Space',
           submenu: listSpaces()

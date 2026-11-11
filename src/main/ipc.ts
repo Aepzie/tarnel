@@ -16,6 +16,7 @@ import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
 import { getMemorySaverNotice } from './perf/sleeper';
 import { schedulePrefetch } from './perf/prerender';
+import { isBatterySaverActive, registerBatteryIpc } from './perf/battery-saver';
 import { pageThemeFor } from './page-theme';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
@@ -23,6 +24,7 @@ import * as tabs from './tabs';
 import * as tabGroups from './tab-groups';
 import { getCompletedDownloadPath, getDownloadPath, isDangerousDownload } from './downloads';
 import { registerSafetyIpc } from './safety';
+import { registerPrivacyReportIpc } from './privacy-report';
 import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { regenerateFingerprint } from './fingerprint';
@@ -41,6 +43,11 @@ import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
 import { registerCookieBannerIpc } from './cookie-banners';
+import { registerTranslateIpc } from './translate';
+import { registerSiteRulesIpc } from './site-rules';
+import { registerPeekIpc } from './peek';
+import { registerAliasIpc } from './aliases';
+import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
 
@@ -185,7 +192,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
   const results: Suggestion[] = [];
   const seen = new Set<string>();
   const push = (s: Suggestion): void => {
-    const key = `${s.kind === 'tab' ? `tab:${s.tabId}` : s.url}`;
+    const key = s.kind === 'tab' ? `tab:${s.tabId}` : s.kind === 'archived' ? `archived:${s.archiveId}` : s.url;
     if (seen.has(key)) return;
     seen.add(key);
     results.push(s);
@@ -196,6 +203,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
     push({ kind: 'tab', title: tab.title || tab.url, url: tab.url, tabId: tab.id });
   }
   for (const entry of bookmarkSuggestions(input, 3)) push(entry);
+  for (const entry of archiveSuggestions(input, 3)) push(entry);
   for (const entry of suggest(input, 6)) push(entry);
   for (const entry of remoteTabSuggestions(input, 3)) push(entry);
   return results;
@@ -214,6 +222,7 @@ async function perfStats() {
     })),
     tabsFrozen: counts.frozen,
     memorySaver: getMemorySaverNotice(),
+    batterySaver: isBatterySaverActive(),
   };
 }
 
@@ -345,12 +354,18 @@ export function registerIpc(): void {
   handleChrome(AUDIO_IPC.setDevice, (id, slot, choice) => setTabMediaDeviceFromChrome(int(id), slot, choice));
   registerMixerIpc(handleChrome);
   registerVpnIpc(handleChrome);
+  registerBatteryIpc(handleChrome);
   handleChrome(PANIC_IPC.run, () => panic());
   registerSiteDataIpc(handleChrome, handlePages);
+  registerSiteRulesIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
   registerCookieBannerIpc(handleChrome, handlePages);
+  registerTranslateIpc(handleChrome, handlePages);
+  registerPeekIpc(handleChrome);
+  registerAliasIpc(handleChrome, handlePages);
+  registerTabArchiveIpc(handleChrome);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
@@ -403,5 +418,6 @@ export function registerIpc(): void {
   registerExtensionIpc(handleChrome, handlePages);
   registerSyncIpc(handlePages);
   registerSafetyIpc(handlePages);
+  registerPrivacyReportIpc(handlePages);
   registerImportIpc(handlePages);
 }

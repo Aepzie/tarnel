@@ -96,6 +96,20 @@ export function createStore<T>(name: string, defaults: T): JsonStore<T> {
   return store;
 }
 
+const beforeFlushAll = new Set<() => void>();
+
+/** Runs before every flushAllStores() (quit, update install): lets in-memory counters land in their store first. */
+export function onBeforeFlushAll(hook: () => void): void {
+  beforeFlushAll.add(hook);
+}
+
 export function flushAllStores(): void {
+  for (const hook of beforeFlushAll) {
+    try {
+      hook();
+    } catch {
+      /* a failing hook must not block persisting the rest */
+    }
+  }
   for (const store of allStores) store.flush();
 }

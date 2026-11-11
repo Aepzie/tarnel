@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => ({
         bookmarks: resolve(root, 'pages/bookmarks/index.html'),
         extensions: resolve(root, 'pages/extensions/index.html'),
         passwords: resolve(root, 'pages/passwords/index.html'),
+        privacy: resolve(root, 'pages/privacy/index.html'),
       },
     },
   },

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { AnimatePresence, Reorder, motion, useReducedMotion } from 'motion/react';
 import { PlusIcon } from 'lucide-react';
+import { ArchiveButton } from '../archive/ArchiveButton';
 import type { TabState } from '@shared/types';
 import { useBrowserSlice, useSpaceGroups, useSpaceTabs } from '@/hooks/browser';
 import { spring } from '@/lib/motion';
@@ -290,6 +291,7 @@ export function TabStrip() {
             >
               <PlusIcon className="size-4" strokeWidth={1.75} />
             </motion.button>
+            <ArchiveButton layoutTransition={layoutTransition} />
           </motion.div>
         </AnimatePresence>
       </motion.div>

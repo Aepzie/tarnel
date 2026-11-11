@@ -221,6 +221,16 @@
   }
 }
 
+/* Battery saver (docs/PERFORMANCE.md): no looping or decorative motion in the chrome UI.
+   Loading spinners keep turning: they are progress feedback and only run while something loads. */
+:root[data-battery] *:not(.animate-spin),
+:root[data-battery] *::before,
+:root[data-battery] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+
 :root.light .island {
   box-shadow:
     0 0 0 1px var(--island-ring),
