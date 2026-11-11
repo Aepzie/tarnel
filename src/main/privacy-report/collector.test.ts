@@ -15,6 +15,7 @@ describe('privacy collector', () => {
     });
     setPrivacyClock(() => new Date(2026, 10, 11, 23, 59, 59).getTime());
     countBlockedRequest(1, 'https://stats.g.doubleclick.net/x.js', 'script');
+    countBlockedRequest(1, 'https://stats.g.doubleclick.net/x.js', 'script');
     countBlockedRequest(2, 'https://ads.criteo.com/p', 'image');
     countPrivacyEvent('referrersTrimmed', 1);
     setPrivacyClock(() => new Date(2026, 10, 12, 0, 0, 1).getTime());
