@@ -24,10 +24,19 @@ export function preconnectTarget(raw: string): string | null {
   return /^https?:\/\//i.test(absolute) ? absolute : null;
 }
 
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function displayUrl(url: string): { host: string; path: string } {
   try {
     const parsed = new URL(url);
     if (parsed.protocol === 'vela:') return { host: `vela://${parsed.hostname}`, path: parsed.pathname === '/' ? '' : parsed.pathname };
+    if (parsed.protocol === 'file:') return { host: 'file', path: safeDecode(parsed.pathname) };
     const path = `${parsed.pathname === '/' ? '' : parsed.pathname}${parsed.search}`;
     return { host: parsed.hostname.replace(/^www\./, ''), path: path.length > 64 ? `${path.slice(0, 63)}…` : path };
   } catch {

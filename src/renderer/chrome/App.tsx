@@ -24,6 +24,7 @@ import { ScreenshotLayer } from './screenshot/ScreenshotLayer';
 import { PanelRail } from './panels/PanelRail';
 import { PeekLayer } from './peek/PeekLayer';
 import { TabArchivePanel } from './archive/TabArchivePanel';
+import { FileDropLayer } from './drop/FileDropLayer';
 import { useBatteryLevelReport, useBatterySaver } from './perf/battery';
 
 // Site permission prompts are rare: the prompt UI loads with the first request (the queue store
@@ -159,6 +160,7 @@ export function App() {
         <RuleNotice />
         <PeekLayer />
         <TabArchivePanel />
+        <FileDropLayer />
       </LayoutGroup>
       </MotionConfig>
     </TooltipProvider>

@@ -51,7 +51,7 @@ import {
   type SavedTab,
 } from './tabs';
 import { initUpdater, stopUpdater } from './updater';
-import { resolveInput } from './url';
+import { listenForOpenRequests, startOpening, urlsFromArgv } from './open-files';
 import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, refreshWindowTheme, saveBounds, sendToChrome } from './window';
 
 /** VELA_STARTUP_TRACE=1 prints process-uptime marks for startup profiling (scripts measure these). */
@@ -89,16 +89,6 @@ function saveSession(): void {
   sessionStore.set(serializeSession());
 }
 
-/** URLs passed on the command line (skips flags and the app path). */
-function urlsFromArgv(argv: string[]): string[] {
-  const engine = getSettings().searchEngine;
-  return argv
-    .slice(app.isPackaged ? 1 : 2)
-    .filter((arg) => !arg.startsWith('-') && /^(https?:|vela:|file:)|\.(html?|pdf)$/i.test(arg))
-    .map((arg) => resolveInput(arg, engine))
-    .filter((url): url is string => !!url);
-}
-
 function openWindow(): BaseWindow {
   const win = createMainWindow();
   const chromeWc = getChromeView()?.webContents;
@@ -122,10 +112,11 @@ function focusWindow(): void {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', (_event, argv) => {
+  listenForOpenRequests();
+  app.on('second-instance', (_event, argv, workingDirectory) => {
     if (!booted) return;
     if (!getMainWindow()) openWindow();
-    for (const url of urlsFromArgv(argv)) createTab({ url, active: true });
+    for (const url of urlsFromArgv(argv, workingDirectory)) createTab({ url, active: true });
     focusWindow();
   });
 
@@ -200,6 +191,11 @@ if (!app.requestSingleInstanceLock()) {
     else activateSpace(getActiveSpaceId());
     for (const url of urlsFromArgv(process.argv)) createTab({ url, active: true });
     booted = true;
+    startOpening((url) => {
+      if (!getMainWindow()) openWindow();
+      createTab({ url, active: true });
+      focusWindow();
+    });
     startupMark('booted');
 
     initBatterySaver();

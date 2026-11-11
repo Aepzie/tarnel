@@ -871,6 +871,36 @@ Local-only daily aggregates behind `vela://privacy`, the start-page stat line an
 - Not counted yet: fingerprinting readbacks (canvas/WebGL/audio). The counter exists (`fingerprintMitigated`), but
   the main-world shims would need a batched renderer → main channel; the report shows it only when non-zero.
 
+## Local files (`src/main/open-targets.ts`, `src/main/open-files.ts`, UI `src/renderer/chrome/drop/FileDropLayer.tsx`)
+
+* **Command line.** `open-targets.ts` is pure (fs injected, tested on Windows and POSIX rules): it skips
+  flags / Chromium switches before a bare `--` and treats everything after `--` as a target (the OS
+  registration launches `Vela.exe -- "%1"`, so a crafted file name can never become a switch). http(s)
+  / vela URLs go through the address-bar resolver; anything else is a path (absolute, relative to the
+  working directory — the second instance's cwd for `second-instance` — or a `file://` URL) and opens
+  only if it is an existing regular file. **Directories are ignored** (no Chromium file listing; this
+  also drops the app path `.` in development). Note: Chromium reorders a second instance's argv
+  (switches first) and does not deliver it at all when a switch follows a URL argument, which `--` avoids.
+* **macOS.** `open-file` / `open-url` are queued until boot and then open in a tab (`listenForOpenRequests`
+  runs before `ready`, `startOpening` after the session restore).
+* **Viewing.** Page views have `plugins: true` — in Electron that only enables the built-in PDF viewer;
+  it is a per-view flag, so every Space / VPN partition gets it. Images, SVG, text, JSON and media use
+  Chromium's own viewers. Untitled file pages are titled with the file name; the address bar shows
+  `file` + the decoded path.
+* **Guards.** `will-frame-navigate` blocks any frame navigation to `file://` whose initiator is not a
+  `file://` or `vela://` page (user navigations and drops have no initiator); window.open / target=_blank
+  to `file://` is only allowed from those pages; popup windows can never navigate to `file://`. The pages
+  preload exposes `window.velaPages` only on `vela:`, the chrome preload only lives in the chrome view, so
+  local files get no bridge. Caveat: the `GrantFileProtocolExtraPrivileges` fuse (needed by the chrome UI)
+  lets a local HTML file `fetch()` other local files, as Chrome's `--allow-file-access-from-files` would.
+* **Drag and drop.** The chrome UI handles external drags (`Files` / `text/uri-list`) on the window:
+  the preload resolves paths with `webUtils.getPathForFile` and calls `files.openDropped(paths, links)`
+  (`FILES_IPC`, `handleChrome`, ≤ 32 entries, absolute existing files only, links resolved like
+  address-bar input but never to `file://`); each opens in a new tab. Page views use
+  `navigateOnDragDrop: true`, so a drop the page does not handle goes through the normal navigation /
+  window-open guards (Chromium opens dropped links as a new tab; files dropped on a web page are refused
+  by the guard, on the new-tab page or a local file they open next to it).
+
 ## vela:// protocol
 
 `vela://<page>/<file>` → `dist/renderer/pages/<page>/<file>` (default `index.html`).

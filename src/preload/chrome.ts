@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { AUDIO_IPC, EXTENSION_IPC, IPC, PANIC_IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
+import { AUDIO_IPC, EXTENSION_IPC, FILES_IPC, IPC, PANIC_IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
@@ -256,6 +256,16 @@ const api: VelaChromeAPI = {
     toTab: () => invoke(PEEK_IPC.toTab),
     toSplit: () => invoke(PEEK_IPC.toSplit),
     onState: (cb) => subscribe(PEEK_IPC.changed, cb),
+  },
+  files: {
+    pathFor: (file) => {
+      try {
+        return webUtils.getPathForFile(file);
+      } catch {
+        return '';
+      }
+    },
+    openDropped: (paths, links) => invoke(FILES_IPC.openDropped, paths, links),
   },
   aliases: {
     onOffer: (cb) => subscribe(ALIAS_IPC.offer, cb),
