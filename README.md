@@ -21,11 +21,9 @@ Work, personal, clients, throwaway: one window, no leaks between them.
 <br>
 
 <p align="center">
-  <a href="docs/media/vela-demo.mp4">
-    <img src="docs/media/vela-demo.gif" width="100%" alt="Vela demo: command palette, two Spaces signed in as different users on the same site, a Burner space with no cookies, and split view">
-  </a>
+  <img src="docs/media/vela-demo.gif" width="100%" alt="Vela demo: command palette, two Spaces signed in as different users on the same site, a Burner space with no cookies, and split view">
   <br>
-  <sub>The real app, recorded on Linux. Two Spaces, same site, two different logins. <a href="docs/media/vela-demo.mp4">Watch in full quality (MP4)</a></sub>
+  <sub>The real app, recorded on Linux. Two Spaces, same site, two different logins. <a href="https://github.com/Aepzie/vela/raw/main/docs/media/vela-demo.mp4">Download the MP4</a></sub>
 </p>
 
 ## Why Vela
