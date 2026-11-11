@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- YouTube videos sometimes stayed black, never started or showed "Video unavailable" with the content blocker on: its cosmetic scriptlets ran in one shared scope and broke each other (and the player's JSON / network calls). Each scriptlet now runs in its own scope.
+
 ## [0.8.3] - 2026-11-11
 
 Includes the changes from 0.8.1 and 0.8.2, which were withdrawn.
