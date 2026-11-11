@@ -664,6 +664,23 @@ export interface VelaPagesAPI {
   };
 }
 
+/** Local files and links dropped onto the chrome UI. */
+export const FILES_IPC = {
+  openDropped: 'chrome:files-open-dropped',
+} as const;
+
+/** Most paths / links one drop may open. */
+export const MAX_DROPPED = 32;
+
+export interface VelaChromeAPI {
+  files: {
+    /** Absolute path of a dropped File (Electron `webUtils.getPathForFile`); '' when it has none. */
+    pathFor(file: File): string;
+    /** Opens dropped local files (absolute paths) and links / text, each in a new tab; resolves to the number opened. */
+    openDropped(paths: string[], links: string[]): Promise<number>;
+  };
+}
+
 /** Web panels. Channels live in PANELS_IPC (shared/panels.ts). */
 export interface VelaChromeAPI {
   panels: {

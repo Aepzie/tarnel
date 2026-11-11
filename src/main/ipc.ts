@@ -1,5 +1,6 @@
 import { app, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { AUDIO_IPC, IPC, PANIC_IPC } from '../shared/ipc';
+import { AUDIO_IPC, FILES_IPC, IPC, MAX_DROPPED, PANIC_IPC } from '../shared/ipc';
+import { isAbsolute } from 'node:path';
 import {
   SPACE_COLORS,
   type ContentBounds,
@@ -52,6 +53,7 @@ import { registerAliasIpc } from './aliases';
 import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
+import { fileUrlForLocalPath } from './open-files';
 
 type Handler = (...args: unknown[]) => unknown;
 
@@ -252,6 +254,24 @@ function resolvedUrl(input: string): string {
   return url;
 }
 
+function stringList(value: unknown, name: string): string[] {
+  if (!Array.isArray(value) || value.length > MAX_DROPPED) throw new TypeError(`Invalid ${name}`);
+  return value.map((entry) => str(entry, MAX_INPUT, name));
+}
+
+/**
+ * Dropped files open by absolute path only (must exist and be a regular file, no directories);
+ * dropped links / text resolve like address-bar input but never to file:// (paths cover that).
+ */
+function openDropped(rawPaths: unknown, rawLinks: unknown): number {
+  const fileUrls = stringList(rawPaths, 'paths').map((path) => (isAbsolute(path) ? fileUrlForLocalPath(path) : null));
+  const engine = getSettings().searchEngine;
+  const linkUrls = stringList(rawLinks, 'links').map((link) => resolveInput(link.trim(), engine)).filter((url) => !url?.startsWith('file:'));
+  const urls = [...fileUrls, ...linkUrls].filter((url): url is string => !!url);
+  urls.forEach((url, index) => tabs.createTab({ url, active: index === urls.length - 1 }));
+  return urls.length;
+}
+
 /** Executables and scripts are never launched from the browser UI; the folder is shown instead. */
 const DANGEROUS_EXT = /\.(exe|msi|msix|appx|bat|cmd|com|scr|pif|ps1|psm1|vbs|vbe|js|jse|wsf|wsh|hta|lnk|jar|reg|cpl|dll|app|pkg|dmg|sh|command|run|appimage|deb|rpm)$/i;
 
@@ -282,6 +302,7 @@ export function registerIpc(): void {
       active: optBool(opts.active),
     });
   });
+  handleChrome(FILES_IPC.openDropped, (paths, links) => openDropped(paths, links));
   handleChrome(c.tabClose, (id) => tabs.closeTab(int(id)));
   handleChrome(c.tabActivate, (id) => tabs.activateTab(int(id)));
   handleChrome(c.tabNavigate, (id, input) => tabs.navigateTab(int(id), str(input, MAX_INPUT, 'input')));
