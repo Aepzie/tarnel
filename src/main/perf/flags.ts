@@ -40,8 +40,7 @@ const SWITCHES: readonly string[] = [
   'no-pings',
   // Domain Reliability uploads network error beacons to Google domains.
   'disable-domain-reliability',
-  // Component updater would download Chrome components (CRLSets, etc.) we don't consume.
-  'disable-component-update',
+  // CDM/component update policy belongs to drm/startup, independently of VELA_NO_FLAGS.
 ];
 
 function mergeList(switchName: string, additions: readonly string[]): void {

@@ -8,6 +8,7 @@ import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from './net/di
 import { trimReferrer } from './net/referrer';
 import { getSettings, onSettingsChanged } from './settings';
 import { countPrivacyEvent } from './privacy-report/collector';
+import { attachDrmPolicy, canUseDrm } from './drm';
 
 export { registrableDomain } from './net/domain';
 
@@ -174,6 +175,7 @@ function sameOriginTop(requestingUrl: string | undefined, topUrl: string | undef
 }
 
 function checkGrant(session: Session, permission: string, isMainFrame: boolean, requestingUrl: string | undefined, topUrl: string | undefined, mediaType?: string): boolean {
+  if (permission === 'mediaKeySystem') return canUseDrm(scopes.get(session), isMainFrame, requestingUrl, topUrl);
   if (ALWAYS_ALLOWED.has(permission as Permission)) return true;
   if (!isPromptable(permission) || !isMainFrame) return false;
   const origin = sameOriginTop(requestingUrl, topUrl);
@@ -198,6 +200,7 @@ async function requestGrant(
   topUrl: string | undefined,
   mediaTypes: ('video' | 'audio')[] | undefined,
 ): Promise<boolean> {
+  if (permission === 'mediaKeySystem') return !webContents.isDestroyed() && canUseDrm(scopes.get(session), isMainFrame, requestingUrl, topUrl);
   if (ALWAYS_ALLOWED.has(permission as Permission)) return true;
   if (!isPromptable(permission) || !isMainFrame) return false;
   const origin = sameOriginTop(requestingUrl, topUrl);
@@ -310,6 +313,7 @@ export function applyPrivacy(session: Session, space: Space): void {
   scopes.set(session, { session, spaceId: space.id, ephemeral: space.ephemeral });
   if (configured.has(session)) return;
   configured.add(session);
+  attachDrmPolicy(session, space);
 
   const languages = acceptLanguages();
   if (languages) session.setUserAgent(cleanUserAgent(session.getUserAgent()), languages);

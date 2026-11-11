@@ -251,6 +251,8 @@ export interface Settings {
   newtabPrivacyStat: boolean;
   /** A weekly system notification summarising the privacy report. */
   privacyWeeklySummary: boolean;
+  /** Device-local opt-in; native encrypted media changes require a restart. */
+  drmEnabled: boolean;
 }
 
 export interface Suggestion {
@@ -399,6 +401,7 @@ export const DEFAULT_SETTINGS: Settings = {
   peekOnShiftClick: true,
   newtabPrivacyStat: true,
   privacyWeeklySummary: false,
+  drmEnabled: false,
 };
 
 /** Where an installed extension came from. */

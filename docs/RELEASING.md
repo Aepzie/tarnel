@@ -136,6 +136,95 @@ and check: Vela listed under Settings → Default apps and in "Open with" for `.
 opens Vela's page there, and uninstall leaves no `StartMenuInternet\Vela`, `RegisteredApplications\Vela` or
 `Software\Classes\Vela*` keys. The portable exe registers nothing.
 
+## Optional Widevine development runtime
+
+The standard npm dependency and release pipeline still use stock Electron **45.2.3**, which does not
+provide this Widevine integration. Enabling the setting there correctly reports a missing runtime.
+The optional path uses official [Castlabs Electron for Content Security](https://github.com/castlabs/electron-releases)
+**45.2.1+wvcus** (Chromium **156.0.8078.75**), the available stable ECS release selected for this work.
+It does not silently replace/downgrade the normal dependency or add a package dependency.
+
+```sh
+npm run drm:install
+npm run dev:drm
+```
+
+In Vela, enable Settings → Privacy → **Geschützte Inhalte (DRM)** and use **Vela neu starten**.
+The first enabled launch may download Widevine; only an installed CDM plus a successful native
+`MediaKeys` probe produces "DRM-Komponente verfügbar". A service can still reject the browser.
+Changing back to off also requires restart for the global native Widevine gate.
+
+`scripts/drm-runtime.mjs` downloads a pinned release asset, verifies SHA-256, checks version and cached
+executable integrity, and launches it from `.cache/drm-runtime`. Supported asset targets: Windows,
+macOS and Linux, each x64/arm64. Only Windows x64 has been runtime-tested. On Windows the installer
+gives AppContainer (`S-1-15-2-1`) read/execute permission on that exact verified runtime directory, so
+the renderer sandbox can read its files. It rejects symlinks, junctions and redirected paths. It
+does not change permissions elsewhere. The launcher honors `VELA_USER_DATA` for isolated testing.
+
+Installing the runtime is a developer action and downloads that runtime independently of the browser
+toggle. The **CDM** is handled exclusively by Castlabs' official component mechanism after browser
+consent. No Chrome/Edge CDM extraction, manual CDM redistribution or DRM/key bypass is implemented.
+Google component requests and service license exchanges have privacy implications. The UI documents
+these and the lack of complete DRM isolation between Spaces; see [architecture](ARCHITECTURE.md#protected-content--drm-srcmaindrm).
+
+### Production release blockers
+
+This is a working development integration, **not a DRM-ready signed release configuration**.
+`npm run dist` and the release workflow still produce the stock build. The optional cached runtime is
+not packaged automatically. Before releasing an ECS build, maintainers must establish their applicable
+Widevine/ECS usage and distribution terms, configure Castlabs Verified Media Path (VMP) signing and
+the platform identities, and test the final artifact against the intended services. Credentials and
+publisher identities were not provided or fabricated for this task.
+
+Follow the upstream [EVS signing instructions](https://github.com/castlabs/electron-releases/wiki/EVS)
+and [FAQ](https://github.com/castlabs/electron-releases/wiki/FAQ). The order matters: finish fuse/binary
+mutations first; on Windows, Authenticode-sign before VMP-signing; on macOS, VMP-sign before Apple
+code-signing/notarization. Archive only the final verified result. A generic electron-builder
+`afterPack` hook is not enough because later fuse/signing changes can invalidate VMP. Linux/service
+requirements differ and need separate validation. Do not disable Vela's fuses to get a player working.
+The current ordinary OS-signing pipeline above does not establish VMP support.
+
+The ECS pin is independent of the standard Electron pin; review security updates for both. Upgrading
+the optional runtime requires updating official asset hashes and repeating the native gate/component
+tests, including installed-CDM OFF behavior. Newer ECS component APIs may have different lifecycles.
+
+### Validation and reproducible checks
+
+```sh
+npm run typecheck
+npm test
+npm run build
+npm run test:drm-runtime
+npm run test:drm-native
+# Explicitly permits official CDM download into a temporary test profile:
+npm run test:drm-native -- --download-cdm
+```
+
+The native runner installs/verifies the optional **runtime** when needed; without `--download-cdm`
+it only checks OFF behavior. With the flag it checks OFF → install → ON → OFF with the installed CDM,
+using hidden sandboxed windows and deleting its temporary profile afterward. Results are written to
+`.cache/drm-native-smoke-results.json`; it never opens a streaming account or uses the normal profile.
+
+Verified on Windows x64: real Widevine **4.10.3112.0** installation, warm-start registration, native
+`requestMediaKeySystemAccess`/`createMediaKeys`, rejection after OFF restart with CDM retained, and the
+document policy. The full Vela isolated-profile smoke covered validated IPC, settings push updates,
+persistence, real relaunch in both directions, and ordinary MP4 playback. Light/dark settings rendering,
+mobile width, toggle and error/restart states were exercised in a separate hidden UI harness.
+
+A separate sandboxed ECS harness played the official Shaka **Sintel Widevine** sample from an encrypted
+position: public license responses were HTTP 200, `com.widevine.alpha` was selected, playback advanced
+from 15.00 to 21.96 seconds with 167 additional decoded frames. The public example comes from
+[Shaka's license-server tutorial](https://github.com/shaka-project/shaka-player/blob/main/docs/tutorials/license-server-auth.md).
+A second test in the complete Vela app used a regular Space with standard fingerprint protection,
+adblock, HTTPS upgrades, third-party cookie blocking and cookie-banner rejection still enabled. The
+same public Widevine sample advanced from 15.02 to 21.96 seconds with 163 additional decoded frames,
+two successful license responses and no player errors. Sandbox, context isolation and web security
+remained enabled. This proves that public protected playback works in the integrated development app,
+not Netflix approval or a production Vela build.
+No authorized Netflix account was supplied or used; **Netflix playback and resolution limits are
+unverified**. Its previous `M7701-1003` symptom cannot be declared fixed without that test. macOS,
+Linux, ARM64, final installer signing/VMP and streaming-service policies still need validation.
+
 ## Cutting a release
 
 1. Update `version` in `package.json` and move the `[Unreleased]` notes in `CHANGELOG.md` under the new

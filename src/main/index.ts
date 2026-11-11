@@ -1,4 +1,6 @@
-import { app, type BaseWindow, protocol, session as electronSession } from 'electron';
+import { app, type BaseWindow, protocol, session as electronSession, webContents } from 'electron';
+import { configureDrmStartup, initDrm, isSettingsPage } from './drm';
+import { DRM_PROBE_SCHEME } from './drm/probe';
 import { flushCompileCache } from 'node:module';
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
@@ -63,6 +65,7 @@ function startupMark(name: string): void {
 // Isolated profile for development/testing (separate single-instance lock + storage).
 if (process.env.VELA_USER_DATA) app.setPath('userData', process.env.VELA_USER_DATA);
 
+configureDrmStartup();
 applyChromiumFlags();
 startupMark('main-evaluated');
 
@@ -74,6 +77,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('[vela] unhandled rejection', reason);
 });
 protocol.registerSchemesAsPrivileged([
+  { scheme: DRM_PROBE_SCHEME, privileges: { standard: true, secure: true } },
   // codeCache: V8 code cache for vela:// pages (Chromium only caches http(s) by default); needs standard.
   { scheme: VELA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
 ]);
@@ -126,6 +130,7 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     startupMark('ready');
+    initDrm();
     applyGlobalUserAgent();
     initSecureDns();
     setPermissionPrompter(chromePermissionPrompter);
@@ -176,6 +181,9 @@ if (!app.requestSingleInstanceLock()) {
     let material = getSettings().windowMaterial;
     onSettingsChanged((settings) => {
       sendToChrome(IPC.chromeEvents.settings, settings);
+      for (const wc of webContents.getAllWebContents()) {
+        if (!wc.isDestroyed() && isSettingsPage(wc.getURL())) wc.send(IPC.chromeEvents.settings, settings);
+      }
       if (settings.windowMaterial !== material) {
         material = settings.windowMaterial;
         applyWindowMaterial(material);

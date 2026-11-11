@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Settings → Privacy → "Geschützte Inhalte (DRM)": device-local consent, off by default, persistent through restarts, with runtime/component/EME status and an explicit restart action. Widevine is disabled natively on an off launch; permission handlers and document policies provide additional restrictions. Existing playback/access can continue until restart.
+- Optional, checksum-verified Castlabs Electron development runtime (`npm run drm:install`, `npm run dev:drm`) and native CDM regression checks. Stock builds remain unchanged. Widevine and public encrypted test playback were verified on Windows x64; production VMP signing, other platforms and Netflix playback are not verified. DRM is app-wide, with no complete isolation between Spaces; see the existing architecture/release documentation.
+
+### Fixed
+- Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.
+
 ## [0.9.1] - 2026-11-11
 
 ### Added

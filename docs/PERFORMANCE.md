@@ -151,7 +151,7 @@ them (useful for bisecting a site bug).
 | `disable-features=OptimizationHints,Translate,AutofillServerCommunication,InterestFeedContentSuggestions` | Chrome services that phone home or do background work. Mostly not compiled into Electron — listed so they stay off if that ever changes. |
 | `no-pings` | Ignores `<a ping>` hyperlink auditing: one fewer tracking request per click. |
 | `disable-domain-reliability` | No network-error beacons to Google. |
-| `disable-component-update` | No Chrome component downloads we don't consume. |
+| `disable-component-update` | Owned by DRM startup, not performance tuning: set when DRM is off or no supported runtime is present. A consenting Castlabs launch permits the Widevine component updater. `VELA_NO_FLAGS` does not bypass this policy. |
 
 | `enable-features=UseCompositorClockVSyncInterval` (Windows, conditional) | Frame pacing on mixed-refresh setups, see [Frame rate](#8-frame-rate-windows). |
 
