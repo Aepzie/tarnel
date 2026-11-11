@@ -13,6 +13,7 @@ import { getSettings } from './settings';
 import { getActiveSpaceId, getSpace, getSpaceSession, listSpaces, onSpacesChanged, removeSpace, setActiveSpaceId, whenSessionReady } from './spaces';
 import { bindGroupModel, clusterGroups, getGroup, groupsInOrder, pruneGroups, restoreGroup, savedGroup, type SavedGroup } from './tab-groups';
 import { NEWTAB_URL, isInternalUrl, isOpenableFromWeb, isSecureUrl, resolveInput } from './url';
+import { isFileUrl } from './open-targets';
 import * as windowLayer from './window';
 import { bindSplitModel, clusterSplits, detachFromSplit, isOnScreen, restoreSplits, savedSplit, splitIdOf, splitOf, splitsInOrder, unitOf, type SavedSplit } from './split';
 import { onPaneFocus, trackPanes, type Pane } from './split-panes';
@@ -295,6 +296,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     // Web content may never navigate (any frame) into privileged vela:// pages.
     const from = details.initiator?.url ?? wc.getURL();
     if (isInternalUrl(details.url) && !isInternalUrl(from)) details.preventDefault();
+    else if (blocksFileNavigation(details.url, details.initiator?.url)) details.preventDefault();
   });
   wc.on('will-navigate', (details) => {
     if (!details.isMainFrame || details.isSameDocument || !getSettings().httpsOnly) return;
@@ -318,7 +320,8 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
         },
       };
     }
-    const allowed = isOpenableFromWeb(url) || (isInternalUrl(url) && isInternalUrl(wc.getURL()));
+    const allowed =
+      isOpenableFromWeb(url) || (isInternalUrl(url) && isInternalUrl(wc.getURL())) || (isFileUrl(url) && isFileUrl(wc.getURL()));
     if (allowed) createTab({ url, spaceId: tab.spaceId, vpn: tab.vpn, active: disposition !== 'background-tab' && tab.id === activeTabId, afterId: tab.id });
     return { action: 'deny' };
   });
@@ -329,7 +332,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     });
     child.webContents.on('will-attach-webview', (event) => event.preventDefault());
     child.webContents.on('will-frame-navigate', (details) => {
-      if (isInternalUrl(details.url)) details.preventDefault();
+      if (isInternalUrl(details.url) || isFileUrl(details.url)) details.preventDefault();
     });
     child.webContents.on('will-navigate', (details) => {
       if (!details.isMainFrame || details.isSameDocument || !getSettings().httpsOnly) return;
@@ -341,6 +344,14 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   });
 }
 
+/**
+ * file:// may only be entered by the user (address bar, OS open, drop: no initiator frame) or from
+ * another file:// page. Web pages (http(s), data:, extensions) can never navigate any frame there.
+ */
+function blocksFileNavigation(url: string, initiatorUrl: string | undefined): boolean {
+  return isFileUrl(url) && initiatorUrl !== undefined && !isFileUrl(initiatorUrl);
+}
+
 /** Web preferences of every page view (tabs and Peek), so a Peek view can become a tab as is. */
 export function pageWebPreferences(spaceId: SpaceId, vpn: string | null): Electron.WebPreferences {
   return {
@@ -349,6 +360,9 @@ export function pageWebPreferences(spaceId: SpaceId, vpn: string | null): Electr
     contextIsolation: true,
     nodeIntegration: false,
     webviewTag: false,
+    // Only enables Chromium's built-in PDF viewer (Electron ships no other plugins). It is a
+    // per-view flag, so it applies to every Space / VPN partition alike.
+    plugins: true,
     // Sandboxed, so no Node anywhere: this only lets the fingerprint session preload run in
     // iframes too. The pages and cosmetic-filter preloads ignore subframes.
     nodeIntegrationInSubFrames: true,
