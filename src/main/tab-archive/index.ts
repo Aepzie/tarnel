@@ -127,8 +127,9 @@ export function restoreArchived(spaceId: SpaceId, ids: ReadonlySet<string>): num
   if (picked.length === 0) return 0;
   write(spaceId, removeArchived(list, ids));
   const focus = picked.length === 1;
-  // Oldest first so the restored tabs keep their original relative order at the end of the strip.
-  for (const entry of [...picked].reverse()) {
+  // Oldest first (ties keep archive order) so restored tabs keep their original order at the end of the strip.
+  const ordered = picked.map((entry, index) => ({ entry, index })).sort((a, b) => a.entry.archivedAt - b.entry.archivedAt || a.index - b.index);
+  for (const { entry } of ordered) {
     const groupId = entry.group ? restoreGroup(spaceId, { ...entry.group, collapsed: false }) : null;
     createTab({
       url: entry.url,
