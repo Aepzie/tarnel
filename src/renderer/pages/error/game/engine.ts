@@ -16,10 +16,24 @@ export function createRun(): RunState {
   return { mode: 'ready', height: 0, velocity: 0, distance: 0, score: 0, spawnIn: 0.9, nextId: 1, obstacles: [] };
 }
 
+/** Seconds of travel kept free ahead of the runner when a paused run resumes. */
+export const RESUME_GRACE = 0.6;
+
+function speedAt(distance: number): number {
+  return 220 + Math.min(distance / 80, 100);
+}
+
+/** Drops rocks the runner would reach within the grace window so a resume never lands straight in a collision. */
+export function clearForResume(run: RunState): RunState {
+  const reach = SCENE.runnerX + SCENE.runnerSize + speedAt(run.distance) * RESUME_GRACE;
+  const obstacles = run.obstacles.filter((rock) => rock.x + rock.width <= SCENE.runnerX || rock.x >= reach);
+  return obstacles.length === run.obstacles.length ? run : { ...run, obstacles };
+}
+
 export function act(run: RunState, action: RunAction): RunState {
   if (action === 'start') return { ...createRun(), mode: 'running' };
   if (action === 'pause' && run.mode === 'running') return { ...run, mode: 'paused' };
-  if (action === 'resume' && run.mode === 'paused') return { ...run, mode: 'running' };
+  if (action === 'resume' && run.mode === 'paused') return { ...clearForResume(run), mode: 'running' };
   if (action === 'jump' && run.mode === 'running' && run.height === 0 && run.velocity === 0) {
     return { ...run, velocity: 430 };
   }
@@ -34,7 +48,7 @@ export function advance(run: RunState, milliseconds: number, random: () => numbe
   while (remaining > 0 && next.mode === 'running') {
     const dt = Math.min(remaining, 1 / 120);
     remaining -= dt;
-    const speed = 220 + Math.min(next.distance / 80, 100);
+    const speed = speedAt(next.distance);
     next.distance += speed * dt;
     next.score = Math.floor(next.distance / 10);
     next.height = Math.max(0, next.height + next.velocity * dt - 700 * dt * dt);
