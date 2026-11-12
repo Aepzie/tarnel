@@ -77,7 +77,7 @@ import org.velabrowser.vela.ui.components.IconAction
 import org.velabrowser.vela.ui.components.Pill
 import org.velabrowser.vela.ui.components.SiteIcon
 import org.velabrowser.vela.ui.components.SpaceDot
-import org.velabrowser.vela.ui.components.VelaMark
+import org.velabrowser.vela.ui.components.BrandMark
 import org.velabrowser.vela.ui.components.glass
 import org.velabrowser.vela.ui.components.pressable
 import org.velabrowser.vela.ui.theme.LocalVela
@@ -322,7 +322,7 @@ private fun TabCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (tab.isNewTab) {
-                VelaMark(Modifier.size(16.dp), ink = c.textMuted)
+                BrandMark(Modifier.size(16.dp), ink = c.textMuted)
             } else {
                 SiteIcon(UrlInput.hostOf(tab.url), browser.favicons, size = 16.dp, corner = 4.dp)
             }
@@ -384,7 +384,7 @@ private fun NewTabPreview() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        VelaMark(Modifier.size(44.dp), ink = c.textMuted)
+        BrandMark(Modifier.size(44.dp), ink = c.textMuted)
         Spacer(Modifier.height(10.dp))
         Box(Modifier.width(96.dp).height(14.dp).background(c.surfaceStrong, CircleShape))
     }

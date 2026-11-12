@@ -61,14 +61,14 @@ fun PageErrorView(browser: Browser, tab: Tab, error: PageError) {
     val host = UrlInput.hostOf(error.url) ?: error.url
     val warning = Color(0xFFFBBF24)
     val (icon, title, body) = when (error.kind) {
-        PageErrorKind.OFFLINE -> Triple(Icons.Rounded.CloudOff, "You're offline", "Check your connection — Vela will load $host when you try again.")
+        PageErrorKind.OFFLINE -> Triple(Icons.Rounded.CloudOff, "You're offline", "Check your connection — Tarnel will load $host when you try again.")
         PageErrorKind.NOT_FOUND -> Triple(Icons.Rounded.LinkOff, "Can't find $host", "The address may be mistyped, or the site no longer exists.")
         PageErrorKind.HTTPS_UNAVAILABLE -> Triple(
             Icons.Rounded.NoEncryption,
             "$host doesn't support a secure connection",
             "HTTPS-only is on. If you continue over http, anything you see or send on this site can be read or changed by others on the network.",
         )
-        PageErrorKind.CERTIFICATE -> Triple(Icons.Rounded.GppMaybe, "This connection isn't private", "$host presented a certificate Vela can't trust. Someone may be trying to intercept your connection.")
+        PageErrorKind.CERTIFICATE -> Triple(Icons.Rounded.GppMaybe, "This connection isn't private", "$host presented a certificate Tarnel can't trust. Someone may be trying to intercept your connection.")
         PageErrorKind.CRASHED -> Triple(Icons.Rounded.SentimentDissatisfied, "This page crashed", "It used too much memory or hit a bug. Reload to try again.")
         PageErrorKind.GENERIC -> Triple(Icons.Rounded.ErrorOutline, "This page couldn't load", error.detail?.removePrefix("net::")?.lowercase() ?: "Something went wrong while connecting to $host.")
     }

@@ -580,7 +580,7 @@ class Browser(
             }
         }
         // X-Requested-With (the app package name) is not sent: current WebViews omit it unless an app opts in
-        // through the (now restricted) origin allow-list, which Vela never populates.
+        // through the (now restricted) origin allow-list, which Tarnel never populates.
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ATTRIBUTION_REGISTRATION_BEHAVIOR)) {
             WebSettingsCompat.setAttributionRegistrationBehavior(webView.settings, WebSettingsCompat.ATTRIBUTION_BEHAVIOR_DISABLED)
         }
@@ -849,7 +849,7 @@ class Browser(
                 host.requestAndroidPermissions(androidPermissions(kinds)) { granted ->
                     if (granted) request.grant(resources) else {
                         request.deny()
-                        message = UiMessage("Vela doesn't have ${kinds.joinToString(" and ") { it.label }} access in Android settings")
+                        message = UiMessage("Tarnel doesn't have ${kinds.joinToString(" and ") { it.label }} access in Android settings")
                     }
                 }
             }
@@ -930,7 +930,7 @@ class Browser(
     fun deleteSpace(space: Space) {
         if (space.burner) return closeBurner(space)
         if (spaces.count { !it.burner } <= 1) {
-            message = UiMessage("Vela needs at least one Space")
+            message = UiMessage("Tarnel needs at least one Space")
             return
         }
         tabsIn(space.id).forEach { destroyWebView(it); tabs.remove(it) }

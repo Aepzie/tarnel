@@ -31,9 +31,9 @@ class UrlInputTest {
 
     @Test
     fun wordsAreSearches() {
-        val result = resolve("vela browser android")
+        val result = resolve("tarnel browser android")
         assertTrue(result is UrlInput.Resolved.Search)
-        assertEquals("https://duckduckgo.com/?q=vela%20browser%20android", result!!.url)
+        assertEquals("https://duckduckgo.com/?q=tarnel%20browser%20android", result!!.url)
         assertTrue(resolve("hello") is UrlInput.Resolved.Search)
     }
 
@@ -55,7 +55,7 @@ class UrlInputTest {
 
     @Test
     fun displayHostStripsWww() {
-        assertEquals("github.com", UrlInput.displayHost("https://www.github.com/Aepzie/vela"))
+        assertEquals("github.com", UrlInput.displayHost("https://www.github.com/Aepzie/tarnel"))
         assertEquals("wikipedia.org", UrlInput.displayHost("https://m.wikipedia.org/"))
     }
 

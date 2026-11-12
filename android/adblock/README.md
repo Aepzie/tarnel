@@ -1,6 +1,6 @@
-# Vela adblock engine (`android/adblock`)
+# Tarnel adblock engine (`android/adblock`)
 
-A pure Kotlin/JVM ad & tracker blocking engine for the Android version of Vela. No Android
+A pure Kotlin/JVM ad & tracker blocking engine for the Android version of Tarnel. No Android
 dependencies, so it builds and tests on a desktop JVM and drops into the app as a plain
 library module.
 

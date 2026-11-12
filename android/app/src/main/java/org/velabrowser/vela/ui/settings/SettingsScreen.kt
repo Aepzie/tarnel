@@ -64,7 +64,7 @@ import org.velabrowser.vela.ui.components.ListRow
 import org.velabrowser.vela.ui.components.Pill
 import org.velabrowser.vela.ui.components.SectionLabel
 import org.velabrowser.vela.ui.components.SpaceDot
-import org.velabrowser.vela.ui.components.VelaAppIcon
+import org.velabrowser.vela.ui.components.BrandAppIcon
 import org.velabrowser.vela.ui.components.VelaSwitch
 import org.velabrowser.vela.ui.components.pressable
 import org.velabrowser.vela.ui.theme.LocalVela
@@ -253,7 +253,7 @@ private fun FilterListRow(browser: Browser) {
     )
     if (status.error != null && !status.updating) {
         Text(
-            "Check your connection and try again. Vela keeps using the lists it already has.",
+            "Check your connection and try again. Tarnel keeps using the lists it already has.",
             style = VelaType.label,
             color = c.danger,
             modifier = Modifier.padding(start = 54.dp, end = 20.dp, bottom = 10.dp),
@@ -275,10 +275,10 @@ private fun About(browser: Browser) {
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            VelaAppIcon(size = 52.dp)
+            BrandAppIcon(size = 52.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text("Vela for Android", style = VelaType.heading, color = c.text)
+                Text("Tarnel for Android", style = VelaType.heading, color = c.text)
                 Text("Version ${BuildConfig.VERSION_NAME}", style = VelaType.label, color = c.textFaint)
                 Text(
                     "WebView ${webView?.versionName ?: "unknown"} · Spaces ${if (browser.profilesSupported) "isolated" else "shared"}",
@@ -291,11 +291,11 @@ private fun About(browser: Browser) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill("Source code", leading = { Icon(Icons.Rounded.Code, null, Modifier.size(14.dp), tint = c.textMuted) }) {
                 browser.panel = Panel.NONE
-                browser.openInNewTab("https://github.com/Aepzie/vela")
+                browser.openInNewTab("https://github.com/Aepzie/tarnel")
             }
             Pill("MIT License", leading = { Icon(Icons.Rounded.Info, null, Modifier.size(14.dp), tint = c.textMuted) }) {
                 browser.panel = Panel.NONE
-                browser.openInNewTab("https://github.com/Aepzie/vela/blob/main/LICENSE")
+                browser.openInNewTab("https://github.com/Aepzie/tarnel/blob/main/LICENSE")
             }
         }
         Spacer(Modifier.height(16.dp))

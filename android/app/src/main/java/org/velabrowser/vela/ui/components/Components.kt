@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.velabrowser.vela.core.FaviconCache
 import org.velabrowser.vela.core.UrlInput
-import org.velabrowser.vela.ui.brand.BrandMark
+import org.velabrowser.vela.ui.brand.BrandMark as BrandMarkPaths
 import org.velabrowser.vela.ui.theme.LocalVela
 import org.velabrowser.vela.ui.theme.VelaType
 
@@ -152,18 +152,18 @@ fun SpaceDot(color: Color, modifier: Modifier = Modifier, size: Dp = 8.dp, glow:
     )
 }
 
-/** The Vela mark (desktop `brand-mark.ts`): body in [ink], cap in [accent] — the active Space color by default. */
+/** The Tarnel mark (desktop `brand-mark.ts`): body in [ink], cap in [accent] — the active Space color by default. */
 @Composable
-fun VelaMark(modifier: Modifier = Modifier, ink: Color = LocalVela.current.text, accent: Color = LocalVela.current.accent) {
+fun BrandMark(modifier: Modifier = Modifier, ink: Color = LocalVela.current.text, accent: Color = LocalVela.current.accent) {
     val paths = remember { BrandPaths.get() }
-    Canvas(modifier.semantics { contentDescription = "Vela" }) {
-        val scale = size.minDimension / BrandMark.VIEWBOX_SIZE
-        val dx = (size.width - BrandMark.VIEWBOX_SIZE * scale) / 2f
-        val dy = (size.height - BrandMark.VIEWBOX_SIZE * scale) / 2f
+    Canvas(modifier.semantics { contentDescription = "Tarnel" }) {
+        val scale = size.minDimension / BrandMarkPaths.VIEWBOX_SIZE
+        val dx = (size.width - BrandMarkPaths.VIEWBOX_SIZE * scale) / 2f
+        val dy = (size.height - BrandMarkPaths.VIEWBOX_SIZE * scale) / 2f
         withTransform({
             translate(dx, dy)
             scale(scale, scale, pivot = Offset.Zero)
-            translate(-BrandMark.VIEWBOX_X, -BrandMark.VIEWBOX_Y)
+            translate(-BrandMarkPaths.VIEWBOX_X, -BrandMarkPaths.VIEWBOX_Y)
         }) {
             drawPath(paths.first, ink)
             drawPath(paths.second, accent)
@@ -173,25 +173,24 @@ fun VelaMark(modifier: Modifier = Modifier, ink: Color = LocalVela.current.text,
 
 private object BrandPaths {
     private var cached: Pair<Path, Path>? = null
-    fun get(): Pair<Path, Path> = cached ?: (PathParser().parsePathString(BrandMark.BODY_PATH).toPath() to
-        PathParser().parsePathString(BrandMark.CAP_PATH).toPath()).also { cached = it }
+    fun get(): Pair<Path, Path> = cached ?: (PathParser().parsePathString(BrandMarkPaths.BODY_PATH).toPath() to
+        PathParser().parsePathString(BrandMarkPaths.CAP_PATH).toPath()).also { cached = it }
 }
 
-/** The app icon as on the launcher and desktop: dark tile, soft blue glow, white sail with the blue cap. */
+/** The app icon as on the launcher and desktop: flat dark tile, hairline rim, white mountain with the accent reflection. */
 @Composable
-fun VelaAppIcon(modifier: Modifier = Modifier, size: Dp = 52.dp) {
-    val accent = Color(BrandMark.ACCENT)
+fun BrandAppIcon(modifier: Modifier = Modifier, size: Dp = 52.dp) {
+    val accent = Color(BrandMarkPaths.ACCENT)
     val shape = RoundedCornerShape(size * 0.24f)
     Box(
         modifier
             .size(size)
             .clip(shape)
-            .background(Color(BrandMark.TILE))
-            .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.24f), Color.Transparent), center = Offset.Unspecified))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), shape),
+            .background(Color(BrandMarkPaths.TILE))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), shape),
         contentAlignment = Alignment.Center,
     ) {
-        VelaMark(Modifier.size(size * 0.66f), ink = Color(BrandMark.INK), accent = accent)
+        BrandMark(Modifier.size(size * 0.66f), ink = Color(BrandMarkPaths.INK), accent = accent)
     }
 }
 

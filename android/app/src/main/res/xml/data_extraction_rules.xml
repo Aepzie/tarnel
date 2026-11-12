@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Vela keeps browsing data on the device: nothing is backed up to the cloud or transferred. -->
+<!-- Tarnel keeps browsing data on the device: nothing is backed up to the cloud or transferred. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />

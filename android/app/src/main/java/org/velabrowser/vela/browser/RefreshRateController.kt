@@ -33,7 +33,7 @@ val LocalRefreshRate = staticCompositionLocalOf<RefreshRateController?> { null }
  * - High: pins the fastest display mode (`preferredDisplayModeId`) and, on Android 15+, opts out of the
  *   system's power-saving frame-rate reduction.
  * - Standard: pins the mode closest to 60 Hz and turns off the touch boost.
- * - Auto: no pin; while the user touches the screen or a page is still scrolling (fling), Vela asks for
+ * - Auto: no pin; while the user touches the screen or a page is still scrolling (fling), Tarnel asks for
  *   the fastest rate, and drops the request [IDLE_MS] after the last activity. On Android 15+ this is a
  *   `View.setRequestedFrameRate(CATEGORY_HIGH)` vote on the views that draw (no window update);
  *   below that it is a temporary `preferredDisplayModeId`.
