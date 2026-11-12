@@ -70,10 +70,20 @@ processes. On ad-heavy news and recipe sites this typically cuts page weight and
 30–60% and removes most long main-thread tasks. On clean sites it does nothing, and costs
 microseconds per request (the engine is a compact pre-compiled matcher).
 
+- **List set** (`perf/adblock-lists.ts`): Ghostery's ads + tracking preset with the uBO lists taken
+  from uBO itself (plus filters-2025/2026), and Tarnel's bundled `lists/tarnel-extra.txt` (~35
+  rules: ad-SDK / analytics / OEM telemetry hosts). Measured against the old set (isolated instance,
+  same machine, main process, warm start): cache 6.86 → 7.06 MB; warm load ~310 ms both;
+  main-process private memory 122.5 → 118.0 MB (no measurable difference); cold network build
+  ~2.0 s both. A bigger DNS list (HaGeZi Pro mini, 100k hosts) was tried and dropped: +3.8 MB cache
+  for no score gain once the bundled list is in.
 - **Instant startup:** the compiled engine is cached as a binary in `userData/adblock-engine.bin`
   and deserialized in milliseconds. Launch never waits on the network. The file starts with a key
-  header (`perf/adblock-cache.ts`: Ghostery `ENGINE_VERSION` + library version + list set), so a
-  library upgrade or list change is a cache miss, not a deserialize error.
+  header (`perf/adblock-cache.ts`: Ghostery `ENGINE_VERSION` + library version + list set + hash of
+  the bundled extra list), so a library upgrade or list change is a cache miss, not a deserialize
+  error. The header is space-padded so the engine bytes start 8-byte aligned: Ghostery reads them
+  through typed-array views that throw on unaligned offsets, which used to make some keys miss the
+  cache on every launch.
 - **Measured** (Ghostery 2.20.3, prebuilt ads + tracking, ~6.9 MB cache; Node, same code path):
   cold start without cache = network build **0.75–1.3 s** (median ~1.0 s); warm start from cache =
   read + header check + deserialize **20–38 ms** (median ~30 ms). The main process logs which path

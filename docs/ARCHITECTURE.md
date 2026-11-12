@@ -521,9 +521,16 @@ export function relaunchApp(): void;                 // velaPages.relaunch
 export function initAdblock(): Promise<void>;                 // load engine (cached serialized in userData, refresh in background ≥24h)
 export function enableAdblockForSession(session: Electron.Session): void; // no-op until engine ready, then applies; idempotent
 export function setAdblockEnabled(enabled: boolean): void;    // enable/disable in all known sessions
+export function getEngine(): ElectronBlocker | null;          // current engine (null until loaded); used by adblock-early.ts
 export function onBlocked(cb: (webContentsId: number, url: string) => void): void;
 export function getBlockedTotal(): number;
+export function getEngine(): ElectronBlocker | null;         // installed engine (null before the first one)
 ```
+Lists (`perf/adblock-lists.ts`, pure): Ghostery's `adsAndTrackingLists` with every mirrored uBO list
+(`…/assets/ublock-origin/*.txt`) fetched from `ublockorigin.github.io/uAssets/filters/` instead, Ghostery's
+mirror as per-list fallback, plus the optional `filters-2025.txt` / `filters-2026.txt`; scriptlets still come from
+Ghostery's `resources.json`. Tarnel's own `src/main/perf/lists/tarnel-extra.txt` is copied to
+`dist/main/adblock-extra.txt` by the build, appended to the lists, and its content hash is part of the cache key.
 
 ### `src/main/perf/sleeper.ts`
 ```ts
@@ -825,7 +832,18 @@ helpers (`safeSelf`, `proxyApplyFn`, `class JSONPath`) at top level, so on YouTu
 each other ("Identifier 'JSONPath' has already been declared", then "Maximum call stack size exceeded" in the
 proxied `JSON.parse` / fetch / XHR) and the player stayed black or showed "Video unavailable".
 `perf/adblock-scriptlets.ts` wraps every scriptlet in its own function scope, as uBO does (regression note:
-keep this when upgrading `@ghostery/adblocker-electron`; recheck YouTube watch pages for those console errors). `net/domain.ts` holds the
+keep this when upgrading `@ghostery/adblocker-electron`; recheck YouTube watch pages for those console errors).
+The library also delivers scriptlets too late: its preload asks main over async IPC and main answers with
+`webContents.executeJavaScript`, after YouTube's first inline scripts have read `ytInitialPlayerResponse`, and only
+for top frames. `perf/adblock-early.ts` adds a session frame preload (`preload/adblock-early.ts`, registered only
+while ad blocking is on) that asks main synchronously (`vela:adblock-early-scriptlets`, sender session must be a
+Space session, URL validated in `shared/adblock-early.ts`) for the frame's scriptlets
+(`getCosmeticsFilters` with injection rules only, isolated, LRU-cached per page URL and engine) and runs them with
+`webFrame.executeJavaScript` in the main world at document start, in every frame (YouTube embeds included). To keep
+each scriptlet to one run per document, frames served early are recorded by process + frame id and
+`ElectronBlocker.prototype.getCosmeticsFilters` is wrapped so the library's late call for that frame asks without
+injection rules (CSS only). Measured: main handler ~0.2 ms (2.6 ms uncached for YouTube's 30 scriptlets), renderer
+round trip ~2.7 ms per frame. `net/domain.ts` holds the
 registrable-domain heuristic shared by privacy, fingerprinting and DNR (pure, unit-testable).
 
 ## Phishing & malware protection (`src/main/safety/*`)

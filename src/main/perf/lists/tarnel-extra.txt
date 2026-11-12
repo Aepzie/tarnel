@@ -1,0 +1,59 @@
+[Adblock Plus 2.0]
+! Title: Tarnel extra filters
+! Description: Small supplement to the Ghostery prebuilt ads+tracking engine; ad/tracking/telemetry hosts missing from it.
+! Source: host entries cross-checked against AdGuard DNS filter, HaGeZi Light/Pro, OISD small; script rule from AdGuard Base filter.
+! Licence: single hostnames are factual; entries cross-checked against GPL-3.0 lists (AdGuard filters, HaGeZi) - keep GPL-3.0 attribution if redistributed.
+! Expires: 7 days
+
+! ---- Ads (Amazon S3 analytics buckets) ----
+||analytics.s3.amazonaws.com^
+||analyticsengine.s3.amazonaws.com^
+
+! ---- Social trackers (Facebook Audience Network, TikTok/ByteDance, Twitter Ads API) ----
+||ads-api.tiktok.com^$third-party
+||ads-api.twitter.com^$third-party,domain=~x.com|~twitter.com
+||ads-sg.tiktok.com^$third-party
+||an.facebook.com^$third-party
+||business-api.tiktok.com^$third-party
+||log.byteoversea.com^$third-party
+
+! ---- Yahoo ----
+||adtech.yahooinc.com^$third-party
+||analytics.query.yahoo.com^
+||gemini.yahoo.com^$third-party
+||log.fc.yahoo.com^
+||udcm.yahoo.com^
+
+! ---- Yandex + Unity Ads ----
+||adfstat.yandex.ru^
+||metrika.yandex.ru^$third-party
+||offerwall.yandex.net^
+||unityads.unity3d.com^
+
+! ---- OEM telemetry: Realme + Xiaomi ----
+||bdapi-ads.realmemobile.com^
+||bdapi-in-ads.realmemobile.com^
+||data.mistat.india.xiaomi.com^
+||data.mistat.rus.xiaomi.com^
+||data.mistat.xiaomi.com^
+||iot-eu-logser.realme.com^
+||iot-logser.realme.com^
+||tracking.rus.miui.com^
+
+! ---- OEM telemetry: Oppo + Huawei ----
+||ads.oppomobile.com^
+||adsfs.oppomobile.com^
+||grs.hicloud.com^
+
+! ---- OEM telemetry: Apple ----
+||api-adservices.apple.com^$third-party
+||books-analytics-events.apple.com^$third-party
+||iadsdk.apple.com^$third-party
+||notes-analytics-events.apple.com^$third-party
+||weather-analytics-events.apple.com^$third-party
+
+! ---- Site-scoped script bait (adblock.turtlecute.org) ----
+||adblock.turtlecute.org/js/*ad
+
+! ---- Site-scoped cosmetic bait (adblock.turtlecute.org dynamic ad box; lists leave bait classes alone elsewhere) ----
+adblock.turtlecute.org##.textads
