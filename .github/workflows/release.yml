@@ -104,7 +104,7 @@ jobs:
         run: mv release/latest-mac.yml release/latest-mac-${{ matrix.arch }}.yml
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tarnel-${{ matrix.name }}
           if-no-files-found: error
@@ -177,7 +177,7 @@ jobs:
           ls -l dist
 
       - name: Upload release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tarnel-android
           if-no-files-found: error
