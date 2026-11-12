@@ -6,7 +6,7 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/vela_splash</item>
-        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/ic_vela_mark</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/ic_brand_mark</item>
     </style>
 
     <!-- Context themes for WebViews: isLightTheme drives the page's prefers-color-scheme. -->

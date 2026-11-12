@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
-/** Vela "Floating Islands" tokens (docs/DESIGN.md), mapped to Compose. */
+/** Tarnel "Floating Islands" tokens (docs/DESIGN.md), mapped to Compose. */
 @Immutable
 data class VelaColors(
     val dark: Boolean,

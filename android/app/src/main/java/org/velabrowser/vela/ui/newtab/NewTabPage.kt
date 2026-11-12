@@ -67,7 +67,7 @@ import org.velabrowser.vela.core.TopSite
 import org.velabrowser.vela.core.UrlInput
 import org.velabrowser.vela.ui.components.SiteIcon
 import org.velabrowser.vela.ui.components.SpaceDot
-import org.velabrowser.vela.ui.components.VelaMark
+import org.velabrowser.vela.ui.components.BrandMark
 import org.velabrowser.vela.ui.components.glass
 import org.velabrowser.vela.ui.components.pressable
 import org.velabrowser.vela.ui.theme.LocalVela
@@ -214,10 +214,10 @@ private fun Hero(style: NewtabHero, compact: Boolean) {
                         .size((210 * scale).dp)
                         .background(Brush.radialGradient(listOf(c.accent.copy(alpha = if (c.dark) 0.20f else 0.16f), Color.Transparent)), CircleShape),
                 )
-                VelaMark(Modifier.size((132 * scale).dp))
+                BrandMark(Modifier.size((132 * scale).dp))
             }
             Text(
-                "Vela",
+                "Tarnel",
                 style = VelaType.title.copy(fontSize = (24 * scale).sp, fontWeight = FontWeight.Light, letterSpacing = 0.42.em),
                 color = c.text.copy(alpha = 0.8f),
                 modifier = Modifier.padding(start = (10 * scale).dp),

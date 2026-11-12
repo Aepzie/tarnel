@@ -27,7 +27,7 @@ class BrandMarkSyncTest {
         assertEquals(hint, constant("BRAND_BODY_PATH"), BrandMark.BODY_PATH)
         assertEquals(hint, constant("BRAND_ACCENT").removePrefix("#").lowercase(), "%06x".format(BrandMark.ACCENT and 0xFFFFFF))
         val drawable = generateSequence(File("").absoluteFile) { it.parentFile }
-            .map { File(it, "app/src/main/res/drawable/ic_vela_mark.xml") }
+            .map { File(it, "app/src/main/res/drawable/ic_brand_mark.xml") }
             .first { it.isFile }
             .readText()
         assertTrue(hint, drawable.contains(BrandMark.CAP_PATH) && drawable.contains(BrandMark.BODY_PATH))

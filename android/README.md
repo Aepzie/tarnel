@@ -1,10 +1,10 @@
-# Vela for Android
+# Tarnel for Android
 
-Native Android version of Vela: Kotlin + Jetpack Compose UI on top of Android System WebView
+Native Android version of Tarnel: Kotlin + Jetpack Compose UI on top of Android System WebView
 (`androidx.webkit`). Same ideas as the desktop app — Floating Islands design, isolated Spaces, Burner spaces,
 sleeping tabs, privacy defaults — built for phones.
 
-- **applicationId / package:** `org.velabrowser.vela` (debug builds: `org.velabrowser.vela.debug`)
+- **applicationId / package:** `org.velabrowser.vela` (debug builds: `org.velabrowser.vela.debug`) — kept from the app's former name Vela so updates install over existing installs
 - **minSdk 29** (Android 10) · **targetSdk / compileSdk 37**
 - AGP 9.5 (built-in Kotlin), Kotlin 2.4, Compose BOM 2026.09, Gradle 9.9 (wrapper committed)
 
@@ -109,7 +109,7 @@ and a fling outlives the touch. `browser/RefreshRateController.kt` applies Setti
 window (WebView included); the mode choice is pure (`core/RefreshRate.kt`, unit-tested):
 
 * **Auto** (default): no pinned mode. While the user touches the screen or a page is still scrolling (WebView
-  `onScrollChanged`, which also fires during a fling) Vela asks for the fastest rate and drops the request 1.2 s
+  `onScrollChanged`, which also fires during a fling) Tarnel asks for the fastest rate and drops the request 1.2 s
   after the last activity. Android 15+: `View.setRequestedFrameRate(CATEGORY_HIGH)` on the content view and the
   active WebView (no window update); Android 10–14: a temporary `preferredDisplayModeId`.
 * **High**: pins the fastest mode at the current resolution (`preferredDisplayModeId`) and, on Android 15+, turns
@@ -174,15 +174,15 @@ easyprivacy.txt, peterlowe.txt>`. Debug builds are much slower (≈4–5 s), mea
 
 ## Logo and typography
 
-The logo comes from the desktop's single source, `src/shared/brand-mark.ts` (cap + body paths, accent `#60a5fa`).
+The logo comes from the desktop's single source, `src/shared/brand-mark.ts` (mountain + reflection paths, accent `#a78bfa`, tile `#18181b`).
 `scripts/brand-mark.mjs` (node, no dependencies) generates:
 
-* `res/drawable/ic_vela_mark.xml` — launcher foreground and splash icon (blue cap, white body; the desktop tile maps
+* `res/drawable/ic_brand_mark.xml` — launcher foreground and splash icon (white mountain, accent reflection; the desktop tile maps
   onto the visible 72 dp of the adaptive icon),
-* `res/drawable/ic_vela_mono.xml` — themed-icon (monochrome) layer,
-* `res/drawable/ic_launcher_background.xml` — dark tile with the accent glow,
-* `ui/brand/BrandMark.kt` — path data for the Compose `VelaMark` (body in the text color, cap in the Space accent)
-  and `VelaAppIcon`.
+* `res/drawable/ic_brand_mono.xml` — themed-icon (monochrome) layer,
+* `res/drawable/ic_launcher_background.xml` — flat dark tile (`#18181b`),
+* `ui/brand/BrandMark.kt` — path data for the Compose `BrandMark` (mountain in the text color, reflection in the Space accent)
+  and `BrandAppIcon`.
 
 After changing `brand-mark.ts` run `./gradlew :app:syncBrandMark` (or `node android/scripts/brand-mark.mjs`);
 `BrandMarkSyncTest` fails while the generated files are out of date.
