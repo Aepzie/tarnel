@@ -23,7 +23,7 @@ function escapeRegExp(text: string): string {
  * available through the Sec-CH-UA-Full-Version-List hint), so sites see a stock Chromium UA.
  */
 export function cleanUserAgent(ua: string): string {
-  const names = new Set(['electron', 'vela']);
+  const names = new Set(['electron', 'tarnel', 'vela']);
   try {
     const appName = app.getName().trim();
     if (appName) names.add(appName.toLowerCase());

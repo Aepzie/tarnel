@@ -15,7 +15,7 @@ export interface SavedLogin {
   username: string;
   createdAt: number;
   lastUsedAt: number | null;
-  /** Email alias created by Vela for this login (see src/main/aliases). */
+  /** Email alias created by Tarnel for this login (see src/main/aliases). */
   alias?: AliasRef;
 }
 
@@ -27,7 +27,7 @@ export interface ImportedLogin {
   password: string;
 }
 
-/** Password manager channels. chrome:* only from the chrome UI; pages:* only from vela://passwords; frame:* from tab frames (session preload). */
+/** Password manager channels. chrome:* only from the chrome UI; pages:* only from tarnel://passwords; frame:* from tab frames (session preload). */
 export const PASSWORD_IPC = {
   answerSave: 'chrome:password-answer-save',
   fill: 'chrome:password-fill',

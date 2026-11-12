@@ -17,7 +17,7 @@ import { DYNAMIC_RULESET_ID, LIMITS, SESSION_RULESET_ID, type RequestInfo, type 
 /**
  * declarativeNetRequest for extensions, per Space session. Electron implements no DNR, so the
  * rules are evaluated here, inside the session's webRequest pipeline (net/dispatcher.ts), after
- * Vela's own blocker. Nothing is registered for a session until an extension with a DNR
+ * Tarnel's own blocker. Nothing is registered for a session until an extension with a DNR
  * permission is loaded into it.
  */
 

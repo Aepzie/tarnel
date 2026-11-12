@@ -39,7 +39,7 @@ export interface AliasChoice {
   label: string;
 }
 
-/** What vela://settings sees. Never contains the API key. */
+/** What tarnel://settings sees. Never contains the API key. */
 export interface AliasSettingsView {
   provider: AliasProviderId | null;
   hasKey: boolean;

@@ -26,7 +26,7 @@ test('panel URLs are normalised to http(s) only', () => {
   assert.equal(normalizePanelUrl('http://127.0.0.1:5000/'), 'http://127.0.0.1:5000/');
   assert.equal(normalizePanelUrl('javascript:alert(1)'), null);
   assert.equal(normalizePanelUrl('file:///C:/x'), null);
-  assert.equal(normalizePanelUrl('vela://settings'), null);
+  assert.equal(normalizePanelUrl('tarnel://settings'), null);
   assert.equal(normalizePanelUrl('two words'), null);
   assert.equal(normalizePanelUrl(''), null);
 });

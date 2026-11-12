@@ -15,7 +15,7 @@ export interface PermissionManifest {
 
 const RISK_ORDER: Record<PermissionRisk, number> = { low: 0, medium: 1, high: 2 };
 
-/** API permissions Vela shows; anything not listed (and not silent) is shown as low. */
+/** API permissions Tarnel shows; anything not listed (and not silent) is shown as low. */
 const KNOWN: Record<string, { label: string; risk: PermissionRisk }> = {
   debugger: { label: 'Access the page debugger (full control of pages)', risk: 'high' },
   nativeMessaging: { label: 'Talk to programs installed on your computer', risk: 'high' },

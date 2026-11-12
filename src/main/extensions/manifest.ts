@@ -5,7 +5,7 @@ import { join, resolve, sep } from 'node:path';
 import type { ExtensionPermission, PermissionRisk } from '../../shared/types';
 import { classifyPermissions, overallRisk, type PermissionManifest } from './risk';
 
-/** The subset of manifest.json Vela reads itself (Chromium parses the rest). */
+/** The subset of manifest.json Tarnel reads itself (Chromium parses the rest). */
 interface RawManifest extends PermissionManifest {
   manifest_version?: number;
   name?: string;

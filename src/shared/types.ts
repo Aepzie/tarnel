@@ -174,7 +174,7 @@ export type WindowMaterial = 'mica' | 'acrylic' | 'none';
 export const NEWTAB_HEROES = ['clock', 'clock-seconds', 'logo', 'date', 'greeting', 'minimal'] as const;
 export type NewtabHero = (typeof NEWTAB_HEROES)[number];
 
-/** Memory saver: sleep LRU background tabs while Vela uses more than the threshold. */
+/** Memory saver: sleep LRU background tabs while Tarnel uses more than the threshold. */
 export const MEMORY_SAVER_MODES = ['off', 'balanced', 'maximum'] as const;
 export type MemorySaverMode = (typeof MEMORY_SAVER_MODES)[number];
 
@@ -189,7 +189,7 @@ export interface Settings {
   /** Hours of inactivity before a background tab moves to the Space's tab archive. 0 = never. */
   archiveAfterHours: number;
   memorySaver: MemorySaverMode;
-  /** Memory saver threshold: total memory Vela may use before it sleeps tabs (GB). */
+  /** Memory saver threshold: total memory Tarnel may use before it sleeps tabs (GB). */
   memorySaverThresholdGB: number;
   /** When battery saver kicks in (shared/battery.ts, docs/PERFORMANCE.md → Battery saver). */
   batterySaver: BatterySaverMode;
@@ -237,7 +237,7 @@ export interface Settings {
   secureDnsNextDns: string;
   /** Custom DoH URI template; always valid or ''. */
   secureDnsTemplate: string;
-  /** User-Agent for every Space without its own; '' = Vela's default (stock Chromium). */
+  /** User-Agent for every Space without its own; '' = Tarnel's default (stock Chromium). */
   userAgent: string;
   /** Password manager: ask to save logins submitted on web pages. */
   offerToSavePasswords: boolean;
@@ -247,7 +247,7 @@ export interface Settings {
   rejectCookieBanners: boolean;
   /** Shift-click on a link previews it in Peek instead of opening a new window. */
   peekOnShiftClick: boolean;
-  /** Start page: a small "N trackers blocked this week" line linking to vela://privacy. */
+  /** Start page: a small "N trackers blocked this week" line linking to tarnel://privacy. */
   newtabPrivacyStat: boolean;
   /** A weekly system notification summarising the privacy report. */
   privacyWeeklySummary: boolean;
@@ -504,7 +504,7 @@ export interface SyncCategories {
 
 export const DEFAULT_SYNC_CATEGORIES: SyncCategories = { settings: true, spaces: true, tabs: true, history: false };
 
-/** User-owned sync storage. Vela never runs a sync server. */
+/** User-owned sync storage. Tarnel never runs a sync server. */
 export type SyncTransportInput =
   | { kind: 'folder'; path: string }
   | { kind: 'webdav'; url: string; username: string; password: string };

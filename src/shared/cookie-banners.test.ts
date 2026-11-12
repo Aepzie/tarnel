@@ -6,7 +6,7 @@ test('siteKeyOf normalises URLs and hosts', () => {
   assert.equal(siteKeyOf('https://www.Spiegel.de/politik/'), 'spiegel.de');
   assert.equal(siteKeyOf('news.example.com'), 'news.example.com');
   assert.equal(siteKeyOf('www.example.com.'), 'example.com');
-  assert.equal(siteKeyOf('vela://settings'), null);
+  assert.equal(siteKeyOf('tarnel://settings'), null);
   assert.equal(siteKeyOf('file:///C:/x'), null);
   assert.equal(siteKeyOf(''), null);
   assert.equal(siteKeyOf('bad host'), null);

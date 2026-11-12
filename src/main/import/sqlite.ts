@@ -7,7 +7,7 @@ const MAX_DB_BYTES = 1024 * 1024 * 1024;
 
 /**
  * Runs `read` against a private copy of another browser's SQLite file. The source is never opened:
- * the running browser may hold a lock on it, and Vela must not change it. A pending -wal journal is
+ * the running browser may hold a lock on it, and Tarnel must not change it. A pending -wal journal is
  * copied too so recent changes are included; the copy is opened read-only and deleted afterwards.
  * node:sqlite ships with Electron's Node (24.x) and is loaded lazily, only when an import runs.
  */

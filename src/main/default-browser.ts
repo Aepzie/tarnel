@@ -15,8 +15,8 @@ import {
  * Settings → General → Default browser. Only on demand (no timers): the settings page asks for the
  * status on load and when it regains focus.
  *
- * Windows 10/11 don't let apps make themselves the default; the installer registers Vela
- * (build/installer.nsh) and "Make default" opens Vela's page in Settings → Default apps. The status
+ * Windows 10/11 don't let apps make themselves the default; the installer registers Tarnel
+ * (build/installer.nsh) and "Make default" opens Tarnel's page in Settings → Default apps. The status
  * comes from the handler Windows actually uses (UserChoice), not from `isDefaultProtocolClient`,
  * which only reads `HKCU\Software\Classes\<scheme>` and misses the Settings choice.
  * macOS/Linux: Electron's protocol client API sets it directly.

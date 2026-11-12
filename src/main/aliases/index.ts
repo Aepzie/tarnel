@@ -23,7 +23,7 @@ import { accountRequest, AliasApiError, apiBase, authHeaders, createAlias, domai
 /**
  * Email aliases (docs/ARCHITECTURE.md → Email aliases). Main only:
  *  - provider settings + the API key in userData/aliases.json; the key is sealed with safeStorage
- *    and never sent to any renderer (vela://settings only learns whether one is set);
+ *    and never sent to any renderer (tarnel://settings only learns whether one is set);
  *  - the passwords preload reports focus on an email field of a sign-up form; main offers an alias
  *    in the chrome UI and, after the click, creates it at the provider (net.fetch, 10 s timeout,
  *    no redirects) and sends the address to that frame only (same-origin top frame, like filling);
@@ -179,7 +179,7 @@ function readyTransport(): { settings: StoredSettings; provider: AliasProviderId
 }
 
 // ---------------------------------------------------------------------------
-// vela://settings
+// tarnel://settings
 
 function patchSettings(raw: unknown): AliasSettingsView {
   if (!raw || typeof raw !== 'object') throw new TypeError('Invalid patch');

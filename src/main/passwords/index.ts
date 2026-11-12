@@ -32,7 +32,7 @@ import { classify, emptyVault, findLogin, loginsFor, MAX_PASSWORD, MAX_USERNAME,
  *  - the session preload (src/preload/passwords.ts) reports login forms and submitted
  *    credentials; origins always come from the sending frame, never from the page;
  *  - a password leaves main only to the frame the user picked an account for, or to
- *    vela://passwords after an explicit reveal. Nothing here logs credentials.
+ *    tarnel://passwords after an explicit reveal. Nothing here logs credentials.
  */
 
 const PRELOAD = path.join(__dirname, '..', 'preload', 'passwords.js');
@@ -332,7 +332,7 @@ function fill(offerId: unknown, loginId: unknown): void {
 }
 
 // ---------------------------------------------------------------------------
-// vela://passwords
+// tarnel://passwords
 
 function fromPasswordsPage(event: IpcMainInvokeEvent): boolean {
   try {
@@ -411,7 +411,7 @@ async function exportCsv(spaceId: unknown): Promise<{ saved: boolean; count: num
   const id = requireSpace(spaceId);
   const vault = loadVault(id);
   const win = getMainWindow();
-  const options = { title: 'Export passwords', defaultPath: path.join(app.getPath('documents'), 'Vela Passwords.csv'), filters: [{ name: 'CSV', extensions: ['csv'] }] };
+  const options = { title: 'Export passwords', defaultPath: path.join(app.getPath('documents'), 'Tarnel Passwords.csv'), filters: [{ name: 'CSV', extensions: ['csv'] }] };
   const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
   if (result.canceled || !result.filePath) return { saved: false, count: 0 };
   const csv = loginsToCsv(vault.logins.map((login) => ({ origin: login.origin, username: login.username, password: cipher.decrypt(login.password) })));
@@ -422,7 +422,7 @@ async function exportCsv(spaceId: unknown): Promise<{ saved: boolean; count: num
 type ChromeHandler = (channel: string, fn: (...args: unknown[]) => unknown) => void;
 type PagesHandler = (channel: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) => void;
 
-/** Registered by ipc.ts with its sender-checked wrappers; pages:* additionally require vela://passwords. */
+/** Registered by ipc.ts with its sender-checked wrappers; pages:* additionally require tarnel://passwords. */
 export function registerPasswordIpc(handleChrome: ChromeHandler, handlePages: PagesHandler): void {
   const own = (channel: string, fn: (...args: unknown[]) => unknown): void =>
     handlePages(channel, (event, ...args) => {

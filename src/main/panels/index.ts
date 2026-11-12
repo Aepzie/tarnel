@@ -377,7 +377,7 @@ function openAsTab(rawId: unknown): void {
   createTab({ url, active: true });
 }
 
-/** Panel handlers: chrome-only runtime controls, list/add/update/remove also for vela://settings. */
+/** Panel handlers: chrome-only runtime controls, list/add/update/remove also for tarnel://settings. */
 export function registerPanelsIpc(handleChrome: ChromeHandler, handlePages: PagesHandler): void {
   handleChrome(PANELS_IPC.list, () => stateSnapshot());
   handleChrome(PANELS_IPC.add, (input) => add(input));
@@ -390,7 +390,7 @@ export function registerPanelsIpc(handleChrome: ChromeHandler, handlePages: Page
   handleChrome(PANELS_IPC.toggleMute, (id) => toggleMute(id));
   handleChrome(PANELS_IPC.openAsTab, (id) => openAsTab(id));
   const settingsOnly = (event: IpcMainInvokeEvent): void => {
-    if (!event.senderFrame?.url.startsWith('vela://settings')) throw new Error('Forbidden');
+    if (!event.senderFrame?.url.startsWith('tarnel://settings')) throw new Error('Forbidden');
   };
   handlePages(PANELS_IPC.pageList, (event) => (settingsOnly(event), stateSnapshot()));
   handlePages(PANELS_IPC.pageAdd, (event, input) => (settingsOnly(event), add(input)));

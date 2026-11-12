@@ -17,7 +17,7 @@ import { allowedIn, arm, getInstalled, isArmed, listInstalled, runsIn, wantedIn,
 
 type Library = typeof import('electron-chrome-extensions');
 
-/** Library internals Vela relies on; the dependency is pinned to an exact version for this. */
+/** Library internals Tarnel relies on; the dependency is pinned to an exact version for this. */
 interface ActionDetails {
   title?: unknown;
   text?: unknown;
@@ -67,7 +67,7 @@ const iconCache = new Map<string, string | null>();
 const ICON_CACHE_MAX = 200;
 let library: Library | null = null;
 let onChange: () => void = () => undefined;
-/** > 0 while Vela itself drives the library (its selectTab callback must not echo back). */
+/** > 0 while Tarnel itself drives the library (its selectTab callback must not echo back). */
 let internalDepth = 0;
 let lastActive: WebContents | null = null;
 let backgroundHardening = false;
@@ -96,7 +96,7 @@ function messageOf(error: unknown): string {
   return text.slice(0, 300) || 'Failed to load';
 }
 
-/** Where an extension may send a tab: the web, or extension pages. Never vela://, file:, data:. */
+/** Where an extension may send a tab: the web, or extension pages. Never tarnel://, file:, data:. */
 export function extensionMayOpen(url: string): boolean {
   return /^https?:\/\//i.test(url) || url === 'about:blank' || /^chrome-extension:\/\/[a-p]{32}\//i.test(url);
 }
@@ -115,7 +115,7 @@ function openTab(spaceId: SpaceId, url: string | undefined, active: boolean): [W
   return [wc, win];
 }
 
-/** Popups and background pages: links open as tabs of the Space, never vela:// pages. */
+/** Popups and background pages: links open as tabs of the Space, never tarnel:// pages. */
 function harden(wc: WebContents, spaceId: SpaceId): void {
   wc.setWindowOpenHandler(({ url }) => {
     if (extensionMayOpen(url)) createTab({ url, spaceId, active: true });

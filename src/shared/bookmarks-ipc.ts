@@ -10,7 +10,7 @@ export const BOOKMARK_ROOTS = {
 export const MAX_BOOKMARK_TITLE = 300;
 export const MAX_BOOKMARK_URL = 8192;
 
-/** chrome:* channels are only accepted from the browser chrome, pages:* only from vela:// pages. */
+/** chrome:* channels are only accepted from the browser chrome, pages:* only from tarnel:// pages. */
 export const BOOKMARKS_IPC = {
   chromeList: 'chrome:bookmarks-list',
   chromeAdd: 'chrome:bookmarks-add',
@@ -46,7 +46,7 @@ export interface BookmarkUpdate {
   index?: number;
 }
 
-/** Bookmarks of one Space, flat (parentId + index); the chrome and vela://bookmarks build the tree. */
+/** Bookmarks of one Space, flat (parentId + index); the chrome and tarnel://bookmarks build the tree. */
 export interface BookmarksSnapshot {
   spaceId: SpaceId;
   nodes: BookmarkNode[];
@@ -67,7 +67,7 @@ declare module './ipc' {
     bookmarks: BookmarksAPI & {
       /** A Space's bookmarks changed (any window, page or import). */
       onChange(cb: (spaceId: SpaceId) => void): () => void;
-      /** Opens vela://bookmarks in a new tab of the active Space. */
+      /** Opens tarnel://bookmarks in a new tab of the active Space. */
       openManager(): Promise<void>;
     };
   }

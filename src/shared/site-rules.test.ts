@@ -28,7 +28,7 @@ test('patterns: normalized, pasted URLs reduced to the host, junk rejected', () 
 
 test('hosts: only http(s) URLs', () => {
   assert.equal(hostOfUrl('https://WWW.Example.com./a'), 'www.example.com');
-  assert.equal(hostOfUrl('vela://settings'), null);
+  assert.equal(hostOfUrl('tarnel://settings'), null);
   assert.equal(hostOfUrl('file:///C:/x'), null);
   assert.equal(hostOfUrl('not a url'), null);
 });
@@ -62,7 +62,7 @@ test('resolution: most specific rule wins per action kind, disabled rules ignore
   assert.equal(result.vpn, 'de');
   assert.equal(result.block, false);
   assert.equal(resolveSiteRules(rules, 'https://www.google.com').space, 'personal');
-  assert.equal(resolveSiteRules(rules, 'vela://newtab').matched.length, 0);
+  assert.equal(resolveSiteRules(rules, 'tarnel://newtab').matched.length, 0);
 });
 
 test('resolution: equal specificity keeps list order', () => {
@@ -91,5 +91,5 @@ test('suggested pattern for the tab context menu', () => {
   assert.equal(suggestPattern('https://www.facebook.com/x'), '*.facebook.com');
   assert.equal(suggestPattern('http://127.0.0.1:8080/'), '127.0.0.1');
   assert.equal(suggestPattern('http://localhost/'), 'localhost');
-  assert.equal(suggestPattern('vela://newtab'), null);
+  assert.equal(suggestPattern('tarnel://newtab'), null);
 });

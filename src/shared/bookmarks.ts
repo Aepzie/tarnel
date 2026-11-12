@@ -19,7 +19,7 @@ export interface BookmarkNode {
   index: number;
 }
 
-/** A bookmark tree read from another browser, before it gets Vela ids. */
+/** A bookmark tree read from another browser, before it gets Tarnel ids. */
 export interface ImportedBookmark {
   title: string;
   url?: string;

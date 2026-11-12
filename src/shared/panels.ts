@@ -11,7 +11,7 @@ export const PANELS_IPC = {
   add: 'panels:add',
   update: 'panels:update',
   remove: 'panels:remove',
-  /** The same four for vela://settings (ipcMain allows one handler per channel). */
+  /** The same four for tarnel://settings (ipcMain allows one handler per channel). */
   pageList: 'panels:page-list',
   pageAdd: 'panels:page-add',
   pageUpdate: 'panels:page-update',

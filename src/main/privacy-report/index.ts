@@ -22,7 +22,7 @@ export { countBlockedRequest, countPrivacyEvent } from './collector';
 
 /**
  * Privacy report owner: persists the collector's in-memory counts once a minute (only while
- * something was counted — no idle timer), serves vela://privacy, and shows the optional weekly
+ * something was counted — no idle timer), serves tarnel://privacy, and shows the optional weekly
  * summary notice. All data stays in userData/privacy-report.json; nothing leaves the device.
  */
 
@@ -137,7 +137,7 @@ function maybeWeeklyNotice(today: string): void {
   const minutes = estimateTimeSavedMs(report.thisWeek) / 60_000;
   const notice = new Notification({
     title: 'Your week in privacy',
-    body: `Vela blocked ${formatCount(blocked)} trackers this week and saved about ${mb.toFixed(mb < 10 ? 1 : 0)} MB${minutes >= 1 ? ` and ${Math.round(minutes)} min` : ''}.`,
+    body: `Tarnel blocked ${formatCount(blocked)} trackers this week and saved about ${mb.toFixed(mb < 10 ? 1 : 0)} MB${minutes >= 1 ? ` and ${Math.round(minutes)} min` : ''}.`,
     silent: true,
   });
   notice.on('click', () => openReport());
@@ -147,7 +147,7 @@ function maybeWeeklyNotice(today: string): void {
 export interface PrivacyReportDeps {
   /** webContents id → its Space (tabs.ts + spaces.ts), injected to keep this module cycle-free. */
   spaceOfWebContents: (webContentsId: number) => SpaceOfWebContents | null;
-  /** Opens vela://privacy in a new tab (weekly notice click). */
+  /** Opens tarnel://privacy in a new tab (weekly notice click). */
   openReport: () => void;
 }
 

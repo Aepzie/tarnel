@@ -43,7 +43,7 @@ import type { PeekState } from './peek';
 
 /**
  * IPC channel names. Chrome-UI channels are only accepted from the browser
- * chrome webContents. Pages channels are only accepted from vela:// frames.
+ * chrome webContents. Pages channels are only accepted from tarnel:// frames.
  */
 export const IPC = {
   chrome: {
@@ -304,15 +304,15 @@ export interface VelaChromeAPI {
   platform: NodeJS.Platform;
 }
 
-/** Exposed as `window.velaPages` only on vela:// pages via preload/pages.ts. */
+/** Exposed as `window.velaPages` only on tarnel:// pages via preload/pages.ts. */
 export interface VelaPagesAPI {
   getSettings(): Promise<Settings>;
   setSettings(patch: Partial<Settings>): Promise<Settings>;
   topSites(): Promise<TopSite[]>;
   perf(): Promise<PerfStats>;
-  /** Displays, their refresh rates and what Vela paces frames to (Settings → Performance). */
+  /** Displays, their refresh rates and what Tarnel paces frames to (Settings → Performance). */
   frameRate(): Promise<FrameRateStatus>;
-  /** Restart Vela (applies launch-time settings such as the frame rate). */
+  /** Restart Tarnel (applies launch-time settings such as the frame rate). */
   relaunch(): Promise<void>;
   listSpaces(): Promise<Space[]>;
   createSpace(input: SpaceInput): Promise<Space>;
@@ -335,7 +335,7 @@ export interface VelaPagesAPI {
     status(): Promise<SyncStatus>;
     /** Native folder picker; null when cancelled. */
     pickFolder(): Promise<string | null>;
-    /** Whether the location already holds Vela sync data (→ join instead of create). */
+    /** Whether the location already holds Tarnel sync data (→ join instead of create). */
     probe(transport: SyncTransportInput): Promise<{ exists: boolean }>;
     enable(input: SyncSetupInput): Promise<SyncStatus>;
     setCategories(categories: SyncCategories): Promise<SyncStatus>;
@@ -348,7 +348,7 @@ export interface VelaPagesAPI {
     /** Check now; resolves when the check finished (status carries the result). */
     check(): Promise<void>;
   };
-  /** Local privacy report (vela://privacy, start-page stat line). */
+  /** Local privacy report (tarnel://privacy, start-page stat line). */
   privacyReport: {
     get(): Promise<PrivacyReport>;
     reset(): Promise<void>;
@@ -362,7 +362,7 @@ declare global {
   }
 }
 
-/** Extension channels (chrome:* only from the chrome UI, pages:* only from vela:// pages). */
+/** Extension channels (chrome:* only from the chrome UI, pages:* only from tarnel:// pages). */
 export const EXTENSION_IPC = {
   get: 'chrome:extensions-get',
   activate: 'chrome:extension-activate',
@@ -400,7 +400,7 @@ export interface VelaChromeAPI {
   };
 }
 
-/** Phishing & malware protection (vela:// pages only). */
+/** Phishing & malware protection (tarnel:// pages only). */
 export const SAFETY_IPC = {
   status: 'pages:safety-status',
   proceed: 'pages:safety-proceed',
@@ -418,7 +418,7 @@ export interface SafetyStatus {
 export interface VelaPagesAPI {
   safety: {
     status(): Promise<SafetyStatus>;
-    /** Allowlist the URL's host until Vela quits (warning page → "Proceed anyway"). */
+    /** Allowlist the URL's host until Tarnel quits (warning page → "Proceed anyway"). */
     proceed(url: string): Promise<void>;
   };
 }
@@ -498,7 +498,7 @@ export interface VelaChromeAPI {
     clear(tabId: number): Promise<SiteInfo | null>;
     /** Forgets a remembered permission answer so the site has to ask again. */
     resetPermission(tabId: number, key: SitePermissionKey): Promise<SiteInfo | null>;
-    /** Per-site "keep" / "delete when Vela closes"; null falls back to the Space default. */
+    /** Per-site "keep" / "delete when Tarnel closes"; null falls back to the Space default. */
     setOnClose(tabId: number, action: SiteCloseAction | null): Promise<SiteInfo | null>;
   };
 }
@@ -559,7 +559,7 @@ export interface VelaChromeAPI {
   };
 }
 
-/** vela://passwords only (main rejects every other page). */
+/** tarnel://passwords only (main rejects every other page). */
 export interface VelaPagesAPI {
   passwords?: {
     status(): Promise<PasswordsStatus>;
@@ -574,7 +574,7 @@ export interface VelaPagesAPI {
     exportCsv(spaceId: SpaceId): Promise<{ saved: boolean; count: number }>;
     removeNever(spaceId: SpaceId, origin: string): Promise<void>;
   };
-  /** vela://settings only. The API key goes in, never comes back out. */
+  /** tarnel://settings only. The API key goes in, never comes back out. */
   aliases?: {
     get(): Promise<AliasSettingsView>;
     set(patch: AliasSettingsPatch): Promise<AliasSettingsView>;
@@ -582,7 +582,7 @@ export interface VelaPagesAPI {
     setKey(key: string | null): Promise<AliasSettingsView>;
     options(): Promise<AliasOptions>;
   };
-  /** vela://settings only (Settings → General → Default browser). */
+  /** tarnel://settings only (Settings → General → Default browser). */
   defaultBrowser?: {
     status(): Promise<DefaultBrowserStatus>;
     /** Windows: opens Settings → Default apps; macOS/Linux: registers http/https directly. */
@@ -707,7 +707,7 @@ export interface VelaChromeAPI {
   };
 }
 
-/** vela://settings only (main rejects every other page). */
+/** tarnel://settings only (main rejects every other page). */
 export interface VelaPagesAPI {
   panels?: {
     list(): Promise<PanelsState>;
@@ -725,7 +725,7 @@ export interface VelaChromeAPI {
     captureFullPage(): Promise<ScreenshotCapture>;
     /** PNG/JPEG data URL → system clipboard. */
     copy(dataUrl: string): Promise<void>;
-    /** Native save dialog (default `Vela screenshot <date>.png`) + file write in main. */
+    /** Native save dialog (default `Tarnel screenshot <date>.png`) + file write in main. */
     save(dataUrl: string, format: ScreenshotFormat): Promise<ScreenshotSaveResult>;
   };
 }

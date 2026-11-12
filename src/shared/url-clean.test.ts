@@ -19,7 +19,7 @@ test('unchanged URLs are returned as-is (no redirect loop)', () => {
     'https://example.com/?q=utm_source',
     'https://example.com/#?utm_source=x',
     'http://localhost:3000/?page=2&&sort=asc',
-    'vela://newtab/?utm_source=x',
+    'tarnel://newtab/?utm_source=x',
     'not a url',
   ]) {
     const result = cleanUrl(url);

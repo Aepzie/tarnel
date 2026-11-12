@@ -182,7 +182,7 @@ function buildWindow(material: WindowMaterial, bounds: Rectangle | null): BaseWi
     show: false,
     resizable: true,
     ...look,
-    title: 'Vela',
+    title: 'Tarnel',
     icon: devWindowIcon(),
   });
 }

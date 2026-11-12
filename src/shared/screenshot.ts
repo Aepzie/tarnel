@@ -84,11 +84,11 @@ export function scaleRectInto(rect: PixelRect, factor: number, limitWidth: numbe
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 
-/** Default file name, e.g. `Vela screenshot 2026-11-11 at 14.05.09.png` (no characters Windows forbids). */
+/** Default file name, e.g. `Tarnel screenshot 2026-11-11 at 14.05.09.png` (no characters Windows forbids). */
 export function screenshotFileName(date: Date, format: ScreenshotFormat): string {
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const time = `${pad(date.getHours())}.${pad(date.getMinutes())}.${pad(date.getSeconds())}`;
-  return `Vela screenshot ${day} at ${time}.${format === 'jpeg' ? 'jpg' : 'png'}`;
+  return `Tarnel screenshot ${day} at ${time}.${format === 'jpeg' ? 'jpg' : 'png'}`;
 }
 
 /** Validates an image data URL coming from the renderer; returns the base64 payload or null. */

@@ -50,7 +50,7 @@ export function mantelBaseUrl(): string {
 type Method = 'GET' | 'POST' | 'DELETE';
 
 async function request(method: Method, route: string, options: { token?: string; body?: unknown } = {}): Promise<{ status: number; body: unknown }> {
-  const headers: Record<string, string> = { Accept: 'application/json', 'User-Agent': `Vela/${app.getVersion()}` };
+  const headers: Record<string, string> = { Accept: 'application/json', 'User-Agent': `Tarnel/${app.getVersion()}` };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   let response: Response;
@@ -74,7 +74,7 @@ async function request(method: Method, route: string, options: { token?: string;
     try {
       body = JSON.parse(text);
     } catch {
-      throw new MantelError('Mantel sent an answer Vela does not understand.', 'network', response.status);
+      throw new MantelError('Mantel sent an answer Tarnel does not understand.', 'network', response.status);
     }
   }
   return { status: response.status, body };
@@ -124,7 +124,7 @@ export const mantel = {
   async createProxy(token: string, nodeId: string): Promise<{ proxy: MantelProxy; password: string }> {
     const { status, body } = await request('POST', '/api/v1/proxies', {
       token,
-      body: { name: 'Vela', nodeId, protocol: 'http', exit: 'direct' },
+      body: { name: 'Tarnel', nodeId, protocol: 'http', exit: 'direct' },
     });
     if (status !== 201 && status !== 200) fail(status, body);
     return parseProxyWithPassword(body) ?? unexpected(status);

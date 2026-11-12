@@ -26,7 +26,7 @@ function failAll(message: string): void {
 function spawn(): UtilityProcess {
   if (child) return child;
   const proc = utilityProcess.fork(path.join(__dirname, 'translate-engine.js'), [vendorDir()], {
-    serviceName: 'Vela Translation',
+    serviceName: 'Tarnel Translation',
     stdio: 'ignore',
   });
   proc.on('message', (reply: EngineReply) => {

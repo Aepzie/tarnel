@@ -84,7 +84,7 @@ export function seal(key: Buffer, header: BlobHeader, plaintext: Buffer): Buffer
 /** Parses the (unauthenticated!) header. Only use it to route a blob, never to trust it. */
 export function peekHeader(blob: Buffer): { header: BlobHeader; aadLength: number } {
   if (blob.length < PREFIX_BYTES + NONCE_BYTES + TAG_BYTES || !blob.subarray(0, MAGIC.length).equals(MAGIC)) {
-    throw new SyncCryptoError('Not a Vela sync file');
+    throw new SyncCryptoError('Not a Tarnel sync file');
   }
   if (blob.readUInt8(MAGIC.length) !== FORMAT_VERSION) throw new SyncCryptoError('Unsupported sync format version');
   const headerLength = blob.readUInt16BE(MAGIC.length + 1);
@@ -158,7 +158,7 @@ export function parseKeyFile(raw: Buffer): KeyFile {
     throw new SyncCryptoError('The sync key file is corrupted');
   }
   if (parsed?.format !== 'vela-sync' || parsed.v !== 1 || !validKdf(parsed.kdf) || typeof parsed.wrappedKey !== 'string' || typeof parsed.check !== 'string') {
-    throw new SyncCryptoError('The sync key file is corrupted or from a newer Vela');
+    throw new SyncCryptoError('The sync key file is corrupted or from a newer Tarnel');
   }
   return parsed as KeyFile;
 }

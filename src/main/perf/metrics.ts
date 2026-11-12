@@ -35,7 +35,7 @@ export interface MeasuredProcess {
   memoryKB: number;
 }
 
-/** Every Vela process with its displayed memory, sampled together so totals are consistent. */
+/** Every Tarnel process with its displayed memory, sampled together so totals are consistent. */
 export async function measureAppProcesses(): Promise<MeasuredProcess[]> {
   const metrics = app.getAppMetrics();
   const sampled = await samplePrivateWorkingSetKB(metrics.map((metric) => metric.pid));

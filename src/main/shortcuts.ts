@@ -51,7 +51,7 @@ function toggleDevTools(): void {
 }
 
 function openHistory(): void {
-  createTab({ url: 'vela://history/', spaceId: getActiveSpaceId(), active: true });
+  createTab({ url: 'tarnel://history/', spaceId: getActiveSpaceId(), active: true });
 }
 
 /** Returns true when the input was handled (and should be swallowed). */
@@ -176,12 +176,12 @@ function handle(input: Input): boolean {
   }
 }
 
-/** vela://history and vela://bookmarks use Ctrl/Cmd+F to focus their own search field instead of the find bar. */
+/** tarnel://history and tarnel://bookmarks use Ctrl/Cmd+F to focus their own search field instead of the find bar. */
 function ownsFindShortcut(wc: WebContents, input: Input): boolean {
   const mod = isMac ? input.meta : input.control;
   if (!mod || input.shift || input.alt || input.code !== 'KeyF') return false;
   const url = wc.getURL();
-  return url.startsWith('vela://history') || url.startsWith('vela://bookmarks');
+  return url.startsWith('tarnel://history') || url.startsWith('tarnel://bookmarks');
 }
 
 /** Capture browser shortcuts on any webContents (chrome UI or tab) regardless of focus. */

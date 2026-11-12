@@ -45,9 +45,9 @@ describe('isDefaultForBoth', () => {
 });
 
 describe('isSameExecutable', () => {
-  const exe = 'C:\\Users\\a\\AppData\\Local\\Programs\\Vela\\Vela.exe';
+  const exe = 'C:\\Users\\a\\AppData\\Local\\Programs\\Tarnel\\Tarnel.exe';
   it('compares case-insensitively and ignores quotes and slashes', () => {
-    assert.equal(isSameExecutable('c:/users/a/appdata/local/programs/vela/VELA.EXE', exe), true);
+    assert.equal(isSameExecutable('c:/users/a/appdata/local/programs/tarnel/TARNEL.EXE', exe), true);
     assert.equal(isSameExecutable(`"${exe}"`, exe), true);
   });
   it('rejects other handlers and empty answers', () => {
@@ -59,23 +59,23 @@ describe('isSameExecutable', () => {
 
 describe('defaultAppsDeepLink', () => {
   it('builds the per-user and per-machine links', () => {
-    assert.equal(defaultAppsDeepLink('user'), 'ms-settings:defaultapps?registeredAppUser=Vela');
-    assert.equal(defaultAppsDeepLink('machine'), 'ms-settings:defaultapps?registeredAppMachine=Vela');
+    assert.equal(defaultAppsDeepLink('user'), 'ms-settings:defaultapps?registeredAppUser=Tarnel');
+    assert.equal(defaultAppsDeepLink('machine'), 'ms-settings:defaultapps?registeredAppMachine=Tarnel');
   });
   it('encodes the app name', () => {
-    assert.equal(defaultAppsDeepLink('user', 'Vela Beta&x'), 'ms-settings:defaultapps?registeredAppUser=Vela%20Beta%26x');
+    assert.equal(defaultAppsDeepLink('user', 'Tarnel Beta&x'), 'ms-settings:defaultapps?registeredAppUser=Tarnel%20Beta%26x');
   });
 });
 
 describe('installScope', () => {
   const dirs = ['C:\\Program Files', 'C:\\Program Files (x86)', undefined];
   it('detects an all-users install under Program Files', () => {
-    assert.equal(installScope('C:\\Program Files\\Vela\\Vela.exe', dirs), 'machine');
-    assert.equal(installScope('c:\\program files (x86)\\Vela\\Vela.exe', dirs), 'machine');
+    assert.equal(installScope('C:\\Program Files\\Tarnel\\Tarnel.exe', dirs), 'machine');
+    assert.equal(installScope('c:\\program files (x86)\\Tarnel\\Tarnel.exe', dirs), 'machine');
   });
   it('treats everything else as per-user', () => {
-    assert.equal(installScope('C:\\Users\\a\\AppData\\Local\\Programs\\Vela\\Vela.exe', dirs), 'user');
-    assert.equal(installScope('C:\\Program Files Extra\\Vela.exe', dirs), 'user');
-    assert.equal(installScope('C:\\Vela\\Vela.exe', ['']), 'user');
+    assert.equal(installScope('C:\\Users\\a\\AppData\\Local\\Programs\\Tarnel\\Tarnel.exe', dirs), 'user');
+    assert.equal(installScope('C:\\Program Files Extra\\Tarnel.exe', dirs), 'user');
+    assert.equal(installScope('C:\\Tarnel\\Tarnel.exe', ['']), 'user');
   });
 });

@@ -25,7 +25,7 @@ test('normaliseOrigin keeps scheme, host and non-default port only', () => {
   assert.equal(normaliseOrigin('https://user:pw@example.com/'), 'https://example.com');
   assert.equal(normaliseOrigin('https://[::1]:3000/'), 'https://[::1]:3000');
   assert.equal(normaliseOrigin('  https://example.com  '), 'https://example.com');
-  for (const bad of ['', 'example.com', 'ftp://example.com', 'javascript:alert(1)', 'file:///C:/x', 'vela://passwords/', 'data:text/html,x', 'chrome-extension://abc/']) {
+  for (const bad of ['', 'example.com', 'ftp://example.com', 'javascript:alert(1)', 'file:///C:/x', 'tarnel://passwords/', 'data:text/html,x', 'chrome-extension://abc/']) {
     assert.equal(normaliseOrigin(bad), null, bad);
   }
 });
