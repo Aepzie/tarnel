@@ -81,8 +81,8 @@ const nodeConfigs = [
     // Runs in every web frame: always minified so the per-frame parse stays small.
     ...shared,
     minify: true,
-    entryPoints: [join(src, 'preload', 'cookie-banners.ts')],
-    outfile: join(out, 'preload', 'cookie-banners.js'),
+    entryPoints: [join(src, 'preload', 'cookie-banners.ts'), join(src, 'preload', 'adblock-early.ts')],
+    outdir: join(out, 'preload'),
     platform: 'node',
     format: 'cjs',
     target: 'chrome130',

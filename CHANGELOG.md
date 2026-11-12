@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The profile folder moves from `Vela` to `Tarnel` on first start (moved, or copied if moving fails; nothing is deleted). For isolated test instances use `TARNEL_USER_DATA` (`VELA_USER_DATA` still works).
 - The project now lives at https://github.com/Aepzie/tarnel.
 
+### Fixed
+- YouTube ads are blocked again: ad-blocking scriptlets now run before the page's own scripts (also in YouTube embeds), so ad data is removed before the player reads it. Each scriptlet still runs only once per page.
+
 ### Security
 - Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.
 

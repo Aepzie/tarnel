@@ -347,3 +347,7 @@ export function onBlocked(cb: BlockedListener): void {
 export function getBlockedTotal(): number {
   return blockedTotal;
 }
+
+export function getEngine(): ElectronBlocker | null {
+  return blocker;
+}
