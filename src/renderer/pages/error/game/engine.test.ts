@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { act, advance, createRun } from './engine';
+import { act, advance, createRun, RESUME_GRACE, SCENE } from './engine';
+
+test('resuming clears rocks just ahead of the runner but keeps passed and distant ones', () => {
+  const near = { id: 1, x: SCENE.runnerX + SCENE.runnerSize + 10, width: 24, height: 30 };
+  const passed = { id: 2, x: SCENE.runnerX - 40, width: 24, height: 30 };
+  const far = { id: 3, x: SCENE.width - 10, width: 24, height: 30 };
+  const paused = act({ ...act(createRun(), 'start'), obstacles: [near, passed, far] }, 'pause');
+  const resumed = act(paused, 'resume');
+  assert.equal(resumed.mode, 'running');
+  assert.deepEqual(resumed.obstacles.map((rock) => rock.id), [2, 3]);
+  let run = resumed;
+  for (let elapsed = 0; elapsed < RESUME_GRACE * 1000; elapsed += 16) run = advance(run, 16, () => 0.5);
+  assert.equal(run.mode, 'running', 'no collision within the grace window without jumping');
+  const clear = act({ ...act(createRun(), 'start'), obstacles: [passed, far] }, 'pause');
+  assert.deepEqual(act(clear, 'resume').obstacles, clear.obstacles);
+});
 
 test('a run waits for explicit start and paused or finished runs do not advance', () => {
   const ready = createRun();

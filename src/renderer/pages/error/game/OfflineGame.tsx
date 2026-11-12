@@ -3,6 +3,11 @@ import { ArrowUp, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { act, advance, createRun, SCENE, type RunAction, type RunState } from './engine';
 
+const SCENERY = <>
+  <path d="M0 144H640" className="stroke-border" fill="none" />
+  <path d="M352 144 397 100 428 130 459 112 495 144M420 144 473 83 534 144" className="stroke-border" fill="none" />
+</>;
+
 /** Entirely local and ephemeral: a closed or inactive game owns no animation frames. */
 export function OfflineGame({ onClose }: { onClose: () => void }) {
   const [run, setRun] = useState(createRun);
@@ -54,6 +59,7 @@ export function OfflineGame({ onClose }: { onClose: () => void }) {
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
     if (event.key === 'Escape') {
+      if (current.current.mode !== 'running') return;
       event.preventDefault();
       dispatch('pause');
     } else if (event.target === area.current && (event.code === 'Space' || event.key === 'ArrowUp')) {
@@ -62,8 +68,8 @@ export function OfflineGame({ onClose }: { onClose: () => void }) {
     }
   };
   const message = run.mode === 'ready' ? 'Ready when you are.'
-    : run.mode === 'paused' ? 'Paused. Resume when you’re ready.'
-      : run.mode === 'over' ? `Run over. Score ${run.score}. Play again?`
+    : run.mode === 'paused' ? "Paused. Resume when you're ready."
+      : run.mode === 'over' ? `Game over. Score ${run.score}.`
         : 'Jump over the rocks. Escape pauses the game.';
 
   return (
@@ -96,11 +102,10 @@ export function OfflineGame({ onClose }: { onClose: () => void }) {
         aria-label="Trail hop play area"
         aria-describedby={instructions}
         tabIndex={0}
-        className="relative mt-3 overflow-hidden rounded-lg border border-border bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="relative mt-3 overflow-hidden rounded-lg border border-border bg-background outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <svg viewBox={`0 0 ${SCENE.width} ${SCENE.height}`} className="block w-full" aria-hidden="true">
-          <path d="M0 144H640" className="stroke-border" fill="none" />
-          <path d="M352 144 397 100 428 130 459 112 495 144M420 144 473 83 534 144" className="stroke-border" fill="none" />
+          {SCENERY}
           {run.obstacles.map((rock) => (
             <rect key={rock.id} x={rock.x} y={SCENE.ground - rock.height} width={rock.width} height={rock.height} rx="4" className="fill-muted-foreground" />
           ))}
@@ -109,13 +114,13 @@ export function OfflineGame({ onClose }: { onClose: () => void }) {
         </svg>
         {run.mode !== 'running' && (
           <p aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium text-foreground">
-            {run.mode === 'ready' ? 'Ready when you are' : run.mode === 'paused' ? 'Paused' : 'Nice run'}
+            {run.mode === 'ready' ? 'Ready when you are' : run.mode === 'paused' ? 'Paused' : 'Game over'}
           </p>
         )}
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <p role="status" aria-live="polite" aria-atomic="true" className="min-w-0 flex-1 text-xs leading-5 text-muted-foreground">{message}</p>
-        <div className="flex items-center gap-1">
+        <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{message}</p>
+        <div className="ml-auto flex items-center gap-1">
           {run.mode === 'running' ? <>
             <Button type="button" variant="ghost" size="sm" onClick={() => control('pause')}><Pause aria-hidden="true" />Pause</Button>
             <Button type="button" variant="outline" size="sm" onClick={() => control('jump')}><ArrowUp aria-hidden="true" />Jump</Button>
