@@ -55,6 +55,7 @@ import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
 import { fileUrlForLocalPath } from './open-files';
+import { isSettingsPage, registerDrmIpc } from './drm';
 
 type Handler = (...args: unknown[]) => unknown;
 
@@ -149,7 +150,9 @@ function groupPatch(value: unknown): Partial<TabGroupInput> {
 }
 
 function settingsPatch(value: unknown): Partial<Settings> {
-  return plainObject(value) as Partial<Settings>;
+  const patch = plainObject(value);
+  if ('drmEnabled' in patch && typeof patch.drmEnabled !== 'boolean') throw new TypeError('Invalid DRM preference');
+  return patch as Partial<Settings>;
 }
 
 function bounds(value: unknown): ContentBounds {
@@ -395,7 +398,12 @@ export function registerIpc(): void {
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
-  handlePages(p.setSettings, (_e, patch) => updateSettings(settingsPatch(patch)));
+  handlePages(p.setSettings, (event, patch) => {
+    const valid = settingsPatch(patch);
+    if ('drmEnabled' in valid && !isSettingsPage(event.senderFrame?.url ?? '')) throw new Error('DRM consent requires Settings');
+    return updateSettings(valid);
+  });
+  registerDrmIpc(handlePages);
   handlePages(p.topSites, () => topSites(8));
   handlePages(p.perf, perfStats);
   handlePages(p.frameRate, () => getFrameRateStatus());

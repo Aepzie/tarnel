@@ -13,6 +13,7 @@ import { hasBridge, useSettings } from '../store';
 import { SiteDataOnClose } from './SiteDataOnClose';
 import { CookieBanners } from './CookieBanners';
 import { EmailAliases } from './EmailAliases';
+import { Drm } from './Drm';
 
 const DNS_OPTIONS: readonly { value: SecureDnsMode; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -176,6 +177,7 @@ export function Privacy() {
         <UserAgentRow />
       </Group>
       <CookieBanners />
+      <Drm />
       <Group title="Privacy report">
         <Row title="Your privacy report" description="What Tarnel blocked this week, per Space. Counted on this device only.">
           <button
