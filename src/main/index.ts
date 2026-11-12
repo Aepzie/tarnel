@@ -1,4 +1,6 @@
-import { app, type BaseWindow, protocol, session as electronSession } from 'electron';
+import { app, type BaseWindow, protocol, session as electronSession, webContents } from 'electron';
+import { configureDrmStartup, initDrm, isSettingsPage } from './drm';
+import { DRM_PROBE_SCHEME } from './drm/probe-scheme';
 import { flushCompileCache } from 'node:module';
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
@@ -62,7 +64,8 @@ function startupMark(name: string): void {
 
 // userData (TARNEL_USER_DATA / VELA_USER_DATA, Vela → Tarnel profile move) is settled in boot.ts.
 
-applyChromiumFlags();
+const hasCdmRuntime = configureDrmStartup();
+applyChromiumFlags(hasCdmRuntime);
 startupMark('main-evaluated');
 
 // @ghostery/adblocker-electron fires cosmetic scriptlets with an un-awaited executeJavaScript();
@@ -73,6 +76,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('[tarnel] unhandled rejection', reason);
 });
 protocol.registerSchemesAsPrivileged([
+  { scheme: DRM_PROBE_SCHEME, privileges: { standard: true, secure: true } },
   // codeCache: V8 code cache for tarnel:// pages (Chromium only caches http(s) by default); needs standard.
   { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
   // Pre-rename alias: only redirects to tarnel:// (protocol.ts), registered alike so old URLs parse the same.
@@ -127,6 +131,7 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     startupMark('ready');
+    initDrm();
     applyGlobalUserAgent();
     initSecureDns();
     setPermissionPrompter(chromePermissionPrompter);
@@ -177,6 +182,9 @@ if (!app.requestSingleInstanceLock()) {
     let material = getSettings().windowMaterial;
     onSettingsChanged((settings) => {
       sendToChrome(IPC.chromeEvents.settings, settings);
+      for (const wc of webContents.getAllWebContents()) {
+        if (!wc.isDestroyed() && isSettingsPage(wc.getURL())) wc.send(IPC.chromeEvents.settings, settings);
+      }
       if (settings.windowMaterial !== material) {
         material = settings.windowMaterial;
         applyWindowMaterial(material);

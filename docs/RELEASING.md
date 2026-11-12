@@ -138,6 +138,25 @@ opens Tarnel's page there, and uninstall leaves no `StartMenuInternet\Tarnel`, `
 `StartMenuInternet\Vela`, `RegisteredApplications\Vela`, `Software\Classes\Vela*` keys and `Vela*` OpenWithProgids
 values are gone, so Windows lists only one browser. The portable exe registers nothing.
 
+## Optional Widevine development runtime
+
+Normal dependencies and release builds use stock Electron and do not include Widevine.
+The optional, checksum-verified Castlabs ECS runtime is for development:
+
+```sh
+npm run drm:install
+npm run dev:drm
+```
+
+Enable Settings → Privacy → **Protected content (DRM)** and restart. The first enabled launch
+may download Google's Widevine component. Turning it off also needs a restart.
+The launcher honors `TARNEL_USER_DATA` / `VELA_USER_DATA` for isolated profiles.
+Only Windows x64 has been runtime-tested.
+
+An ECS release still needs applicable distribution terms, runtime packaging, platform identities,
+Castlabs [VMP signing](https://github.com/castlabs/electron-releases/wiki/EVS) and service testing of the
+final signed artifacts on each target platform. The stock release pipeline does not provide these.
+
 ## Cutting a release
 
 1. Update `version` in `package.json` and move the `[Unreleased]` notes in `CHANGELOG.md` under the new

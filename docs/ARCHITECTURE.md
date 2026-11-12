@@ -749,6 +749,59 @@ state in `import-hint.json`).
 - IPC: `IMPORT_IPC` (`src/shared/import.ts`), pages-only (`handlePages`), exposed as
   `velaPages.browserImport`.
 
+## Protected content / DRM (`src/main/drm/*`)
+
+`Settings.drmEnabled` defaults to false, is validated in main and is excluded from incoming and
+outgoing sync. Consent is device-local. Sync import accepts known keys through a null-prototype
+patch, preventing a remote `s/__proto__` record from injecting inherited consent.
+
+The renderer uses existing settings IPC; internal-page changes require a top-level
+`tarnel://settings` tab. The trusted chrome bridge is also allowed. Validated `pages:drm-status`
+requests and push events report saved consent, startup state and local CDM/EME availability.
+`serviceVerified` stays false: local capability does not establish streaming-service approval.
+
+### Startup and runtime
+
+- Before ready, after `boot.ts` resolves userData, `configureDrmStartup()` reads consent and detects
+  the Castlabs ECS `components` API without invoking it. The Electron version string alone cannot
+  identify ECS, which strips its `+wvcus` suffix.
+- Stock Electron reports a missing runtime and receives no CDM-interface override. Its existing
+  performance `disable-component-update` flag remains bypassable with `VELA_NO_FLAGS=1`.
+- A supported Castlabs launch with consent off disables component updates and sets
+  `override-enabled-cdm-interface-version=0`, preventing library CDM registration even when Widevine
+  is already installed. This consent gate is independent of performance flags. Built-in ClearKey
+  is not a library CDM. Runtime upgrades require native OFF → ON → OFF regression checks.
+- With consent on, ECS `components.whenReady([WIDEVINE_CDM_ID])` permits Google's component download
+  and update mechanism within a timeout. A component version is only a readiness candidate: a lazily
+  imported, hidden, sandboxed `tarnel-drm-probe` must also create Widevine `MediaKeys` without
+  distinctive identifiers, persistent state, a license request or remote page load.
+- Turning DRM off saves immediately, stops future updater work and denies identifier permissions.
+  Existing pages and in-flight downloads can continue until restart. The launch's document policy
+  remains installed until then. Both directions require restart; installed CDM files are retained.
+- Explicit component/CDM-disabling command-line switches are respected as startup blocks.
+  Sandbox, web security, context isolation and other browsing protections remain enabled.
+
+### Permissions and Space isolation
+
+Both `privacy.ts` handlers grant `mediaKeySystem` only for enabled, locally available DRM and a
+same-origin top-level HTTPS request in a persistent Space. Burner Spaces, frames, insecure origins
+and unknown scopes are denied. This permission controls protected-media identifiers; temporary
+Widevine sessions can use EME without requesting it.
+
+Only a supported Castlabs launch with DRM enabled registers the final `headersReceived` stage.
+It adds `Permissions-Policy: encrypted-media=()` to intercepted documents while unavailable, in
+Burner Spaces, in subframes or on HTTP, preserving unrelated policies. It uses the existing dispatcher,
+including VPN partitions. Off and stock launches install no DRM stage. Ordinary HTML5 video is unaffected.
+
+This is not complete DRM isolation between Spaces. Service-worker synthetic navigations and derived
+blob documents can bypass response headers, and previously loaded pages are not retroactively
+restricted. Electron exposes no suitable per-session CDM-disable API. The component is app-wide,
+including Burner Spaces; turn DRM off and restart for the global Widevine gate.
+
+Widevine may send device identifiers and contacts Google for component updates. License exchanges
+depend on the visited service. The optional runtime cache uses `tarnel-runtime.json` for verification;
+see [RELEASING.md](RELEASING.md#optional-widevine-development-runtime) for release blockers.
+
 ## Network pipeline (`src/main/net/*`)
 
 Electron keeps exactly one listener per `webRequest` event per session (a second registration silently
@@ -759,10 +812,11 @@ replaces the first). `net/dispatcher.ts` owns that listener and runs ordered, sy
 |---|---|---|
 | `onBeforeRequest` (`<all_urls>`) | `safety` (40: dangerous-site warning), `url-clean` (50, main-frame GET only, present only while "Remove tracking parameters" is on), Ghostery `adblock` (100), extension `dnr` (200) | first cancel / redirect wins, later stages are skipped |
 | `onBeforeSendHeaders` (all) | `privacy` (100: referrer trimming, DNT/GPC, client hints, fingerprint header reduction, third-party `Cookie` stripping), `dnr` (200) | each stage edits the same header object; a cancel stops |
-| `onHeadersReceived` (`<all_urls>`) | Ghostery `adblock` (100: CSP injection), `dnr` (200) | each stage sees the previous stage's headers; changed headers are returned once |
+| `onHeadersReceived` (`<all_urls>`) | Ghostery `adblock` (100: CSP injection), `dnr` (200), `drm` (1000: document encrypted-media policy, enabled Castlabs launches only) | each stage sees the previous stage's headers; changed headers are returned once |
 
-The Electron listener of an event exists only while the event has stages: with Ghostery off and no extension
-using declarativeNetRequest, no `onBeforeRequest` / `onHeadersReceived` hook is installed at all. A throwing
+The Electron listener of an event exists only while the event has stages. With Ghostery off, no extension
+using declarativeNetRequest and no enabled Castlabs DRM launch, no `onHeadersReceived` hook is installed.
+The DRM stage remains until restart after live disable. A throwing
 stage is skipped (fail open). Ghostery keeps its own library code path: `perf/adblock.ts` hands
 `enableBlockingInSession` a session facade whose `webRequest.onBeforeRequest/onHeadersReceived` register
 dispatcher stages, so its blocking, redirects, CSP injection and stats are unchanged. Cosmetic scriptlets are the

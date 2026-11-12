@@ -1,5 +1,6 @@
 import type { PrivacyReport } from './privacy-report';
 import type { DefaultBrowserStatus, MakeDefaultResult } from './default-browser';
+import type { DrmStatus } from './drm';
 import type {
   BrowserState,
   ContentBounds,
@@ -306,6 +307,11 @@ export interface VelaChromeAPI {
 
 /** Exposed as `window.velaPages` only on tarnel:// pages via preload/pages.ts. */
 export interface VelaPagesAPI {
+  drm: {
+    status(): Promise<DrmStatus>;
+    onStatus(listener: (status: DrmStatus) => void): () => void;
+  };
+  onSettingsChanged(listener: (settings: Settings) => void): () => void;
   getSettings(): Promise<Settings>;
   setSettings(patch: Partial<Settings>): Promise<Settings>;
   topSites(): Promise<TopSite[]>;

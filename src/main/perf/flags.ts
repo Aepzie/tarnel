@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import { frameRateFeatures } from './frame-rate';
+import { shouldDisableStockComponentUpdates } from '../drm/startup';
 
 /**
  * Chromium command-line tuning. Must run before `app` emits 'ready'.
@@ -40,8 +41,6 @@ const SWITCHES: readonly string[] = [
   'no-pings',
   // Domain Reliability uploads network error beacons to Google domains.
   'disable-domain-reliability',
-  // Component updater would download Chrome components (CRLSets, etc.) we don't consume.
-  'disable-component-update',
 ];
 
 function mergeList(switchName: string, additions: readonly string[]): void {
@@ -52,7 +51,10 @@ function mergeList(switchName: string, additions: readonly string[]): void {
   app.commandLine.appendSwitch(switchName, merged.join(','));
 }
 
-export function applyChromiumFlags(): void {
+export function applyChromiumFlags(hasCdmRuntime = false): void {
+  if (shouldDisableStockComponentUpdates(hasCdmRuntime, process.env.VELA_NO_FLAGS === '1')) {
+    app.commandLine.appendSwitch('disable-component-update');
+  }
   if (process.env.VELA_NO_FLAGS === '1') return;
 
   for (const name of SWITCHES) app.commandLine.appendSwitch(name);

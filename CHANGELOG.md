@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
 - `tarnel://` is the address of the internal pages (`tarnel://settings`, `tarnel://newtab`, `tarnel://privacy`, …).
+- Settings → Privacy → Protected content (DRM), off by default. Needs a DRM-capable build; release builds don't include one yet.
 
 ### Changed
 - Vela is now Tarnel: new name and logo. Existing profiles, settings and vela:// links carry over automatically.
@@ -17,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows: installer, shortcuts and Default apps entry are now called Tarnel (`Tarnel-<version>-setup-x64.exe`); updating removes the old Vela registrations so Windows doesn't list two browsers.
 - The profile folder moves from `Vela` to `Tarnel` on first start (moved, or copied if moving fails; nothing is deleted). For isolated test instances use `TARNEL_USER_DATA` (`VELA_USER_DATA` still works).
 - The project now lives at https://github.com/Aepzie/tarnel.
+
+### Security
+- Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.
 
 ## [0.9.1] - 2026-11-11
 

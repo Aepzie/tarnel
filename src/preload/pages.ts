@@ -11,6 +11,8 @@ import { SITE_RULES_IPC } from '../shared/site-rules';
 import { ALIAS_IPC } from '../shared/aliases';
 import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
 import { DEFAULT_BROWSER_IPC } from '../shared/default-browser';
+import { DRM_IPC, type DrmStatus } from '../shared/drm';
+import type { Settings } from '../shared/types';
 import type { UpdateStatus } from '../shared/types';
 
 const isInternalPage = (): boolean => location.protocol === 'tarnel:';
@@ -23,6 +25,19 @@ if (isInternalPage()) {
 
   const ch = IPC.pages;
   const api: VelaPagesAPI = {
+    drm: {
+      status: () => call(DRM_IPC.status),
+      onStatus: (listener) => {
+        const handler = (_event: IpcRendererEvent, status: DrmStatus) => { if (location.host === 'settings') listener(status); };
+        ipcRenderer.on(DRM_IPC.changed, handler);
+        return () => { ipcRenderer.removeListener(DRM_IPC.changed, handler); };
+      },
+    },
+    onSettingsChanged: (listener) => {
+      const handler = (_event: IpcRendererEvent, settings: Settings) => { if (location.host === 'settings') listener(settings); };
+      ipcRenderer.on(IPC.chromeEvents.settings, handler);
+      return () => { ipcRenderer.removeListener(IPC.chromeEvents.settings, handler); };
+    },
     getSettings: () => call(ch.getSettings),
     setSettings: (patch) => call(ch.setSettings, patch),
     topSites: () => call(ch.topSites),
