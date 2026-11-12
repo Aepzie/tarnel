@@ -133,16 +133,31 @@ async function checkExtracted(directory, target) {
 
 async function readInstalled(directory, target) {
   let marker;
-  try { marker = JSON.parse(await readFile(join(directory, MARKER), 'utf8')); }
+  let legacy = false;
+  try {
+    let contents;
+    try { contents = await readFile(join(directory, MARKER), 'utf8'); }
+    catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      contents = await readFile(join(directory, 'vela-runtime.json'), 'utf8');
+      legacy = true;
+    }
+    marker = JSON.parse(contents);
+  }
   catch (error) {
     if (error.code === 'ENOENT') return null;
     throw new Error(`Invalid DRM runtime installation at ${directory}: ${error.message}`);
   }
-  if (marker.version !== target.version || marker.archiveSha256 !== target.sha256) {
+  if (!marker || marker.version !== target.version || marker.archiveSha256 !== target.sha256) {
     throw new Error(`DRM runtime verification record does not match the pinned release: ${directory}`);
   }
   const runtime = await checkExtracted(directory, target);
   if (await fileHash(runtime.executable) !== marker.executableSha256) throw new Error(`Cached DRM runtime executable failed integrity verification: ${directory}`);
+  if (legacy) {
+    // Reuse verified pre-rename caches without replacing binaries or an existing current record.
+    await assertNoRedirect(directory);
+    await writeFile(join(directory, MARKER), JSON.stringify(marker) + '\n', { flag: 'wx' });
+  }
   return runtime;
 }
 

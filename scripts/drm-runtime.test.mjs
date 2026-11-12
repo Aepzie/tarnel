@@ -76,6 +76,58 @@ test('installation is isolated, reusable offline, and only activated after extra
   assert.equal(requests, 1, 'a corrupt installation is reported without replacing existing files');
 });
 
+async function legacyCache(t) {
+  const root = await fixture(t);
+  const target = runtimeTarget('linux', 'x64');
+  const directory = join(root, '.cache', 'drm-runtime', target.directoryName);
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'version'), target.version);
+  await writeFile(join(directory, target.executable), 'legacy executable');
+  const marker = {
+    version: target.version, archiveSha256: target.sha256,
+    executableSha256: createHash('sha256').update('legacy executable').digest('hex'),
+  };
+  await writeFile(join(directory, 'vela-runtime.json'), JSON.stringify(marker));
+  const options = {
+    projectRoot: root, target, log: () => {},
+    fetchImpl: async () => { throw new Error('must not download a legacy cache'); },
+    extractArchive: async () => { throw new Error('must not replace a legacy cache'); },
+  };
+  return { directory, marker, options };
+}
+
+test('verified legacy caches migrate offline without replacing runtime files', async (t) => {
+  const { directory, marker, options } = await legacyCache(t);
+  await writeFile(join(directory, 'sentinel'), 'keep');
+  const installed = await installRuntime(options);
+  assert.equal(installed.directory, directory);
+  assert.equal(await readFile(installed.executable, 'utf8'), 'legacy executable');
+  assert.equal(await readFile(join(directory, 'sentinel'), 'utf8'), 'keep');
+  assert.deepEqual(JSON.parse(await readFile(join(directory, 'tarnel-runtime.json'), 'utf8')), marker);
+  assert.equal((await installRuntime(options)).executable, installed.executable);
+});
+
+test('legacy cache migration rejects invalid verification records and changed binaries', async (t) => {
+  for (const corruption of ['json', 'version', 'archive', 'hash', 'executable', 'runtime-version']) {
+    const { directory, marker, options } = await legacyCache(t);
+    if (corruption === 'version') marker.version = '0.0.0';
+    if (corruption === 'archive') marker.archiveSha256 = '0'.repeat(64);
+    if (corruption === 'hash') marker.executableSha256 = '0'.repeat(64);
+    await writeFile(join(directory, 'vela-runtime.json'), corruption === 'json' ? '{' : JSON.stringify(marker));
+    if (corruption === 'executable') await writeFile(join(directory, 'electron'), 'changed');
+    if (corruption === 'runtime-version') await writeFile(join(directory, 'version'), '0.0.0');
+    await assert.rejects(installRuntime(options), /Invalid DRM runtime|verification|version mismatch/, corruption);
+    await assert.rejects(readFile(join(directory, 'tarnel-runtime.json')), { code: 'ENOENT' });
+  }
+});
+
+test('an invalid current marker cannot fall back to a valid legacy marker', async (t) => {
+  const { directory, options } = await legacyCache(t);
+  await writeFile(join(directory, 'tarnel-runtime.json'), '{');
+  await assert.rejects(installRuntime(options), /Invalid DRM runtime/);
+  assert.equal(await readFile(join(directory, 'tarnel-runtime.json'), 'utf8'), '{');
+});
+
 test('failed extraction never leaves an active runtime or staging directory', async (t) => {
   const root = await fixture(t);
   const target = { ...runtimeTarget('win32', 'x64'), sha256: digest };
