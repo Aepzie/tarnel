@@ -367,7 +367,19 @@ export function protectMainWorld(config: FingerprintConfig): void {
         const value = apply(original, this, []) as number;
         return scaledRects.has(this as object) ? value * rectScale : value;
       };
-    for (const name of ['x', 'y', 'width', 'height', 'top', 'right', 'bottom', 'left']) {
+    const rectKeys = ['x', 'y', 'width', 'height', 'top', 'right', 'bottom', 'left'];
+    /** toJSON reads the internal slots, so JSON.stringify(rect) must be scaled exactly like the getters. */
+    wrapMethod(realm.DOMRectReadOnly?.prototype, 'toJSON', (original) =>
+      function (this: unknown, ...args: unknown[]) {
+        const json = apply(original, this, args) as Record<string, unknown>;
+        if (!scaledRects.has(this as object) || !json) return json;
+        for (const key of rectKeys) {
+          if (typeof json[key] === 'number') json[key] = (json[key] as number) * rectScale;
+        }
+        return json;
+      },
+    );
+    for (const name of rectKeys) {
       wrapGetter(realm.DOMRectReadOnly?.prototype, name, scaled);
       wrapGetter(realm.DOMRect?.prototype, name, scaled);
       wrapSetter(realm.DOMRect?.prototype, name, (original) =>

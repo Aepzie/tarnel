@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ad blocking takes the uBlock Origin lists straight from uBlock Origin (including the 2025/2026 lists) instead of Ghostery's weeks-old copy, so new YouTube ad fixes arrive within a day. Falls back to Ghostery's copy if uBlock Origin's site is unreachable.
 
 ### Fixed
+- "New fingerprint" now changes every seed-based value: CPU cores, memory and GPU model no longer stay the same by chance, and ClientRects (`getBoundingClientRect` / `getClientRects`) are now protected too, so their hash changes with the fingerprint. (thanks calebsexy)
+- ClientRects protection: `JSON.stringify` of a measured `DOMRect` (its `toJSON`) now returns the same scaled values as its getters instead of the unscaled ones, so the protection can no longer be detected or bypassed that way.
 - Ad blocking now also blocks ad-SDK, analytics and device-maker telemetry hosts (Unity Ads, Yahoo, Yandex, TikTok/ByteDance, Xiaomi, Oppo/Realme, Huawei, Apple) through a small list bundled with Tarnel. adblock.turtlecute.org now scores 100% (was 69%).
 - A cached ad-block engine could fail to load at startup ("start offset of Uint32Array should be a multiple of 4") and was rebuilt from the network on every launch, depending on the length of its cache key.
 
@@ -71,7 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The "halve freeze/sleep delays on battery" rule now follows the Battery saver setting (it can be turned off).
 
 ### Fixed
-- "New fingerprint" now changes every seed-based value: CPU cores, memory and GPU model no longer stay the same by chance, and ClientRects (`getBoundingClientRect` / `getClientRects`) are now protected too, so their hash changes with the fingerprint.
 - YouTube videos sometimes stayed black, never started or showed "Video unavailable" with the content blocker on: its cosmetic scriptlets ran in one shared scope and broke each other (and the player's JSON / network calls). Each scriptlet now runs in its own scope.
 
 ## [0.8.3] - 2026-11-11

@@ -87,7 +87,7 @@ The seed never leaves main.
 | `UNMASKED_RENDERER_WEBGL` | common model of the real GPU vendor, PCI ids stripped | same |
 | `AudioBuffer.getChannelData` / `copyFromChannel`, `AnalyserNode.getFloatFrequencyData` | ±1e-6 relative noise on sparse samples (inaudible) | same |
 | `measureText().width` | ±1.3e-5 relative jitter | same |
-| `getBoundingClientRect` / `getClientRects` (elements, ranges) | one per-site scale factor, 1.6e-6–1.4e-5 off 1 (geometry stays consistent) | same |
+| `getBoundingClientRect` / `getClientRects` (elements, ranges) | one per-site scale factor, 1.6e-6–1.4e-5 off 1 (geometry stays consistent); the rect getters and `DOMRect.toJSON` return the same scaled values; page-built or written rects stay native | same |
 | `hardwareConcurrency`, `deviceMemory` (+ `Device-Memory` hints) | plausible bucket ≤ real | same |
 | Battery API | always charging, level 1 | same |
 | WebRTC IP policy | `default_public_interface_only`; `disable_non_proxied_udp` when the Space has a proxy | `disable_non_proxied_udp` |
