@@ -10,6 +10,7 @@ A minimal Chromium browser where every Space is its own sealed session.<br>
 Work, personal, clients, throwaway: one window, no leaks between them.
 
 [![Release](https://img.shields.io/github/v/release/Aepzie/tarnel?include_prereleases&style=flat-square&label=release)](https://github.com/Aepzie/tarnel/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Aepzie/tarnel/total?style=flat-square&label=downloads)](https://github.com/Aepzie/tarnel/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/Aepzie/tarnel/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Aepzie/tarnel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/Aepzie/tarnel?style=flat-square)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20·%20macOS%20·%20Linux%20·%20Android-555?style=flat-square)
