@@ -152,7 +152,7 @@ class FilterLists(
         try {
             connection.connectTimeout = 15_000
             connection.readTimeout = 30_000
-            connection.setRequestProperty("User-Agent", "Vela (Android) filter list updater")
+            connection.setRequestProperty("User-Agent", "Tarnel (Android) filter list updater")
             if (connection.responseCode != HttpURLConnection.HTTP_OK) throw IOException("HTTP ${connection.responseCode} for $url")
             val text = connection.inputStream.bufferedReader().use { it.readText() }
             if (!looksLikeFilterList(text)) throw IOException("not a filter list: $url")
@@ -179,7 +179,7 @@ class FilterLists(
     }
 
     companion object {
-        private const val TAG = "VelaAdblock"
+        private const val TAG = "TarnelAdblock"
         const val MAX_AGE_MS = 4L * 24 * 60 * 60 * 1000
         private const val RETRY_AFTER_MS = 30L * 60 * 1000
         private const val KEY_UPDATED = "updatedAt"

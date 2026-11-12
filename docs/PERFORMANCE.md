@@ -1,11 +1,11 @@
-# Vela — Performance
+# Tarnel — Performance
 
-Vela runs on Chromium (via Electron). That sets the ceiling for raw engine speed: **Vela's JavaScript,
+Tarnel runs on Chromium (via Electron). That sets the ceiling for raw engine speed: **Tarnel's JavaScript,
 layout and rendering speed is Chromium's.** We don't claim otherwise. Where a browser *can* win on
 top of the same engine is in what it chooses not to do: fewer bytes downloaded, fewer processes kept
-alive, less work at startup, and no background services. That is where Vela is built to win.
+alive, less work at startup, and no background services. That is where Tarnel is built to win.
 
-## What Vela does
+## What Tarnel does
 
 ### 1. A UI that costs almost nothing
 The browser chrome (top island, tabs, palette) is a single small React renderer. State from main
@@ -14,13 +14,13 @@ memoized, so a title change re-renders one pill, not the tree. Animations run on
 only. Web pages never pay for any of it: they live in separate sandboxed processes.
 
 ### 2. Tab sleeping that actually frees memory
-Most "tab discarding" freezes JS but keeps the process. Vela **destroys the tab's renderer
+Most "tab discarding" freezes JS but keeps the process. Tarnel **destroys the tab's renderer
 process** (`src/main/perf/sleeper.ts`) and keeps only URL, title and favicon. Memory goes back to
 the OS; the tab reloads when you click it.
 
 - Background tabs sleep after *N* minutes idle (Settings, default 10; 0 = never).
 - Never slept: the active tab, pinned tabs, tabs playing audio.
-- **On battery the timeout is halved** — every awake renderer means timers, GC and wakeups.
+- **Battery saver halves the timeout** (on battery by default, see §10) — every awake renderer means timers, GC and wakeups.
 - **Memory pressure:** when free system RAM drops below 10%, the 2 least-recently-used eligible tabs
   (idle ≥ 60 s) are slept on each 30 s tick until pressure clears, regardless of the timeout.
 - The 30 s timer is `unref()`'d and does O(tabs) work — it costs nothing measurable.
@@ -30,7 +30,7 @@ the OS; the tab reloads when you click it.
 
 #### Freeze before sleep (`src/main/perf/freeze.ts`)
 Between awake and asleep there is a cheaper stage: after *N* minutes in the background (Settings →
-Performance → Freeze background tabs, default 5, 0 = never; halved on battery) a tab is **frozen**
+Performance → Freeze background tabs, default 5, 0 = never; halved while battery saver is on) a tab is **frozen**
 with the Page Lifecycle API (`Page.setWebLifecycleState({state:'frozen'})`). Its renderer, scroll
 position and form state stay; its task queues stop, so timers, rAF and callbacks cost nothing. It is
 thawed (`state:'active'`) the moment it is shown again (activation or as a split pane), and still
@@ -44,7 +44,7 @@ sleeps after the longer sleep timeout. Freezing only runs when it is shorter tha
   progress, pages holding a live `MediaStreamTrack` (camera, mic, screen share) or an open
   `RTCPeerConnection` (found with `Runtime.queryObjects` on the top document's main world right
   before freezing; subframes are not covered), and tabs with DevTools open.
-- Measured (local page running `setInterval(…, 0)`, Vela window off-screen so every tab is hidden):
+- Measured (local page running `setInterval(…, 0)`, Tarnel window off-screen so every tab is hidden):
   audible tab (exempt from throttling) 250 timer runs/s and ~2–3% CPU; background tab 2–3 runs/s
   (1 wake-up/s budget) and 0.03–0.04% CPU; after 5 min hidden, 1 wake-up/min (intensive
   wake-up throttling); **frozen: 0 runs/s and 0.00% renderer CPU**. With a 1 min setting the tab
@@ -52,7 +52,7 @@ sleeps after the longer sleep timeout. Freezing only runs when it is shorter tha
 
 #### Memory saver (`src/main/perf/memory-saver.ts`)
 Settings → Performance → Memory saver: Off / Balanced (default) / Maximum, with a limit (default
-4 GB). On each 30 s tick, when the private bytes of every Vela process (`metrics.ts`) exceed the
+4 GB). On each 30 s tick, when the private bytes of every Tarnel process (`metrics.ts`) exceed the
 limit, eligible background tabs (same rules as sleeping, plus no download in progress) are slept
 least recently used first until the estimate falls under the limit. A tab's estimate is the memory of
 its renderer processes, shared evenly between the tabs a process hosts. Balanced only touches tabs idle
@@ -70,10 +70,20 @@ processes. On ad-heavy news and recipe sites this typically cuts page weight and
 30–60% and removes most long main-thread tasks. On clean sites it does nothing, and costs
 microseconds per request (the engine is a compact pre-compiled matcher).
 
+- **List set** (`perf/adblock-lists.ts`): Ghostery's ads + tracking preset with the uBO lists taken
+  from uBO itself (plus filters-2025/2026), and Tarnel's bundled `lists/tarnel-extra.txt` (~35
+  rules: ad-SDK / analytics / OEM telemetry hosts). Measured against the old set (isolated instance,
+  same machine, main process, warm start): cache 6.86 → 7.06 MB; warm load ~310 ms both;
+  main-process private memory 122.5 → 118.0 MB (no measurable difference); cold network build
+  ~2.0 s both. A bigger DNS list (HaGeZi Pro mini, 100k hosts) was tried and dropped: +3.8 MB cache
+  for no score gain once the bundled list is in.
 - **Instant startup:** the compiled engine is cached as a binary in `userData/adblock-engine.bin`
   and deserialized in milliseconds. Launch never waits on the network. The file starts with a key
-  header (`perf/adblock-cache.ts`: Ghostery `ENGINE_VERSION` + library version + list set), so a
-  library upgrade or list change is a cache miss, not a deserialize error.
+  header (`perf/adblock-cache.ts`: Ghostery `ENGINE_VERSION` + library version + list set + hash of
+  the bundled extra list), so a library upgrade or list change is a cache miss, not a deserialize
+  error. The header is space-padded so the engine bytes start 8-byte aligned: Ghostery reads them
+  through typed-array views that throw on unaligned offsets, which used to make some keys miss the
+  cache on every launch.
 - **Measured** (Ghostery 2.20.3, prebuilt ads + tracking, ~6.9 MB cache; Node, same code path):
   cold start without cache = network build **0.75–1.3 s** (median ~1.0 s); warm start from cache =
   read + header check + deserialize **20–38 ms** (median ~30 ms). The main process logs which path
@@ -96,7 +106,7 @@ microseconds per request (the engine is a compact pre-compiled matcher).
 Hidden tabs keep Chromium's background timer throttling and intensive wake-up throttling; occluded
 windows are backgrounded (`CalculateNativeWinOcclusion` on Windows). Many Electron apps disable these
 (`disable-renderer-backgrounding`, `disable-background-timer-throttling`) to make *their* single
-page snappier. A browser with dozens of tabs must not, and Vela never does.
+page snappier. A browser with dozens of tabs must not, and Tarnel never does.
 `flags.ts` also strips those switches if something else put them on the command line, and keeps
 `IntensiveWakeUpThrottling` enabled (removing it from `--disable-features`). Every tab view is created
 with `backgroundThrottling: true`; audible tabs and visible split panes are exempt by Chromium itself
@@ -111,7 +121,7 @@ Hovering or arrowing onto an address-bar suggestion preconnects (DNS + TCP + TLS
 by the time you press Enter the handshake — often 100–300 ms on mobile networks — is already done.
 
 **Address-bar prefetch** (`src/main/perf/prerender.ts`, Settings → Performance → "Preload pages from
-the address bar", on by default). When the selection rests on a URL suggestion for 150 ms, Vela opens
+the address bar", on by default). When the selection rests on a URL suggestion for 150 ms, Tarnel opens
 two sockets to the origin and fetches the main document once (GET, `Sec-Purpose: prefetch`) through
 the Space's own session, into the HTTP cache. Nothing is rendered and no script runs, so a wrong guess
 costs one request. Guard rails: https only (plain http only on loopback, for local testing); never
@@ -135,7 +145,7 @@ the browser UI in Electron, which is why this uses a plain cached fetch.
 `--enable-features=BackForwardCache`: `pageshow.persisted` stays `false` and Chromium reports
 `BackForwardCacheDisabledForDelegate` (Electron's `WebContentsDelegate` does not opt in to bfcache —
 only an Electron change can), plus `UnloadHandlerExistsInMainFrame` from an isolated-world listener that
-is not in Vela's source (the page's main world has none; Vela's preloads register no
+is not in Tarnel's source (the page's main world has none; Tarnel's preloads register no
 `unload`/`beforeunload`), most likely Electron's renderer init. The flag is therefore not set: it buys
 nothing and changes BrowsingInstance swapping. Back navigation to a same-origin page measured ~30 ms
 median either way (normal HTTP-cache reload).
@@ -151,12 +161,18 @@ them (useful for bisecting a site bug).
 | `disable-features=OptimizationHints,Translate,AutofillServerCommunication,InterestFeedContentSuggestions` | Chrome services that phone home or do background work. Mostly not compiled into Electron — listed so they stay off if that ever changes. |
 | `no-pings` | Ignores `<a ping>` hyperlink auditing: one fewer tracking request per click. |
 | `disable-domain-reliability` | No network-error beacons to Google. |
-| `disable-component-update` | No Chrome component downloads we don't consume. |
+| `disable-component-update` | No unused Chrome component downloads on stock Electron; like the other performance flags, skipped by `VELA_NO_FLAGS=1`. An enabled Castlabs launch permits the Widevine updater. |
 
 | `enable-features=UseCompositorClockVSyncInterval` (Windows, conditional) | Frame pacing on mixed-refresh setups, see [Frame rate](#8-frame-rate-windows). |
 
 `enable-features` / `disable-features` are *merged* with any existing value, because Chromium only
 honours the last occurrence of each.
+
+Castlabs with DRM off applies its native component-update/library-CDM consent gate independently
+of `VELA_NO_FLAGS`; stock Electron receives no CDM-interface override. Off and stock launches load
+no DRM probe and register no DRM network stage. Only supported Castlabs launches with DRM enabled
+lazily import the local probe and attach the document-policy stage. That stage stays attached during
+live disable until restart, since already open pages can still use the native component.
 
 **Deliberately not used:**
 
@@ -166,7 +182,7 @@ honours the last occurrence of each.
 | `disable-renderer-backgrounding`, `disable-background-timer-throttling`, `disable-backgrounding-occluded-windows` | Background tabs would burn CPU and battery. |
 | Forcing `BackForwardCache` | Instant back/forward is valuable, but forcing it under Electron's navigation model is not well-trodden; we'd rather miss a speedup than break history. Revisit when upstream Electron enables it. |
 | `process-per-site`, disabling site isolation | Saves memory by weakening Spectre isolation. Not a trade we make. |
-| Disabling the spare renderer | Saves ~20 MB but slows every new navigation. (No spare renderer shows up in Vela's process list today; measured, nothing to win.) |
+| Disabling the spare renderer | Saves ~20 MB but slows every new navigation. (No spare renderer shows up in Tarnel's process list today; measured, nothing to win.) |
 | `disable-features=MediaDevicesSystemMonitorCaching` | Tried to let the video-capture service exit after YouTube's device enumeration. Measured: the process stays anyway. |
 | `force-gpu-mem-discardable-limit-mb` | Tried to shrink GPU memory kept after tabs sleep. Measured: no meaningful change. |
 | `js-flags` (V8 tuning) | V8 defaults are tuned on far more workloads than we can test. No clear win. |
@@ -176,7 +192,7 @@ honours the last occurrence of each.
 
 ### 8. Frame rate (Windows)
 Stock Chromium on Windows paces every window to the **primary** display's vblank. On a laptop with a
-144 Hz panel next to a 75 Hz primary monitor, Vela therefore drew at 75 fps on the 144 Hz panel — that is
+144 Hz panel next to a 75 Hz primary monitor, Tarnel therefore drew at 75 fps on the 144 Hz panel — that is
 the "doesn't feel smooth" report. `UseCompositorClockVSyncInterval` paces to the DWM compositor clock
 instead, which ticks at the *fastest* connected display's rate: right for a window on that display, wasted
 (and unevenly paced) frames on a slower one. `src/main/perf/frame-rate.ts` therefore decides at launch:
@@ -211,11 +227,11 @@ built-in 144 Hz panel on the Intel iGPU + 75 Hz primary monitor on the NVIDIA dG
   lazily required adblock/extension libraries') bytecode instead of compiling it. The cache is
   flushed 3 s after boot; it is keyed by file content, so a new build just misses once.
   `VELA_NO_COMPILE_CACHE=1` turns it off for A/B runs.
-- **vela:// pages.** The scheme is registered with the `codeCache` privilege: Chromium only code-caches
+- **tarnel:// pages.** The scheme is registered with the `codeCache` privilege: Chromium only code-caches
   http(s) by default. Default `v8CacheOptions` ('code', with heat check) applies, so a page's scripts
   are served from cache from roughly the third load on.
 - **Chrome UI.** It loads from `file://`, which Chromium never code-caches, so `v8CacheOptions` on the
-  chrome view would do nothing. Serving it from `vela://chrome/` would enable the cache but touches the
+  chrome view would do nothing. Serving it from `tarnel://chrome/` would enable the cache but touches the
   CSP, the preload and IPC sender checks: not done.
 - **Lazy chrome UI.** The audio mixer panel, VPN panel, release-notes dialog and site-permission prompt
   are `React.lazy` chunks loaded on first open (mixer/VPN prefetch on hover or focus of their button).
@@ -234,6 +250,53 @@ Startup trace (Windows 11, warm profile, `VELA_STARTUP_TRACE=1`, median of 5): b
 windows never record first-contentful-paint, so `load` is used instead, and the machine was busy, so
 treat run-to-run noise (±150 ms) as larger than the effect.
 
+### 10. Battery saver (`src/main/perf/battery-saver.ts`, `battery-policy.ts`)
+
+Settings → Performance → Battery saver: **Off / On battery (default) / Below 20 % / Always**. The pure
+resolver (`resolveBatterySaver`) is unit-tested; `battery-saver.ts` is the single source of truth
+(it replaced the sleeper's own `powerMonitor` check) and pushes the state to the chrome UI.
+
+Detection, per platform:
+- **Power source:** Electron `powerMonitor.isOnBatteryPower()` + `on-battery` / `on-ac` (Windows,
+  macOS; Linux via UPower — desktops without a battery always report AC).
+- **Battery level:** Electron has no API. Only while *Below 20 %* is selected, the chrome UI reads
+  `navigator.getBattery()` (Chromium's Battery Status API: Windows, macOS, Linux/UPower) and reports
+  the level over `chrome:battery-report` (validated and clamped in main). No level → that mode stays
+  inactive. Web pages still see the spoofed battery from the fingerprint layer; the chrome UI is not
+  affected by it.
+- **Testing:** `VELA_FORCE_BATTERY=1|0` forces the power source, `VELA_FORCE_BATTERY_LEVEL=0..1` the level.
+
+While active:
+- freeze and sleep delays are halved;
+- memory saver *Balanced* acts as *Maximum* (Off stays off);
+- address-bar prefetch is skipped (the cheap preconnect stays);
+- the adblock lists refresh after 72 h instead of 24 h (the phishing/malware warning lists and every
+  other security feature are untouched);
+- the perf chip stops its 10 s idle polling (it still polls while its popover is open) and shows a leaf
+  ("Battery saver on");
+- the chrome UI gets `data-battery`: CSS animations and transitions are cut to 1 ms (loading spinners
+  keep turning) and `motion` runs with `reducedMotion="always"`.
+
+Not done: a frame-rate cap for the chrome UI. `webContents.setFrameRate()` only applies to offscreen
+rendering and Chromium has no switch that caps on-screen frames (see §8); without animations the
+chrome UI produces no frames at idle anyway. Video in pages is never touched.
+
+Measured (Windows 11, Electron 45, isolated off-screen instance, 5 background tabs each running a
+100 ms timer with ~20k `Math.sqrt` per tick, freeze delay set to 1 min, CPU summed over all
+processes via CDP `SystemInfo.getProcessInfo`, 120 s after opening the tabs, one run each):
+
+| Battery saver | CPU % per 20 s window (all processes) | CPU s over 120 s | Tabs frozen at end |
+|---|---|---|---|
+| Off (`VELA_FORCE_BATTERY=0`) | 3.4 · 1.5 · 0.3 · 0.2 · 4.1 · 0.4 | 2.00 | 5 |
+| On (`VELA_FORCE_BATTERY=1`) | 4.0 · 2.6 · 3.3 · 0.9 · 0.3 · 0.4 | 2.32 | 5 |
+
+No measurable difference: Chromium already throttles timers in hidden tabs, so the earlier freeze
+saves little on top, and both runs settle at ~0.3–0.4 % once every tab is frozen. Run-to-run noise
+(single spikes of ~4 %) is larger than the effect; the gain from halved delays shows only on real
+pages over the minutes between the two freeze/sleep deadlines, which this short run does not cover.
+
+Wakeups were not measured (needs ETW / `powercfg /energy`, not available in the test setup).
+
 ## Measuring it in-app
 
 `collectPerfStats()` (`src/main/perf/metrics.ts`) sums memory and CPU over *all* processes: browser,
@@ -241,7 +304,7 @@ GPU, utility and renderers. The perf chip, its popover and the task manager (row
 the same per-process number, `displayMemoryKB()`:
 
 - **Windows: private working set** — exactly Task Manager's "Memory" column, so the chip equals the
-  Vela group row in Task Manager. Electron does not expose it (`getAppMetrics()` has only the working
+  Tarnel group row in Task Manager. Electron does not expose it (`getAppMetrics()` has only the working
   set and `privateBytes` = private *commit*, which also counts paged-out / never-touched memory and
   read ~160 MB (~30%) higher than Task Manager with 4 tabs). It comes from a small PowerShell helper
   (`src/main/perf/private-ws.ts`) that calls `K32GetProcessMemoryInfo` (`PROCESS_MEMORY_COUNTERS_EX2
@@ -252,8 +315,8 @@ the same per-process number, `displayMemoryKB()`:
   (≈0.15 % of one core at the chip's 5 s poll), 3–5 ms added latency to `perf.get`, and ~3 MB private
   working set (2.4 MB helper + 0.8 MB conhost; it trims its own working set after every answer). It
   exits 20 s after the last request — the chip only polls while the window is visible and the task
-  manager only while open — and when Vela quits. Those ~3 MB are in Task Manager's Vela group but not
-  in the chip. If the helper fails (3 times), Vela falls back to private commit for the session.
+  manager only while open — and when Tarnel quits. Those ~3 MB are in Task Manager's Tarnel group but not
+  in the chip. If the helper fails (3 times), Tarnel falls back to private commit for the session.
 - **macOS / Linux:** resident working set from `getAppMetrics()` (no `privateBytes` there). Activity
   Monitor's "Memory" is `phys_footprint`, which Electron reports only for its own process, so it can
   differ there.
@@ -265,17 +328,17 @@ memory pressure — the moment the saver should act. It also avoids running the 
 
 Measured after the fix (Windows 11, isolated profile, 4 local test pages + new tab, 9 processes):
 
-| | Perf chip | Vela task manager total | Windows Task Manager (Σ private WS of the process tree) | Private commit | Working set |
+| | Perf chip | Tarnel task manager total | Windows Task Manager (Σ private WS of the process tree) | Private commit | Working set |
 |---|---|---|---|---|---|
 | Before | 724 | 723.7 | 561 | 724 | 1219 |
 | After | 503–505 | 503.0–504.8 | 502–511 (incl. ~3 MB helper) | 722–726 | 1155–1171 |
 
-Before that, Vela summed `workingSetSize`. That counts every page shared between processes (Chromium and
+Before that, Tarnel summed `workingSetSize`. That counts every page shared between processes (Chromium and
 system DLLs, shared memory) once *per process*, so with ~10 processes it over-reported by hundreds
 of MB: a fresh window showed ~790 MB while the processes really owned ~330 MB, and five slept tabs
 showed ~1.25 GB for ~600 MB. That inflated number is what users saw in the perf chip.
 
-"Saved by sleeping" is now measured, not guessed: right before a tab sleeps, Vela records the private
+"Saved by sleeping" is now measured, not guessed: right before a tab sleeps, Tarnel records the private
 memory of the renderer processes only that tab used (its page process plus out-of-process iframes;
 processes shared with another awake tab count as 0). Tabs restored asleep at launch were never
 measured; they are estimated from the average awake web-page renderer (the UI renderer excluded,
@@ -289,7 +352,7 @@ nothing while closed: the chrome asks for one snapshot per second only while the
 
 Each snapshot is one `app.getAppMetrics()` call mapped by OS pid: a tab owns its page renderer plus
 out-of-process iframes (`webContents.getOSProcessId()`, `mainFrame.framesInSubtree[].osProcessId`),
-the Vela UI renderer gets its own row, and Browser, GPU and utility processes (Network, Audio, Storage
+the Tarnel UI renderer gets its own row, and Browser, GPU and utility processes (Network, Audio, Storage
 service…) are listed by type and service name. Same-site tabs can share a renderer: each row then shows
 the whole process, marked "shared", while the footer totals count every process once. Extension
 background pages are mapped by pid; MV3 service workers only expose Chromium's render-process id, so
@@ -303,9 +366,9 @@ page (background tabs reload when next activated).
 Windows 11, Electron 45 (Chromium 156), isolated profile with the ad-block engine cached, window
 1280×820. Sites: github.com, youtube.com, en.wikipedia.org (article), reddit.com, MDN JavaScript.
 Each opened as the active tab 2.5 s apart; then the new-tab page activated and all five slept with
-`vela.tabs.sleep`. Columns are sums over every Vela process: **Private** = private commit (what Vela
+`vela.tabs.sleep`. Columns are sums over every Tarnel process: **Private** = private commit (what Tarnel
 displayed at the time; it now shows private WS, see above), **Private WS** = private working set (Task Manager "Memory" column), **WS** = working
-set (what Vela used to display). MB.
+set (what Tarnel used to display). MB.
 
 | Scenario | Before: Private | Before: WS (shown in app) | After: Private (shown in app) | After: Private WS | After: WS |
 |---|---|---|---|---|---|
@@ -344,10 +407,10 @@ extensions, each run 3×, report the median.
 - [JetStream 2](https://browserbench.org/JetStream/) — JS/Wasm throughput
 - [MotionMark](https://browserbench.org/MotionMark1.3/) — graphics
 
-Vela should land within noise of the Chrome release matching its Electron's Chromium version. If it
+Tarnel should land within noise of the Chrome release matching its Electron's Chromium version. If it
 is notably worse, that's a bug — file it with `VELA_NO_FLAGS=1` results attached.
 
-**Where Vela should win — measure these:**
+**Where Tarnel should win — measure these:**
 1. **Memory with N tabs.** Open the same 20 real sites (news, docs, webmail, video), wait 15 min
    idle, record total memory from the OS (Windows: sum of Private Working Set across the app's
    processes; macOS: Activity Monitor "Memory" summed). The sleeper should hold this to roughly

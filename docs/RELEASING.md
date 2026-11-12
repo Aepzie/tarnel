@@ -1,4 +1,4 @@
-# Releasing Vela
+# Releasing Tarnel
 
 Releases are built by [`.github/workflows/release.yml`](../.github/workflows/release.yml) when a `v*`
 tag is pushed (or the workflow is run by hand, which builds but does not publish). Each desktop target
@@ -124,9 +124,38 @@ uses its own `ANDROID_KEYSTORE_*` secrets (see the `android` job).
 |--------|------|-------|
 | Azure Trusted Signing, Basic | about $10/month | Includes a monthly signature quota that is far more than releases need. Identity validation is required |
 | OV code-signing certificate | about $200–500/year | Hardware token or cloud HSM. SmartScreen reputation builds up over time |
-| EV code-signing certificate | about $300–700/year | Same SmartScreen behaviour as OV today. Not worth the premium for Vela |
+| EV code-signing certificate | about $300–700/year | Same SmartScreen behaviour as OV today. Not worth the premium for Tarnel |
 | Apple Developer Program | $99/year | Needed for Developer ID and notarization |
 | [SignPath Foundation](https://signpath.org) | free for qualifying OSS | Alternative for Windows. Signs releases built by CI via their GitHub integration. Needs a different workflow step (SignPath's action) instead of the electron-builder signer, so it is not wired up here |
+
+## Default apps registration
+
+The Windows installer's default-browser registration is `build/installer.nsh` (see docs/ARCHITECTURE.md,
+"Default browser and file types"). Before a release that changes it, install the build on a test machine or VM
+and check: Tarnel listed under Settings → Default apps and in "Open with" for `.pdf` / `.html`, "Make default"
+opens Tarnel's page there, and uninstall leaves no `StartMenuInternet\Tarnel`, `RegisteredApplications\Tarnel` or
+`Software\Classes\Tarnel*` keys. When upgrading over a Vela (≤ 0.9.x) install, also check that the old
+`StartMenuInternet\Vela`, `RegisteredApplications\Vela`, `Software\Classes\Vela*` keys and `Vela*` OpenWithProgids
+values are gone, so Windows lists only one browser. The portable exe registers nothing.
+
+## Optional Widevine development runtime
+
+Normal dependencies and release builds use stock Electron and do not include Widevine.
+The optional, checksum-verified Castlabs ECS runtime is for development:
+
+```sh
+npm run drm:install
+npm run dev:drm
+```
+
+Enable Settings → Privacy → **Protected content (DRM)** and restart. The first enabled launch
+may download Google's Widevine component. Turning it off also needs a restart.
+The launcher honors `TARNEL_USER_DATA` / `VELA_USER_DATA` for isolated profiles.
+Only Windows x64 has been runtime-tested.
+
+An ECS release still needs applicable distribution terms, runtime packaging, platform identities,
+Castlabs [VMP signing](https://github.com/castlabs/electron-releases/wiki/EVS) and service testing of the
+final signed artifacts on each target platform. The stock release pipeline does not provide these.
 
 ## Cutting a release
 

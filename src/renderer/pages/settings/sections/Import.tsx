@@ -119,7 +119,7 @@ export function Import() {
       const preview = await velaPages().browserImport.pickPasswordCsv();
       if (preview) setCsv(preview);
     } catch (error) {
-      setCsvError(errorText(error, 'Vela could not read that file.'));
+      setCsvError(errorText(error, 'Tarnel could not read that file.'));
     }
   };
 
@@ -206,7 +206,7 @@ export function Import() {
           description={
             csv
               ? `${fmt(csv.count)} ${csv.count === 1 ? 'login' : 'logins'} · ${csv.format}${csv.skipped ? ` · ${fmt(csv.skipped)} skipped` : ''}`
-              : 'Vela never reads other browsers’ password stores. Export a CSV file and choose it here.'
+              : 'Tarnel never reads other browsers’ password stores. Export a CSV file and choose it here.'
           }
         >
           {csv ? (

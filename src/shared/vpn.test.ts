@@ -56,7 +56,7 @@ test('nodes map to servers; malformed entries are skipped', () => {
 });
 
 test('proxies: list and create (password only on create)', () => {
-  const proxy = { id: 'px_1', name: 'Vela', nodeId: 'de-fra', host: '198.51.100.12', port: 31000, protocol: 'http', exit: 'direct', username: 'm-ab12', enabled: true, status: 'active' };
+  const proxy = { id: 'px_1', name: 'Tarnel', nodeId: 'de-fra', host: '198.51.100.12', port: 31000, protocol: 'http', exit: 'direct', username: 'm-ab12', enabled: true, status: 'active' };
   assert.equal(parseProxyList({ proxies: [proxy, { ...proxy, port: 0 }] })?.length, 1);
   assert.equal(parseProxyWithPassword({ proxy, password: 'p' })?.password, 'p');
   assert.equal(parseProxyWithPassword({ proxy }), null);

@@ -5,6 +5,7 @@ import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { Segmented, type SegmentOption } from '../components/controls';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { useSettings } from '../store';
+import { WebPanels } from './WebPanels';
 
 const THEMES: readonly SegmentOption<ThemeMode>[] = [
   { value: 'system', label: 'System', icon: Monitor },
@@ -36,7 +37,7 @@ export function Appearance() {
   const { settings, update } = useSettings();
   return (
     <>
-      <SectionHeader title="Appearance" description="How Vela looks and gets out of your way." />
+      <SectionHeader title="Appearance" description="How Tarnel looks and gets out of your way." />
       <Group>
         <Row title="Theme" description="Follow the system, or pin light or dark.">
           <Segmented label="Theme" value={settings.theme} options={THEMES} onChange={(theme) => update({ theme })} />
@@ -85,6 +86,13 @@ export function Appearance() {
           />
         </Row>
       </Group>
+      <Group title="Start page">
+        <SwitchRow
+          title="Privacy stat"
+          description="A small line with this week’s blocked trackers, linking to your privacy report."
+          setting="newtabPrivacyStat"
+        />
+      </Group>
       <Group title="Bookmarks">
         <SwitchRow
           title="Show bookmarks bar"
@@ -102,6 +110,7 @@ export function Appearance() {
           }
         />
       </Group>
+      <WebPanels />
       <Group title="Focus">
         <SwitchRow
           title="Focus mode"

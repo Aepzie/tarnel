@@ -5,7 +5,6 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import {
   DEFAULT_SYNC_CATEGORIES,
   SPACE_COLORS,
-  type Settings,
   type SpaceColor,
   type Suggestion,
   type SyncCategories,
@@ -26,6 +25,7 @@ import {
 } from './crypto';
 import { SYNC_CONFIG_FILE, type SyncHost } from './host';
 import { HybridClock, isRecord, mergeRecords, sameValue, type SyncRecord } from './records';
+import { canSyncSetting, remoteSettingsPatch } from './settings-policy';
 import { DEVICE_FILE, KEY_FILE, folderTransport, normalizeWebdavUrl, webdavTransport, type Transport } from './transport';
 
 /**
@@ -43,9 +43,6 @@ const TABS_LIMIT = 200;
 const REMOTE_TAB_MAX_AGE_MS = 30 * 86_400_000;
 const MAX_PAYLOAD_BYTES = 64 * 1024 * 1024;
 const MIN_PASSPHRASE = 8;
-/** Never synced: they describe this machine, not the user. */
-const LOCAL_ONLY_SETTINGS = new Set<string>(['windowMaterial', 'sidebarCollapsed', 'sidebarWidth']);
-
 type StoredTransport =
   | { kind: 'folder'; path: string }
   | { kind: 'webdav'; url: string; username: string; /** safeStorage-protected */ password: string };
@@ -245,7 +242,7 @@ export function createSyncEngine(host: SyncHost): SyncEngine {
     const tombstoned: string[] = [];
     if (cats.settings) {
       for (const [name, value] of Object.entries(host.getSettings())) {
-        if (!LOCAL_ONLY_SETTINGS.has(name)) local.set(`s/${name}`, value);
+        if (canSyncSetting(name)) local.set(`s/${name}`, value);
       }
     }
     if (cats.spaces) {
@@ -311,21 +308,18 @@ export function createSyncEngine(host: SyncHost): SyncEngine {
   /** Applies records written by other devices to the browser. */
   const apply = async (adopted: readonly SyncRecord[]): Promise<void> => {
     const cats = config.categories;
-    const patch: Record<string, unknown> = {};
+    const patch = cats.settings ? remoteSettingsPatch(adopted, config.deviceId) : {};
     const history: HistoryFields[] = [];
     for (const record of adopted) {
       if (record.d === config.deviceId) continue;
-      if (record.k.startsWith('s/')) {
-        const name = record.k.slice(2);
-        if (cats.settings && record.v !== null && !LOCAL_ONLY_SETTINGS.has(name)) patch[name] = record.v;
-      } else if (record.k.startsWith('sp/')) {
+      if (record.k.startsWith('sp/')) {
         if (cats.spaces) await applySpace(record);
       } else if (record.k.startsWith('h/')) {
         const fields = cats.history ? historyFields(record.v) : null;
         if (fields) history.push(fields);
       }
     }
-    if (Object.keys(patch).length > 0) host.applySettings(patch as Partial<Settings>);
+    if (Object.keys(patch).length > 0) host.applySettings(patch);
     if (history.length > 0) host.mergeHistory(history);
   };
 
@@ -500,20 +494,20 @@ export function createSyncEngine(host: SyncHost): SyncEngine {
   }
 
   async function enable(input: SyncSetupInput): Promise<SyncStatus> {
-    if (!host.secureStorageAvailable()) throw new Error('This system has no secure key storage, so Vela can’t keep your sync key safe.');
+    if (!host.secureStorageAvailable()) throw new Error('This system has no secure key storage, so Tarnel can’t keep your sync key safe.');
     if (config.enabled) throw new Error('Sync is already on');
     const candidate = transportFromInput(input.transport);
     await candidate.ensure();
     const existing = await candidate.read(KEY_FILE);
     let newKey: Buffer;
     if (input.mode === 'create') {
-      if (existing) throw new Error('This location already has Vela sync data. Join it instead.');
+      if (existing) throw new Error('This location already has Tarnel sync data. Join it instead.');
       if (input.secret.normalize('NFKC').length < MIN_PASSPHRASE) throw new Error(`Use a passphrase of at least ${MIN_PASSPHRASE} characters`);
       const created = await createKeyFile(input.secret);
       await candidate.write(KEY_FILE, Buffer.from(JSON.stringify(created.keyFile, null, 2), 'utf8'));
       newKey = created.dataKey;
     } else {
-      if (!existing) throw new Error('No Vela sync data found at this location');
+      if (!existing) throw new Error('No Tarnel sync data found at this location');
       const keyFile = parseKeyFile(existing);
       const recovery = parseRecoveryKey(input.secret);
       if (recovery) {

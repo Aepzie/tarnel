@@ -7,6 +7,9 @@ import { acceptLanguages, registrableDomain } from '../privacy';
 import { getSpace, listSpaces, onSessionCreated, onSessionRemoved, onSpacesChanged, routedCountryOf } from '../spaces';
 import { setHeaderProfile } from './headers';
 import { deriveWords, pruneSeeds, regenerateSeed, seedFor } from './seeds';
+import { rulesTouchFingerprint } from '../../shared/site-rules';
+import { fingerprintOverrideOf } from '../site-rules/overrides';
+import { getSiteRules, onSiteRulesChanged } from '../site-rules/store';
 import { answerServiceWorkers, protectWorkersOf, type EmulationSettings, type WorkerGuard } from './workers';
 
 const PRELOAD = join(__dirname, '..', 'preload', 'fingerprint.js');
@@ -22,6 +25,8 @@ interface SessionEntry {
 }
 
 const entries = new Map<Session, SessionEntry>();
+/** Some enabled site rule sets a fingerprint level: the frame preload stays registered on every session. */
+let rulesActive = false;
 /** Tabs and popups whose dedicated/shared workers are being patched → stop function. */
 const workerGuards = new Map<WebContents, WorkerGuard>();
 /** WebContents types that host web pages of a Space (not DevTools, extension pages, offscreen). */
@@ -68,7 +73,7 @@ function siteOf(href: string): string | null {
     return 'opaque';
   }
   if (url.protocol === 'blob:') return siteOf(url.pathname);
-  if (url.protocol === 'vela:' || url.protocol === 'devtools:' || url.protocol === 'chrome:') return null;
+  if (url.protocol === 'tarnel:' || url.protocol === 'vela:' || url.protocol === 'devtools:' || url.protocol === 'chrome:') return null;
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return url.protocol;
   return registrableDomain(url.hostname);
 }
@@ -89,15 +94,19 @@ function topUrlOf(event: IpcMainEvent, href: unknown): string {
  * Patch config for a realm of `session` whose key site is `url`: the top-level page for frames and
  * dedicated workers, the worker's own URL / scope for shared and service workers.
  */
-function configForUrl(session: Session, url: string): FingerprintConfig | null {
+function configForUrl(session: Session, url: string, wc?: WebContents | null): FingerprintConfig | null {
   const entry = entries.get(session);
   const space = entry ? getSpace(entry.spaceId) : undefined;
-  if (!isProtected(space)) return null;
+  if (!space) return null;
+  // Precedence: a site rule's level for this tab beats the Space's level.
+  const override = wc ? fingerprintOverrideOf(wc) : null;
+  const level = override?.level ?? space.fingerprint;
+  if (level === 'off') return null;
   const site = siteOf(url);
   if (site === null) return null;
-  const seed = seedFor(space);
+  const seed = override?.seed ?? seedFor(space);
   return {
-    strict: space.fingerprint === 'strict',
+    strict: level === 'strict',
     key: deriveWords(seed, `site:${site}`),
     ...hardwareFor(seed),
     languages: space.language ? languageList(space.language) : null,
@@ -189,17 +198,20 @@ function unregister(session: Session, entry: SessionEntry): void {
 
 function sync(session: Session, entry: SessionEntry): void {
   const space = getSpace(entry.spaceId);
-  if (isProtected(space)) {
+  if (isProtected(space) || rulesActive) {
     entry.preload ??= session.registerPreloadScript({ id: `${PRELOAD_ID}-${entry.spaceId}`, type: 'frame', filePath: PRELOAD });
     entry.workerPreload ??= session.registerPreloadScript({
       id: `${PRELOAD_ID}-worker-${entry.spaceId}`,
       type: 'service-worker',
       filePath: WORKER_PRELOAD,
     });
+  } else {
+    unregister(session, entry);
+  }
+  if (isProtected(space)) {
     setHeaderProfile(session, { strict: space.fingerprint === 'strict', memory: hardwareFor(seedFor(space)).memory });
     applyAcceptLanguage(session, space.language || null);
   } else {
-    unregister(session, entry);
     setHeaderProfile(session, null);
     applyAcceptLanguage(session, null);
   }
@@ -218,7 +230,7 @@ function syncAll(): void {
 export function initFingerprint(): void {
   ipcMain.on(FINGERPRINT_CONFIG_CHANNEL, (event, href: unknown) => {
     try {
-      event.returnValue = configForUrl(event.sender.session, topUrlOf(event, href));
+      event.returnValue = configForUrl(event.sender.session, topUrlOf(event, href), event.sender);
     } catch {
       event.returnValue = null;
     }
@@ -237,6 +249,13 @@ export function initFingerprint(): void {
     setHeaderProfile(session, null);
   });
   onSpacesChanged(syncAll);
+  rulesActive = rulesTouchFingerprint(getSiteRules());
+  onSiteRulesChanged((rules) => {
+    const next = rulesTouchFingerprint(rules);
+    if (next === rulesActive) return;
+    rulesActive = next;
+    syncAll();
+  });
   app.on('web-contents-created', (_event, wc) => {
     applyWebRtc(wc);
     syncWorkerGuard(wc);

@@ -7,6 +7,7 @@ import { useActiveSpace } from '@/hooks/browser';
 import { ease, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { SPACE_HEX, vela } from '@/lib/vela';
+import { CookieBannerLine } from './CookieBannerLine';
 
 const PANEL_WIDTH = 320;
 const EDGE = 8;
@@ -154,6 +155,7 @@ function SiteInfoPanel({ tabId, anchor, onClose }: { tabId: number; anchor: Reac
           onSetOnClose={(action) => apply(vela().site.setOnClose(tabId, action))}
         />
       )}
+      {info && <CookieBannerLine tabId={tabId} />}
     </motion.div>
   );
 }
@@ -189,7 +191,7 @@ function SiteInfoBody({ info, busy, confirmClear, onAskClear, onCancelClear, onC
       <Line Icon={insecure ? TriangleAlert : Lock} tone={insecure ? 'warn' : 'muted'}>
         {info.secure ? 'Connection is secure' : insecure ? 'Connection is not secure' : 'Connection security unknown'}
         <span className="block text-[11.5px] text-zinc-500">
-          {info.secure ? 'Certificate valid · encrypted with TLS' : insecure ? 'Information you send can be read by others.' : 'Vela could not verify this connection.'}
+          {info.secure ? 'Certificate valid · encrypted with TLS' : insecure ? 'Information you send can be read by others.' : 'Tarnel could not verify this connection.'}
         </span>
       </Line>
       <Line Icon={Shield} tone="muted">
@@ -231,8 +233,8 @@ function SiteInfoBody({ info, busy, confirmClear, onAskClear, onCancelClear, onC
           <p className="mt-2 text-[11.5px] text-zinc-500">Burner Space — everything is forgotten when it closes.</p>
         ) : (
           <div className="mt-2.5 flex items-center gap-2">
-            <span className="min-w-0 flex-1 text-[12px] text-zinc-400 light:text-zinc-600">When Vela closes</span>
-            <div role="radiogroup" aria-label="When Vela closes" className="flex shrink-0 rounded-lg bg-white/[0.05] p-0.5 ring-1 ring-white/[0.06] light:bg-black/[0.04] light:ring-black/[0.06]">
+            <span className="min-w-0 flex-1 text-[12px] text-zinc-400 light:text-zinc-600">When Tarnel closes</span>
+            <div role="radiogroup" aria-label="When Tarnel closes" className="flex shrink-0 rounded-lg bg-white/[0.05] p-0.5 ring-1 ring-white/[0.06] light:bg-black/[0.04] light:ring-black/[0.06]">
               {(['keep', 'clear'] as const).map((action) => (
                 <button
                   key={action}

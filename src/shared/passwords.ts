@@ -4,6 +4,7 @@
  * or to be revealed after the user asked for it.
  */
 import type { SpaceId } from './types';
+import type { AliasRef } from './aliases';
 
 /** What the UI may see about a saved login (no password). */
 export interface SavedLogin {
@@ -14,6 +15,8 @@ export interface SavedLogin {
   username: string;
   createdAt: number;
   lastUsedAt: number | null;
+  /** Email alias created by Tarnel for this login (see src/main/aliases). */
+  alias?: AliasRef;
 }
 
 /** A login read from another browser or a CSV export, before it is stored. */
@@ -24,7 +27,7 @@ export interface ImportedLogin {
   password: string;
 }
 
-/** Password manager channels. chrome:* only from the chrome UI; pages:* only from vela://passwords; frame:* from tab frames (session preload). */
+/** Password manager channels. chrome:* only from the chrome UI; pages:* only from tarnel://passwords; frame:* from tab frames (session preload). */
 export const PASSWORD_IPC = {
   answerSave: 'chrome:password-answer-save',
   fill: 'chrome:password-fill',
@@ -74,6 +77,8 @@ export interface PasswordFillOffer {
 export interface PasswordFrameFlags {
   save: boolean;
   fill: boolean;
+  /** Offer email aliases on sign-up forms (a provider is set up). */
+  alias?: boolean;
 }
 
 /** Captured from a submitted login form. Main derives the origin from the sending frame, never from this. */

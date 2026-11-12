@@ -1,6 +1,6 @@
 /**
  * User-Agent overrides: one global value in Settings, optionally overridden per Space.
- * '' means "not set" (the Space follows the global value; the global value follows Vela's clean
+ * '' means "not set" (the Space follows the global value; the global value follows Tarnel's clean
  * Chromium UA). Values are free strings but must be a valid HTTP header value.
  */
 
@@ -24,7 +24,7 @@ export function cleanUserAgentValue(raw: unknown, fallback = ''): string {
 }
 
 /**
- * Common desktop and mobile UAs. Chrome-based entries use Vela's own Chromium major (frozen
+ * Common desktop and mobile UAs. Chrome-based entries use Tarnel's own Chromium major (frozen
  * "<major>.0.0.0", as real Chromium sends) so they match the Sec-CH-UA brand list.
  */
 export function userAgentPresets(chromeMajor: number): UserAgentPreset[] {

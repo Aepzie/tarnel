@@ -17,7 +17,7 @@ export function ImportHint({ browserName, onDismiss }: { browserName: string; on
     >
       <button
         type="button"
-        onClick={() => velaPages().navigate('vela://settings/#import').catch(() => undefined)}
+        onClick={() => velaPages().navigate('tarnel://settings/#import').catch(() => undefined)}
         className="flex h-full items-center gap-1.5 rounded-l-full pr-2 pl-2.5 outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
       >
         <Import size={13} strokeWidth={1.75} className="text-space" aria-hidden="true" />

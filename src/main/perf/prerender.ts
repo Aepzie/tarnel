@@ -2,6 +2,7 @@ import { net, type Session } from 'electron';
 import { getSettings } from '../settings';
 import { getActiveSpaceId, getSpace, getSpaceSession } from '../spaces';
 import { getActiveTab, getTabVpn } from '../tabs';
+import { isBatterySaverActive } from './battery-saver';
 
 /**
  * Address-bar prefetch (Settings → Performance → "Preload pages from the address bar").
@@ -13,7 +14,7 @@ import { getActiveTab, getTabVpn } from '../tabs';
  *
  * Deliberately conservative: GET over https only, never search results, never in a Burner Space or
  * when the active tab is routed through MantelVPN (the prefetch would leave the tunnel), at most one
- * in flight and three per minute, and capped body size. See docs/PERFORMANCE.md → Address-bar prefetch.
+ * in flight and three per minute, and capped body size. Off while battery saver is active. See docs/PERFORMANCE.md → Address-bar prefetch.
  */
 
 /** How long the selection must rest on a suggestion before the fetch starts. */
@@ -60,7 +61,7 @@ export function takeRateSlot(starts: number[], now: number, max = MAX_PER_MINUTE
 }
 
 function prefetchSession(): Session | null {
-  if (!getSettings().preloadPages) return null;
+  if (!getSettings().preloadPages || isBatterySaverActive()) return null;
   const spaceId = getActiveSpaceId();
   if (getSpace(spaceId)?.ephemeral !== false) return null;
   const tabId = getActiveTab();

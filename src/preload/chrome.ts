@@ -1,12 +1,21 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { AUDIO_IPC, EXTENSION_IPC, IPC, PANIC_IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
+import { AUDIO_IPC, EXTENSION_IPC, FILES_IPC, IPC, PANIC_IPC, type Unsubscribe, type VelaChromeAPI } from '../shared/ipc';
 import { reportIdentityHints } from './identity-hints';
 import { MIXER_IPC } from '../shared/audio-mixer';
 import { VPN_IPC } from '../shared/vpn';
+import { BATTERY_IPC } from '../shared/battery';
 import { SITE_IPC } from '../shared/site-data';
 import { TASK_MANAGER_IPC } from '../shared/task-manager';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { SCREENSHOT_IPC } from '../shared/screenshot';
+import { PANELS_IPC } from '../shared/panels';
+import { COOKIE_BANNER_IPC } from '../shared/cookie-banners';
+import { TRANSLATE_IPC } from '../shared/translate';
+import { SITE_RULES_IPC } from '../shared/site-rules';
+import { PEEK_IPC } from '../shared/peek';
+import { ALIAS_IPC } from '../shared/aliases';
+import { TAB_ARCHIVE_IPC } from '../shared/tab-archive';
 
 const C = IPC.chrome;
 const E = IPC.chromeEvents;
@@ -151,6 +160,11 @@ const api: VelaChromeAPI = {
     watchLevels: (on) => invoke(MIXER_IPC.watchLevels, on),
     onLevels: (cb) => subscribe(MIXER_IPC.levelsEvent, cb),
   },
+  battery: {
+    state: () => invoke(BATTERY_IPC.state),
+    report: (level) => invoke(BATTERY_IPC.report, level),
+    onChange: (cb) => subscribe(BATTERY_IPC.changed, cb),
+  },
   vpn: {
     state: () => invoke(VPN_IPC.state),
     refresh: () => invoke(VPN_IPC.refresh),
@@ -181,6 +195,20 @@ const api: VelaChromeAPI = {
     onChange: (cb) => subscribe(BOOKMARKS_IPC.changed, cb),
     openManager: () => invoke(BOOKMARKS_IPC.chromeOpenManager),
     },
+  cookieBanners: {
+    tab: (tabId) => invoke(COOKIE_BANNER_IPC.tabInfo, tabId),
+    setAllowed: (tabId, allowed) => invoke(COOKIE_BANNER_IPC.setAllowed, tabId, allowed),
+  },
+  tabArchive: {
+    list: (spaceId) => invoke(TAB_ARCHIVE_IPC.list, spaceId ?? null),
+    archiveTabs: (tabIds) => invoke(TAB_ARCHIVE_IPC.archiveTabs, tabIds),
+    archiveGroup: (groupId) => invoke(TAB_ARCHIVE_IPC.archiveGroup, groupId),
+    restore: (ids, spaceId) => invoke(TAB_ARCHIVE_IPC.restore, ids, spaceId ?? null),
+    remove: (ids, spaceId) => invoke(TAB_ARCHIVE_IPC.remove, ids, spaceId ?? null),
+    clear: (spaceId) => invoke(TAB_ARCHIVE_IPC.clear, spaceId ?? null),
+    reopenClosed: (id) => invoke(TAB_ARCHIVE_IPC.reopenClosed, id),
+    onChange: (cb) => subscribe(TAB_ARCHIVE_IPC.changed, cb),
+  },
   passwords: {
     onSavePrompt: (cb) => subscribe(PASSWORD_IPC.savePrompt, cb),
     onSaveCancel: (cb) => subscribe(PASSWORD_IPC.saveCancel, cb),
@@ -189,6 +217,61 @@ const api: VelaChromeAPI = {
     onFillCancel: (cb) => subscribe(PASSWORD_IPC.fillCancel, cb),
     fill: (offerId, loginId) => invoke(PASSWORD_IPC.fill, offerId, loginId),
     dismissOffer: (offerId) => invoke(PASSWORD_IPC.dismissOffer, offerId),
+  },
+  screenshot: {
+    captureVisible: () => invoke(SCREENSHOT_IPC.captureVisible),
+    captureFullPage: () => invoke(SCREENSHOT_IPC.captureFullPage),
+    copy: (dataUrl) => invoke(SCREENSHOT_IPC.copy, dataUrl),
+    save: (dataUrl, format) => invoke(SCREENSHOT_IPC.save, dataUrl, format),
+  },
+  panels: {
+    list: () => invoke(PANELS_IPC.list),
+    add: (input) => invoke(PANELS_IPC.add, input),
+    update: (id, patch) => invoke(PANELS_IPC.update, id, patch),
+    remove: (id) => invoke(PANELS_IPC.remove, id),
+    toggle: (id) => invoke(PANELS_IPC.toggle, id),
+    collapse: () => invoke(PANELS_IPC.collapse),
+    setBounds: (bounds) => invoke(PANELS_IPC.setBounds, bounds),
+    reload: (id) => invoke(PANELS_IPC.reload, id),
+    toggleMute: (id) => invoke(PANELS_IPC.toggleMute, id),
+    openAsTab: (id) => invoke(PANELS_IPC.openAsTab, id),
+    onState: (cb) => subscribe(PANELS_IPC.state, cb),
+  },
+  translate: {
+    state: (tabId) => invoke(TRANSLATE_IPC.tabState, tabId),
+    page: (tabId, to) => invoke(TRANSLATE_IPC.translateTab, tabId, to ?? null),
+    showOriginal: (tabId) => invoke(TRANSLATE_IPC.showOriginal, tabId),
+    onState: (cb) => subscribe(TRANSLATE_IPC.tabChanged, cb),
+  },
+  siteRules: {
+    createFor: (tabId) => invoke(SITE_RULES_IPC.chromeCreateFor, tabId),
+    onNotice: (cb) => subscribe(SITE_RULES_IPC.notice, cb),
+  },
+  peek: {
+    open: (input) => invoke(PEEK_IPC.open, input),
+    close: () => invoke(PEEK_IPC.close),
+    reveal: () => invoke(PEEK_IPC.reveal),
+    back: () => invoke(PEEK_IPC.back),
+    reload: () => invoke(PEEK_IPC.reload),
+    toTab: () => invoke(PEEK_IPC.toTab),
+    toSplit: () => invoke(PEEK_IPC.toSplit),
+    onState: (cb) => subscribe(PEEK_IPC.changed, cb),
+  },
+  files: {
+    pathFor: (file) => {
+      try {
+        return webUtils.getPathForFile(file);
+      } catch {
+        return '';
+      }
+    },
+    openDropped: (paths, links) => invoke(FILES_IPC.openDropped, paths, links),
+  },
+  aliases: {
+    onOffer: (cb) => subscribe(ALIAS_IPC.offer, cb),
+    onOfferCancel: (cb) => subscribe(ALIAS_IPC.offerCancel, cb),
+    create: (offerId) => invoke(ALIAS_IPC.create, offerId),
+    dismiss: (offerId) => invoke(ALIAS_IPC.dismiss, offerId),
   },
 };
 

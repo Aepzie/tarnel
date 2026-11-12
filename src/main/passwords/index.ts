@@ -19,6 +19,7 @@ import { getSettings, onSettingsChanged } from '../settings';
 import { getSpace, listSpaces, onSessionCreated, onSpacesChanged } from '../spaces';
 import { getTabSpaceId, getTabWebContents, onTabWebContents, tabIdForWebContents } from '../tabs';
 import { getMainWindow, sendToChrome } from '../window';
+import { aliasesEnabled, claimAlias } from '../aliases';
 import { loginsToCsv } from './csv';
 import { displayHost, isSecureOrigin, normaliseOrigin } from './origin';
 import { classify, emptyVault, findLogin, loginsFor, MAX_PASSWORD, MAX_USERNAME, parseVault, toSavedLogin, upsert, validCredential, type Cipher, type VaultFile } from './vault';
@@ -31,7 +32,7 @@ import { classify, emptyVault, findLogin, loginsFor, MAX_PASSWORD, MAX_USERNAME,
  *  - the session preload (src/preload/passwords.ts) reports login forms and submitted
  *    credentials; origins always come from the sending frame, never from the page;
  *  - a password leaves main only to the frame the user picked an account for, or to
- *    vela://passwords after an explicit reveal. Nothing here logs credentials.
+ *    tarnel://passwords after an explicit reveal. Nothing here logs credentials.
  */
 
 const PRELOAD = path.join(__dirname, '..', 'preload', 'passwords.js');
@@ -209,7 +210,7 @@ function frameContext(event: IpcMainEvent): FrameContext | null {
 
 function frameFlags(): PasswordFrameFlags {
   const settings = getSettings();
-  return { save: settings.offerToSavePasswords && encryptionAvailable(), fill: settings.passwordAutofill };
+  return { save: settings.offerToSavePasswords && encryptionAvailable(), fill: settings.passwordAutofill, alias: aliasesEnabled() };
 }
 
 function cancelSave(id: string): void {
@@ -299,6 +300,11 @@ function answerSave(id: unknown, answer: unknown): void {
   }
   requireEncryption();
   const next = upsert(vault, cipher, { origin: pending.origin, username: pending.username, password: pending.password }, Date.now(), randomUUID);
+  const alias = claimAlias(pending.spaceId, pending.origin, pending.username);
+  if (alias) {
+    persist(pending.spaceId, { ...next.vault, logins: next.vault.logins.map((entry) => (entry.origin === pending.origin && entry.username === pending.username ? { ...entry, alias } : entry)) });
+    return;
+  }
   if (next.result !== 'unchanged') persist(pending.spaceId, next.vault);
 }
 
@@ -326,7 +332,7 @@ function fill(offerId: unknown, loginId: unknown): void {
 }
 
 // ---------------------------------------------------------------------------
-// vela://passwords
+// tarnel://passwords
 
 function fromPasswordsPage(event: IpcMainInvokeEvent): boolean {
   try {
@@ -405,7 +411,7 @@ async function exportCsv(spaceId: unknown): Promise<{ saved: boolean; count: num
   const id = requireSpace(spaceId);
   const vault = loadVault(id);
   const win = getMainWindow();
-  const options = { title: 'Export passwords', defaultPath: path.join(app.getPath('documents'), 'Vela Passwords.csv'), filters: [{ name: 'CSV', extensions: ['csv'] }] };
+  const options = { title: 'Export passwords', defaultPath: path.join(app.getPath('documents'), 'Tarnel Passwords.csv'), filters: [{ name: 'CSV', extensions: ['csv'] }] };
   const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
   if (result.canceled || !result.filePath) return { saved: false, count: 0 };
   const csv = loginsToCsv(vault.logins.map((login) => ({ origin: login.origin, username: login.username, password: cipher.decrypt(login.password) })));
@@ -416,7 +422,7 @@ async function exportCsv(spaceId: unknown): Promise<{ saved: boolean; count: num
 type ChromeHandler = (channel: string, fn: (...args: unknown[]) => unknown) => void;
 type PagesHandler = (channel: string, fn: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) => void;
 
-/** Registered by ipc.ts with its sender-checked wrappers; pages:* additionally require vela://passwords. */
+/** Registered by ipc.ts with its sender-checked wrappers; pages:* additionally require tarnel://passwords. */
 export function registerPasswordIpc(handleChrome: ChromeHandler, handlePages: PagesHandler): void {
   const own = (channel: string, fn: (...args: unknown[]) => unknown): void =>
     handlePages(channel, (event, ...args) => {
@@ -451,9 +457,9 @@ function watchTab(wc: WebContents, tabId: number): void {
 export function initPasswords(): void {
   ipcMain.on(PASSWORD_IPC.frameFlags, (event) => {
     try {
-      event.returnValue = frameContext(event) ? frameFlags() : { save: false, fill: false };
+      event.returnValue = frameContext(event) ? frameFlags() : { save: false, fill: false, alias: false };
     } catch {
-      event.returnValue = { save: false, fill: false };
+      event.returnValue = { save: false, fill: false, alias: false };
     }
   });
   ipcMain.on(PASSWORD_IPC.frameFormSeen, (event) => {

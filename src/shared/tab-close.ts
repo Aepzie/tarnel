@@ -7,7 +7,7 @@ interface ClosableTab {
 }
 
 export function isStartPageUrl(url: string): boolean {
-  return url.startsWith('vela://newtab');
+  return url.startsWith('tarnel://newtab');
 }
 
 /**

@@ -363,7 +363,7 @@ function SpaceRow({ space, active, tabCount, canDelete, subOpen, onSubOpenChange
         <SpaceColorRow space={space} />
         <DropdownMenuItem
           className={MENU_ROW}
-          onSelect={() => settle(vela().tabs.create({ url: 'vela://settings/#spaces', active: true }))}
+          onSelect={() => settle(vela().tabs.create({ url: 'tarnel://settings/#spaces', active: true }))}
         >
           <Eraser className="size-4" strokeWidth={1.75} />
           Clear data…

@@ -24,7 +24,7 @@ const STARTUP_DELAY_MS = 10_000;
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PROGRESS_THROTTLE_MS = 250;
 const MAX_NOTES = 20_000;
-const RELEASES_URL = 'https://github.com/Aepzie/vela/releases';
+const RELEASES_URL = 'https://github.com/Aepzie/tarnel/releases';
 const FEED_OVERRIDE = process.env.VELA_UPDATE_FEED?.trim() ?? '';
 
 export interface UpdaterDeps {
@@ -64,7 +64,7 @@ function isDeveloperIdSigned(): Promise<boolean> {
 function publish(): void {
   sendToChrome(IPC.chromeEvents.update, status);
   for (const wc of watchers) {
-    if (wc.isDestroyed() || !wc.getURL().startsWith('vela://')) {
+    if (wc.isDestroyed() || !wc.getURL().startsWith('tarnel://')) {
       watchers.delete(wc);
       continue;
     }
@@ -143,7 +143,7 @@ async function loadUpdater(): Promise<AppUpdater> {
   }
   // Plain require (kept external by esbuild): loaded from app.asar only when the first check runs.
   const { autoUpdater } = require('electron-updater') as typeof import('electron-updater');
-  autoUpdater.logger = { info: () => undefined, warn: () => undefined, error: (message: unknown) => console.error('[vela] updater', message) };
+  autoUpdater.logger = { info: () => undefined, warn: () => undefined, error: (message: unknown) => console.error('[tarnel] updater', message) };
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = status.mode === 'install';
   autoUpdater.autoRunAppAfterInstall = true;
@@ -232,7 +232,7 @@ export function getUpdateStatus(): UpdateStatus {
   return status;
 }
 
-/** Push status changes to a vela:// page (settings) until it navigates away or closes. */
+/** Push status changes to a tarnel:// page (settings) until it navigates away or closes. */
 export function watchUpdates(wc: WebContents): void {
   if (watchers.has(wc)) return;
   watchers.add(wc);

@@ -1,20 +1,28 @@
 import { app, ipcMain, net } from 'electron';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { ENGINE_VERSION, ElectronBlocker, type Request } from '@ghostery/adblocker-electron';
+import { adsAndTrackingLists, ENGINE_VERSION, ElectronBlocker, fetchResources, type Request } from '@ghostery/adblocker-electron';
+import { engineListSources, listSetKey, type ListSource } from './adblock-lists';
 import { cacheKey, decodeCache, encodeCache } from './adblock-cache';
+import { adblockRefreshAfterMs } from './battery-policy';
+import { isBatterySaverActive } from './battery-saver';
 import { isolateScriptlet } from './adblock-scriptlets';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
 import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
 import { createStore, type JsonStore } from '../store';
+import { countBlockedRequest } from '../privacy-report/collector';
 
 /**
- * Network-level content blocking (Ghostery engine: EasyList + EasyPrivacy + uBO-style lists).
+ * Network-level content blocking (Ghostery engine: EasyList + EasyPrivacy + uBO lists fetched from
+ * uBO itself, plus Tarnel's bundled extra list; see adblock-lists.ts).
  *
  * Startup path is designed to never wait on the network: the compiled engine is cached as a
  * serialized binary in userData (keyed by Ghostery version + list set, see adblock-cache.ts) and
- * deserialized in a few ms. Whenever the engine is older than 24h (checked at start and hourly) a
+ * deserialized in a few ms. Whenever the engine is older than 24h (72h while battery saver is on;
+ * checked at start and hourly) a
  * fresh one is built in the background and hot-swapped into every session in one synchronous step,
  * so no request sees a half-swapped state. New sessions gate whenSessionReady() on the first engine,
  * so the first page request is already filtered; on a cold first run without cache that gate is
@@ -27,7 +35,7 @@ interface StatsStore {
 }
 
 const CACHE_FILE = 'adblock-engine.bin';
-const LIST_SET = 'prebuilt-ads-tracking';
+const EXTRA_FILE = 'adblock-extra.txt';
 const REFRESH_AFTER_MS = 24 * 60 * 60 * 1000;
 const REFRESH_CHECK_MS = 60 * 60 * 1000;
 // Cold first run (no cache): how long new sessions wait for the network-built engine before pages
@@ -71,7 +79,18 @@ function libraryVersion(): string {
   }
 }
 
-const CACHE_KEY = cacheKey({ engineVersion: ENGINE_VERSION, libraryVersion: libraryVersion(), lists: LIST_SET });
+/** Tarnel's own filter list (src/main/perf/lists/tarnel-extra.txt), bundled next to the main bundle. */
+function readExtraFilters(): string {
+  try {
+    return readFileSync(path.join(__dirname, EXTRA_FILE), 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+const EXTRA_FILTERS = readExtraFilters();
+const EXTRA_HASH = createHash('sha256').update(EXTRA_FILTERS).digest('hex').slice(0, 12);
+const CACHE_KEY = cacheKey({ engineVersion: ENGINE_VERSION, libraryVersion: libraryVersion(), lists: listSetKey(EXTRA_HASH) });
 
 /** `net.fetch` honours the system / Chromium proxy configuration, unlike Node's global fetch. */
 function fetchImpl(url: string): Promise<Response> {
@@ -106,8 +125,28 @@ async function loadFromCache(): Promise<{ engine: ElectronBlocker; builtAt: numb
   }
 }
 
+async function fetchText(url: string): Promise<string> {
+  const response = await fetchImpl(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+  return response.text();
+}
+
+/** uBO's own copy first, Ghostery's mirror if that fails; optional lists are skipped. Required lists still fail the build. */
+async function fetchList(source: ListSource): Promise<string> {
+  try {
+    return await fetchText(source.url);
+  } catch (err) {
+    if (source.fallback) return fetchText(source.fallback);
+    console.warn('[adblock] optional list unavailable; building without it', err);
+    return '';
+  }
+}
+
 async function loadFromNetwork(): Promise<ElectronBlocker> {
-  const engine = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetchImpl);
+  const sources = engineListSources(adsAndTrackingLists);
+  const [lists, resources] = await Promise.all([Promise.all(sources.map(fetchList)), fetchResources(fetchImpl)]);
+  const engine = ElectronBlocker.parse([...lists, EXTRA_FILTERS].join('\n'));
+  engine.updateResources(resources, `${resources.length}`);
   engineBuiltAt = Date.now();
   await writeCache(engine).catch(() => undefined); // caching is an optimisation, not a requirement
   return engine;
@@ -116,6 +155,7 @@ async function loadFromNetwork(): Promise<ElectronBlocker> {
 function recordBlocked(request: Request): void {
   blockedTotal += 1;
   stats?.update((current) => ({ blockedTotal: current.blockedTotal + 1 }));
+  countBlockedRequest(request.tabId, request.url, request.type);
   // tabId is the Electron webContentsId; it is 0/undefined for service-worker and browser requests.
   if (request.tabId > 0) {
     for (const cb of listeners) {
@@ -267,7 +307,7 @@ async function refreshInBackground(): Promise<void> {
 }
 
 function refreshIfStale(): void {
-  if (blocker && Date.now() - engineBuiltAt > REFRESH_AFTER_MS) void refreshInBackground();
+  if (blocker && Date.now() - engineBuiltAt > adblockRefreshAfterMs(REFRESH_AFTER_MS, isBatterySaverActive())) void refreshInBackground();
 }
 
 export async function initAdblock(): Promise<void> {
@@ -337,6 +377,11 @@ export function setAdblockEnabled(next: boolean): void {
 
 export function onBlocked(cb: BlockedListener): void {
   listeners.add(cb);
+}
+
+/** The installed engine, or null before the first one is ready. */
+export function getEngine(): ElectronBlocker | null {
+  return blocker;
 }
 
 export function getBlockedTotal(): number {

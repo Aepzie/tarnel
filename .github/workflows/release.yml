@@ -35,9 +35,9 @@ jobs:
             os: ubuntu-latest
             args: --linux AppImage deb --x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -104,9 +104,9 @@ jobs:
         run: mv release/latest-mac.yml release/latest-mac-${{ matrix.arch }}.yml
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: vela-${{ matrix.name }}
+          name: tarnel-${{ matrix.name }}
           if-no-files-found: error
           path: |
             release/*.exe
@@ -124,7 +124,7 @@ jobs:
       run:
         working-directory: android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-java@v4
         with:
@@ -151,8 +151,8 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/vela-release.jks"
-          echo "file=$RUNNER_TEMP/vela-release.jks" >> "$GITHUB_OUTPUT"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tarnel-release.jks"
+          echo "file=$RUNNER_TEMP/tarnel-release.jks" >> "$GITHUB_OUTPUT"
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Assemble release
@@ -169,17 +169,17 @@ jobs:
           case "$GITHUB_REF" in refs/tags/v*) ;; *) version="dev" ;; esac
           mkdir -p dist
           if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
-            cp app/build/outputs/apk/release/app-release.apk "dist/Vela-${version}-android.apk"
+            cp app/build/outputs/apk/release/app-release.apk "dist/Tarnel-${version}-android.apk"
           else
-            cp app/build/outputs/apk/release/app-release-unsigned.apk "dist/Vela-${version}-android-unsigned.apk"
+            cp app/build/outputs/apk/release/app-release-unsigned.apk "dist/Tarnel-${version}-android-unsigned.apk"
           fi
-          rm -f "$RUNNER_TEMP/vela-release.jks"
+          rm -f "$RUNNER_TEMP/tarnel-release.jks"
           ls -l dist
 
       - name: Upload release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: vela-android
+          name: tarnel-android
           if-no-files-found: error
           path: android/dist/*.apk
 
@@ -188,7 +188,7 @@ jobs:
     needs: [package, android]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -207,11 +207,11 @@ jobs:
       - name: Generate checksums
         run: cd artifacts && sha256sum * > SHA256SUMS.txt
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: Vela ${{ github.ref_name }}
+          name: Tarnel ${{ github.ref_name }}
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: artifacts/*

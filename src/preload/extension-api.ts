@@ -3,7 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 /**
  * Extension-context additions on top of electron-chrome-extensions (registered as a session preload
  * by src/main/extensions/dnr/index.ts, before the library's own preload, which freezes `chrome`):
- * - chrome.declarativeNetRequest backed by Vela's engine. Calls travel over the library's `crx-msg`
+ * - chrome.declarativeNetRequest backed by Tarnel's engine. Calls travel over the library's `crx-msg`
  *   channel to the handlers in src/main/extensions/dnr/api.ts; events use its `crx-add-listener`
  *   protocol.
  * - the `browser` namespace as an alias of the (library-completed) `chrome`.

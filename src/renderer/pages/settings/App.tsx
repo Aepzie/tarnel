@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type KeyboardEvent } from 'react';
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react';
-import { Cloud, Gauge, Import as ImportIcon, Info, Layers, Palette, Puzzle, Settings2, Shield, type LucideIcon } from 'lucide-react';
+import { Cloud, Gauge, Import as ImportIcon, Info, Layers, Palette, Puzzle, Settings2, Shield, Workflow, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ease, spring, stagger } from '@/lib/motion';
-import { VelaMark } from './components/brand';
+import { BrandMark } from './components/brand';
 import { SettingsProvider } from './store';
 import { About } from './sections/About';
 import { Appearance } from './sections/Appearance';
@@ -12,10 +12,11 @@ import { General } from './sections/General';
 import { Import } from './sections/Import';
 import { Performance } from './sections/Performance';
 import { Privacy } from './sections/Privacy';
+import { Rules } from './sections/Rules';
 import { Spaces } from './sections/Spaces';
 import { Sync } from './sections/Sync';
 
-type SectionId = 'general' | 'appearance' | 'spaces' | 'extensions' | 'privacy' | 'sync' | 'import' | 'performance' | 'about';
+type SectionId = 'general' | 'appearance' | 'spaces' | 'rules' | 'extensions' | 'privacy' | 'sync' | 'import' | 'performance' | 'about';
 
 interface SectionDef {
   id: SectionId;
@@ -28,6 +29,7 @@ const SECTIONS: readonly SectionDef[] = [
   { id: 'general', label: 'General', icon: Settings2, Component: General },
   { id: 'appearance', label: 'Appearance', icon: Palette, Component: Appearance },
   { id: 'spaces', label: 'Spaces', icon: Layers, Component: Spaces },
+  { id: 'rules', label: 'Rules', icon: Workflow, Component: Rules },
   { id: 'extensions', label: 'Extensions', icon: Puzzle, Component: Extensions },
   { id: 'privacy', label: 'Privacy', icon: Shield, Component: Privacy },
   { id: 'sync', label: 'Sync', icon: Cloud, Component: Sync },
@@ -166,7 +168,7 @@ export function App() {
           <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col py-10">
             <div className="mb-8 flex items-center gap-2.5 px-2.5">
               <span className="grid size-8 place-items-center rounded-[10px] bg-card ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]">
-                <VelaMark className="size-[18px] text-foreground" />
+                <BrandMark className="size-[18px] text-foreground" />
               </span>
               <span className="text-[15px] font-semibold tracking-tight">Settings</span>
             </div>

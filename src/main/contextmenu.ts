@@ -2,9 +2,11 @@ import { Menu, clipboard, type MenuItemConstructorOptions, type WebContents } fr
 import { cleanUserUrl } from './privacy';
 import { getSettings } from './settings';
 import { getSpace, listSpaces } from './spaces';
+import { openPeek } from './peek';
 import { createTab, getTabSpaceId } from './tabs';
 import { isOpenableFromWeb, searchUrl } from './url';
 import { getMainWindow } from './window';
+import { sendCommand } from './shortcuts';
 
 function truncate(text: string, max: number): string {
   const single = text.replace(/\s+/g, ' ').trim();
@@ -23,6 +25,7 @@ export function attachContextMenu(wc: WebContents, tabId: number): void {
     if (link) {
       template.push(
         { label: 'Open link in new tab', click: () => createTab({ url: link, spaceId, active: false, afterId: tabId }) },
+        { label: 'Open in Peek', click: () => openPeek(link, tabId) },
         {
           label: 'Open link in Space',
           submenu: listSpaces()
@@ -76,6 +79,8 @@ export function attachContextMenu(wc: WebContents, tabId: number): void {
         { label: 'Back', enabled: history.canGoBack(), click: () => history.goBack() },
         { label: 'Forward', enabled: history.canGoForward(), click: () => history.goForward() },
         { label: 'Reload', click: () => wc.reload() },
+        { type: 'separator' },
+        { label: 'Take screenshot', click: () => sendCommand('screenshot') },
       );
     }
 

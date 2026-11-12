@@ -1,6 +1,6 @@
 package org.velabrowser.vela.core
 
-/** Search engines offered by Vela — the same list (and URLs) as the desktop app. */
+/** Search engines offered by Tarnel — the same list (and URLs) as the desktop app. */
 enum class SearchEngine(val label: String, private val base: String, val host: String) {
     DUCKDUCKGO("DuckDuckGo", "https://duckduckgo.com/?q=", "duckduckgo.com"),
     GOOGLE("Google", "https://www.google.com/search?q=", "google.com"),
@@ -21,7 +21,7 @@ enum class ThemeMode(val label: String) { SYSTEM("System"), DARK("Dark"), LIGHT(
 enum class NewtabHero(val label: String) {
     CLOCK("Clock"),
     CLOCK_SECONDS("Clock with seconds"),
-    LOGO("Vela logo"),
+    LOGO("Tarnel logo"),
     DATE("Date"),
     GREETING("Greeting"),
     MINIMAL("Minimal");

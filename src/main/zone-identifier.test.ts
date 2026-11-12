@@ -11,7 +11,7 @@ describe('formatZoneIdentifier', () => {
   });
   it('omits non-http(s) URLs but keeps the zone', () => {
     assert.equal(
-      formatZoneIdentifier({ hostUrl: 'blob:https://example.com/uuid', referrerUrl: 'vela://newtab' }),
+      formatZoneIdentifier({ hostUrl: 'blob:https://example.com/uuid', referrerUrl: 'tarnel://newtab' }),
       '[ZoneTransfer]\r\nZoneId=3\r\n',
     );
     assert.equal(formatZoneIdentifier({ hostUrl: 'data:text/plain,hi' }), '[ZoneTransfer]\r\nZoneId=3\r\n');

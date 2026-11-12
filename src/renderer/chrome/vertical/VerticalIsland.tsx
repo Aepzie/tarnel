@@ -120,7 +120,7 @@ export function VerticalIsland() {
         onPointerEnter={collapsed ? onEnter : undefined}
         onPointerLeave={collapsed ? onLeave : undefined}
       >
-        <header className={cn('flex shrink-0 items-center gap-1 px-2', expanded ? 'h-12' : 'h-auto flex-col pt-2 pb-1.5')}>
+        <header className={cn('flex shrink-0 items-center gap-1 px-2', expanded ? 'h-12' : 'h-auto flex-col pt-3 pb-2')}>
           <div className="no-drag flex min-w-0 items-center">
             <SpaceSwitcher compact={!expanded} />
           </div>

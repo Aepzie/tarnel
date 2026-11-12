@@ -204,7 +204,7 @@ export function App() {
               </div>
               <button
                 type="button"
-                onClick={() => settle(velaPages().navigate('vela://settings/#privacy'))}
+                onClick={() => settle(velaPages().navigate('tarnel://settings/#privacy'))}
                 className={cn(
                   'inline-flex h-8 items-center gap-2 rounded-[10px] px-3 text-[12.5px] font-medium text-muted-foreground',
                   'ring-1 ring-border transition-[background-color,color,transform] duration-150 outline-none',

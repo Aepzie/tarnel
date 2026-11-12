@@ -5,8 +5,26 @@ export type { VelaChromeAPI, VelaPagesAPI };
 
 /** Browser chrome bridge (only defined in the chrome window). */
 export const vela = (): VelaChromeAPI => window.vela;
-/** Internal-pages bridge (only defined on vela:// pages). */
+/** Internal-pages bridge (only defined on tarnel:// pages). */
 export const velaPages = (): VelaPagesAPI => window.velaPages;
+
+/** Internal pages live on tarnel://; vela:// is the legacy alias main maps to the same page. */
+const INTERNAL_PROTOCOLS = new Set(['tarnel:', 'vela:']);
+
+/** True for a URL protocol (with trailing colon) of an internal page, current or legacy. */
+export function isInternalProtocol(protocol: string): boolean {
+  return INTERNAL_PROTOCOLS.has(protocol.toLowerCase());
+}
+
+/** True for tarnel:// (or legacy vela://) URLs. */
+export function isInternalUrl(url: string): boolean {
+  return /^(tarnel|vela):\/\//i.test(url);
+}
+
+/** True for the new-tab page under either scheme. */
+export function isNewTabUrl(url: string): boolean {
+  return /^(tarnel|vela):\/\/newtab/i.test(url);
+}
 
 const noop = (): void => {};
 
@@ -17,7 +35,7 @@ export function settle(promise: Promise<unknown> | undefined): void {
 
 /** Address text to seed the palette with for a tab URL (empty for the new-tab page). */
 export function addressSeed(url: string | undefined): string {
-  if (!url || url.startsWith('vela://newtab') || url === 'about:blank') return '';
+  if (!url || isNewTabUrl(url) || url === 'about:blank') return '';
   return url;
 }
 
@@ -46,7 +64,8 @@ export function applyTheme(theme: ThemeMode, accent?: SpaceColor): void {
 export function hostOf(url: string): string {
   try {
     const parsed = new URL(url);
-    if (parsed.protocol === 'vela:') return `vela://${parsed.hostname}`;
+    if (isInternalProtocol(parsed.protocol)) return `tarnel://${parsed.hostname}`;
+    if (parsed.protocol === 'file:') return decodeURIComponent(parsed.pathname.split('/').pop() ?? '') || 'file';
     return parsed.hostname.replace(/^www\./, '');
   } catch {
     return url;
@@ -56,7 +75,7 @@ export function hostOf(url: string): string {
 /** Favicon fallback: first meaningful letter of the host. */
 export function letterOf(url: string, title = ''): string {
   const host = hostOf(url);
-  const source = host && !host.startsWith('vela://') ? host : title;
+  const source = host && !host.startsWith('tarnel://') ? host : title;
   return (source.trim()[0] ?? '•').toUpperCase();
 }
 

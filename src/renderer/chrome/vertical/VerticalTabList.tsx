@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { AnimatePresence, Reorder, motion, useReducedMotion } from 'motion/react';
 import { PlusIcon } from 'lucide-react';
+import { ArchiveButton } from '../archive/ArchiveButton';
 import type { TabState } from '@shared/types';
 import { useBrowserSlice, useSpaceGroups, useSpaceTabs } from '@/hooks/browser';
 import { spring } from '@/lib/motion';
@@ -116,7 +117,7 @@ export function VerticalTabList({ iconOnly }: { iconOnly: boolean }) {
             aria-label="Tabs"
             aria-orientation="vertical"
             onKeyDown={onKeyDown}
-            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="min-h-0 flex-1 scroll-py-2 overflow-x-hidden overflow-y-auto overscroll-contain p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{
               maskImage: `linear-gradient(to bottom, transparent 0, #000 ${fade.top ? 16 : 0}px, #000 calc(100% - ${fade.bottom ? 16 : 0}px), transparent 100%)`,
             }}
@@ -176,6 +177,7 @@ export function VerticalTabList({ iconOnly }: { iconOnly: boolean }) {
                 <PlusIcon className="size-4 shrink-0" strokeWidth={1.75} />
                 {!iconOnly && 'New Tab'}
               </motion.button>
+              <ArchiveButton layoutTransition={layoutTransition} row iconOnly={iconOnly} />
             </Reorder.Group>
           </motion.div>
         </motion.div>

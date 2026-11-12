@@ -4,18 +4,40 @@ import { IMPORT_IPC } from '../shared/import';
 import { SITE_IPC } from '../shared/site-data';
 import { BOOKMARKS_IPC } from '../shared/bookmarks-ipc';
 import { PASSWORD_IPC } from '../shared/passwords';
+import { PANELS_IPC } from '../shared/panels';
+import { COOKIE_BANNER_IPC } from '../shared/cookie-banners';
+import { TRANSLATE_IPC } from '../shared/translate';
+import { SITE_RULES_IPC } from '../shared/site-rules';
+import { ALIAS_IPC } from '../shared/aliases';
+import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
+import { DEFAULT_BROWSER_IPC } from '../shared/default-browser';
+import { DRM_IPC, type DrmStatus } from '../shared/drm';
+import type { Settings } from '../shared/types';
 import type { UpdateStatus } from '../shared/types';
 
-const isVelaPage = (): boolean => location.protocol === 'vela:';
+const isInternalPage = (): boolean => location.protocol === 'tarnel:';
 
-if (isVelaPage()) {
+if (isInternalPage()) {
   const call = <T>(channel: string, ...args: unknown[]): Promise<T> =>
-    isVelaPage()
+    isInternalPage()
       ? (ipcRenderer.invoke(channel, ...args) as Promise<T>)
-      : Promise.reject(new Error('velaPages is only available on vela:// pages'));
+      : Promise.reject(new Error('velaPages is only available on tarnel:// pages'));
 
   const ch = IPC.pages;
   const api: VelaPagesAPI = {
+    drm: {
+      status: () => call(DRM_IPC.status),
+      onStatus: (listener) => {
+        const handler = (_event: IpcRendererEvent, status: DrmStatus) => { if (location.host === 'settings') listener(status); };
+        ipcRenderer.on(DRM_IPC.changed, handler);
+        return () => { ipcRenderer.removeListener(DRM_IPC.changed, handler); };
+      },
+    },
+    onSettingsChanged: (listener) => {
+      const handler = (_event: IpcRendererEvent, settings: Settings) => { if (location.host === 'settings') listener(settings); };
+      ipcRenderer.on(IPC.chromeEvents.settings, handler);
+      return () => { ipcRenderer.removeListener(IPC.chromeEvents.settings, handler); };
+    },
     getSettings: () => call(ch.getSettings),
     setSettings: (patch) => call(ch.setSettings, patch),
     topSites: () => call(ch.topSites),
@@ -56,6 +78,23 @@ if (isVelaPage()) {
       remove: (id, spaceId) => call(BOOKMARKS_IPC.pagesRemove, id, spaceId ?? null),
       search: (query, limit, spaceId) => call(BOOKMARKS_IPC.pagesSearch, query, limit ?? null, spaceId ?? null),
     },
+    cookieBanners: {
+      exceptions: () => call(COOKIE_BANNER_IPC.pagesList),
+      removeException: (site) => call(COOKIE_BANNER_IPC.pagesRemove, site),
+    },
+    translate: {
+      overview: () => call(TRANSLATE_IPC.overview),
+      setPrefs: (patch) => call(TRANSLATE_IPC.setPrefs, patch),
+      deleteModel: (pair) => call(TRANSLATE_IPC.deleteModel, pair),
+      refreshCatalog: () => call(TRANSLATE_IPC.refreshCatalog),
+    },
+    siteRules: {
+      list: () => call(SITE_RULES_IPC.list),
+      save: (rules) => call(SITE_RULES_IPC.save, rules),
+      test: (url) => call(SITE_RULES_IPC.test, url),
+      draft: () => call(SITE_RULES_IPC.draft),
+      context: () => call(SITE_RULES_IPC.context),
+    },
     siteData: {
       list: () => call(SITE_IPC.pagesPolicies),
       set: (spaceId, policy) => call(SITE_IPC.pagesSetPolicy, spaceId, policy),
@@ -94,6 +133,10 @@ if (isVelaPage()) {
       install: () => call(ch.updateInstall),
       openRelease: () => call(ch.updateOpenRelease),
     },
+    privacyReport: {
+      get: () => call(PRIVACY_REPORT_IPC.get),
+      reset: () => call(PRIVACY_REPORT_IPC.reset),
+    },
   };
 
   if (location.host === 'passwords') {
@@ -107,6 +150,25 @@ if (isVelaPage()) {
       remove: (spaceId, loginId) => call(pw.remove, spaceId, loginId),
       exportCsv: (spaceId) => call(pw.exportCsv, spaceId),
       removeNever: (spaceId, origin) => call(pw.neverRemove, spaceId, origin),
+    };
+  }
+
+  if (location.host === 'settings') {
+    api.panels = {
+      list: () => call(PANELS_IPC.pageList),
+      add: (input) => call(PANELS_IPC.pageAdd, input),
+      update: (id, patch) => call(PANELS_IPC.pageUpdate, id, patch),
+      remove: (id) => call(PANELS_IPC.pageRemove, id),
+    };
+    api.aliases = {
+      get: () => call(ALIAS_IPC.get),
+      set: (patch) => call(ALIAS_IPC.set, patch),
+      setKey: (key) => call(ALIAS_IPC.setKey, key),
+      options: () => call(ALIAS_IPC.options),
+    };
+    api.defaultBrowser = {
+      status: () => call(DEFAULT_BROWSER_IPC.status),
+      makeDefault: () => call(DEFAULT_BROWSER_IPC.makeDefault),
     };
   }
 
@@ -131,7 +193,7 @@ function applyPageTheme(root: HTMLElement, { theme, mode, accent, hero }: BootTh
 }
 
 /**
- * Applies theme + accent synchronously before first paint so vela:// pages never flash, then
+ * Applies theme + accent synchronously before first paint so tarnel:// pages never flash, then
  * follows live changes (theme setting, OS scheme, Space colour) pushed by the main process.
  */
 function applyBootTheme(): void {

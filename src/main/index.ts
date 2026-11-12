@@ -1,4 +1,6 @@
-import { app, type BaseWindow, protocol, session as electronSession } from 'electron';
+import { app, type BaseWindow, protocol, session as electronSession, webContents } from 'electron';
+import { configureDrmStartup, initDrm, isSettingsPage } from './drm';
+import { DRM_PROBE_SCHEME } from './drm/probe-scheme';
 import { flushCompileCache } from 'node:module';
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
@@ -6,25 +8,31 @@ import { attachDownloads } from './downloads';
 import { initFingerprint } from './fingerprint';
 import { initIdentity } from './identity';
 import { initUserAgent } from './user-agent';
+import { initSiteRules } from './site-rules';
 import { initAudioDevices } from './audio-devices';
 import { initAudioMixer } from './audio-mixer';
 import { initExtensions } from './extensions';
 import { initPasswords } from './passwords';
+import { getCookieBannerStats, initCookieBanners } from './cookie-banners';
 import { registerIpc } from './ipc';
 import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
+import { initAdblockEarly } from './perf/adblock-early';
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
 import { initSleeper, stopSleeper, trackDownloadsForSleep } from './perf/sleeper';
+import { runAutoArchive } from './tab-archive';
+import { initBatterySaver } from './perf/battery-saver';
 import { initSecureDns } from './dns';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, onTrackingStripped, setPermissionPrompter } from './privacy';
-import { VELA_SCHEME, registerVelaProtocol } from './protocol';
+import { INTERNAL_SCHEME, LEGACY_INTERNAL_SCHEME, registerInternalProtocol } from './protocol';
 import { attachSafety, initSafety } from './safety';
 import { getSettings, onSettingsChanged } from './settings';
 import { clearSiteDataOnQuit, siteDataClearPending } from './site-data';
 import { attachShortcuts } from './shortcuts';
-import { disposeEphemeralSpaces, getActiveSpaceId, initSpaces, onSessionCreated } from './spaces';
+import { disposeEphemeralSpaces, getActiveSpaceId, getSpace, initSpaces, onSessionCreated } from './spaces';
+import { initPrivacyReport, registerPrivacySource } from './privacy-report';
 import { createStore, flushAllStores, type JsonStore } from './store';
 import { initSync, stopSync } from './sync/loader';
 import {
@@ -32,6 +40,7 @@ import {
   createTab,
   getActiveTab,
   getBrowserState,
+  getTabSpaceId,
   initTabs,
   listSleepCandidates,
   noteBlocked,
@@ -45,19 +54,19 @@ import {
   type SavedTab,
 } from './tabs';
 import { initUpdater, stopUpdater } from './updater';
-import { resolveInput } from './url';
+import { listenForOpenRequests, startOpening, urlsFromArgv } from './open-files';
 import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, refreshWindowTheme, saveBounds, sendToChrome } from './window';
 
 /** VELA_STARTUP_TRACE=1 prints process-uptime marks for startup profiling (scripts measure these). */
 const traceStartup = process.env.VELA_STARTUP_TRACE === '1';
 function startupMark(name: string): void {
-  if (traceStartup) console.info(`[vela:startup] ${name} ${Math.round(process.uptime() * 1000)}ms`);
+  if (traceStartup) console.info(`[tarnel:startup] ${name} ${Math.round(process.uptime() * 1000)}ms`);
 }
 
-// Isolated profile for development/testing (separate single-instance lock + storage).
-if (process.env.VELA_USER_DATA) app.setPath('userData', process.env.VELA_USER_DATA);
+// userData (TARNEL_USER_DATA / VELA_USER_DATA, Vela → Tarnel profile move) is settled in boot.ts.
 
-applyChromiumFlags();
+const hasCdmRuntime = configureDrmStartup();
+applyChromiumFlags(hasCdmRuntime);
 startupMark('main-evaluated');
 
 // @ghostery/adblocker-electron fires cosmetic scriptlets with an un-awaited executeJavaScript();
@@ -65,11 +74,14 @@ startupMark('main-evaluated');
 // noise, so it is swallowed — anything else is still reported.
 process.on('unhandledRejection', (reason) => {
   if (reason instanceof Error && reason.message.startsWith('Script failed to execute')) return;
-  console.error('[vela] unhandled rejection', reason);
+  console.error('[tarnel] unhandled rejection', reason);
 });
 protocol.registerSchemesAsPrivileged([
-  // codeCache: V8 code cache for vela:// pages (Chromium only caches http(s) by default); needs standard.
-  { scheme: VELA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
+  { scheme: DRM_PROBE_SCHEME, privileges: { standard: true, secure: true } },
+  // codeCache: V8 code cache for tarnel:// pages (Chromium only caches http(s) by default); needs standard.
+  { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
+  // Pre-rename alias: only redirects to tarnel:// (protocol.ts), registered alike so old URLs parse the same.
+  { scheme: LEGACY_INTERNAL_SCHEME, privileges: { standard: true, secure: true } },
 ]);
 
 let sessionStore: JsonStore<SavedTab[]> | null = null;
@@ -81,16 +93,6 @@ const SITE_CLEAR_EXTRA_MS = 3000;
 function saveSession(): void {
   if (!booted || !sessionStore) return;
   sessionStore.set(serializeSession());
-}
-
-/** URLs passed on the command line (skips flags and the app path). */
-function urlsFromArgv(argv: string[]): string[] {
-  const engine = getSettings().searchEngine;
-  return argv
-    .slice(app.isPackaged ? 1 : 2)
-    .filter((arg) => !arg.startsWith('-') && /^(https?:|vela:|file:)|\.(html?|pdf)$/i.test(arg))
-    .map((arg) => resolveInput(arg, engine))
-    .filter((url): url is string => !!url);
 }
 
 function openWindow(): BaseWindow {
@@ -116,10 +118,11 @@ function focusWindow(): void {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', (_event, argv) => {
+  listenForOpenRequests();
+  app.on('second-instance', (_event, argv, workingDirectory) => {
     if (!booted) return;
     if (!getMainWindow()) openWindow();
-    for (const url of urlsFromArgv(argv)) createTab({ url, active: true });
+    for (const url of urlsFromArgv(argv, workingDirectory)) createTab({ url, active: true });
     focusWindow();
   });
 
@@ -129,6 +132,7 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     startupMark('ready');
+    initDrm();
     applyGlobalUserAgent();
     initSecureDns();
     setPermissionPrompter(chromePermissionPrompter);
@@ -137,15 +141,27 @@ if (!app.requestSingleInstanceLock()) {
     initIdentity();
     initFingerprint();
     initUserAgent();
+    initSiteRules();
     initAudioDevices();
     initAudioMixer();
     initPasswords();
+    initCookieBanners();
 
+    initPrivacyReport({
+      spaceOfWebContents: (wcId) => {
+        const tabId = tabIdForWebContents(wcId);
+        const space = tabId === null ? undefined : getSpace(getTabSpaceId(tabId) ?? '');
+        return space ? { spaceId: space.id, ephemeral: space.ephemeral } : null;
+      },
+      openReport: () => createTab({ url: 'tarnel://privacy', active: true }),
+    });
+    registerPrivacySource('cookieBannersHandled', () => getCookieBannerStats().total);
+    initAdblockEarly();
     void initAdblock().catch(() => undefined);
     initSafety();
     initFrameRate();
     onSessionCreated((ses) => {
-      registerVelaProtocol(ses);
+      registerInternalProtocol(ses);
       attachDownloads(ses);
       trackDownloadsForSleep(ses);
       attachSafety(ses);
@@ -168,6 +184,9 @@ if (!app.requestSingleInstanceLock()) {
     let material = getSettings().windowMaterial;
     onSettingsChanged((settings) => {
       sendToChrome(IPC.chromeEvents.settings, settings);
+      for (const wc of webContents.getAllWebContents()) {
+        if (!wc.isDestroyed() && isSettingsPage(wc.getURL())) wc.send(IPC.chromeEvents.settings, settings);
+      }
       if (settings.windowMaterial !== material) {
         material = settings.windowMaterial;
         applyWindowMaterial(material);
@@ -183,8 +202,14 @@ if (!app.requestSingleInstanceLock()) {
     else activateSpace(getActiveSpaceId());
     for (const url of urlsFromArgv(process.argv)) createTab({ url, active: true });
     booted = true;
+    startOpening((url) => {
+      if (!getMainWindow()) openWindow();
+      createTab({ url, active: true });
+      focusWindow();
+    });
     startupMark('booted');
 
+    initBatterySaver();
     initSleeper({
       listTabs: listSleepCandidates,
       sleepTab,
@@ -193,6 +218,7 @@ if (!app.requestSingleInstanceLock()) {
       getFreezeAfterMinutes: () => getSettings().freezeAfterMinutes,
       getMemorySaver: () => ({ mode: getSettings().memorySaver, thresholdGB: getSettings().memorySaverThresholdGB }),
       tabIdForWebContents,
+      onTick: () => runAutoArchive(),
     });
     initSync();
     initUpdater({

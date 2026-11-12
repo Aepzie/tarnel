@@ -1,6 +1,6 @@
 import { app, safeStorage } from 'electron';
 import { VPN_IPC, normalizeAccountNumber, normalizeTotp, type VpnConnection, type VpnResult, type VpnServer, type VpnState } from '../../shared/vpn';
-import { normalizeCountry, pickServer } from '../../shared/vpn-route';
+import { countriesOf, normalizeCountry, pickServer, type VpnCountry } from '../../shared/vpn-route';
 import { getActiveSpaceId, getSpace, refreshRoutedProxies, routedCountryOf, setRouteProxyProvider, updateSpace } from '../spaces';
 import { getBrowserState, getTabVpn, setTabVpn } from '../tabs';
 import { createStore, type JsonStore } from '../store';
@@ -8,7 +8,7 @@ import { sendToChrome } from '../window';
 import { MantelError, mantel } from './mantel';
 
 /**
- * MantelVPN in Vela. A browser cannot bring up a system WireGuard tunnel, so "connect" routes the
+ * MantelVPN in Tarnel. A browser cannot bring up a system WireGuard tunnel, so "connect" routes the
  * active Space through an account-scoped Mantel HTTP proxy on the chosen location (Mantel's
  * "server proxies"), reusing the Space proxy plumbing (fail-closed). Proxy authentication is
  * answered from main via app "login". Secrets (account number, proxy passwords) are kept with
@@ -183,7 +183,7 @@ async function credentialFor(session: string, nodeId: string): Promise<StoredPro
   if (usable) return usable;
   const created = await mantel.createProxy(session, nodeId);
   const sealed = encrypt(created.password);
-  if (!sealed) throw new MantelError('Secure storage is unavailable on this system, so Vela cannot keep the proxy password.', 'api');
+  if (!sealed) throw new MantelError('Secure storage is unavailable on this system, so Tarnel cannot keep the proxy password.', 'api');
   const stored: StoredProxy = {
     id: created.proxy.id,
     nodeId,
@@ -357,6 +357,21 @@ function answerProxyAuth(): void {
     event.preventDefault();
     callback(credential.username, password);
   });
+}
+
+/** Site rules: per-tab routing needs a live MantelVPN session (signed in and reachable). */
+export function canRouteTabs(): boolean {
+  return mode === 'live';
+}
+
+/** Site rules editor: countries of the current server list (empty while signed out). */
+export function routableCountries(): VpnCountry[] {
+  return countriesOf(servers);
+}
+
+/** Site rules: route a tab exactly like the tab's VPN menu does. */
+export function routeTabByRule(tabId: number, country: string): Promise<VpnResult> {
+  return routeTab(tabId, country);
 }
 
 export function registerVpnIpc(handle: ChromeHandler): void {

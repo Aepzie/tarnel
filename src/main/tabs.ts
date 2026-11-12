@@ -2,6 +2,7 @@ import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContent
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
 import { isLoneStartPage } from '../shared/tab-close';
+import { canonicalInternalUrl, isLegacyInternalUrl } from '../shared/internal-url';
 import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabMediaDevices, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
@@ -13,12 +14,15 @@ import { getSettings } from './settings';
 import { getActiveSpaceId, getSpace, getSpaceSession, listSpaces, onSpacesChanged, removeSpace, setActiveSpaceId, whenSessionReady } from './spaces';
 import { bindGroupModel, clusterGroups, getGroup, groupsInOrder, pruneGroups, restoreGroup, savedGroup, type SavedGroup } from './tab-groups';
 import { NEWTAB_URL, isInternalUrl, isOpenableFromWeb, isSecureUrl, resolveInput } from './url';
+import { fileTitle, isFileUrl } from './open-targets';
 import * as windowLayer from './window';
 import { bindSplitModel, clusterSplits, detachFromSplit, isOnScreen, restoreSplits, savedSplit, splitIdOf, splitOf, splitsInOrder, unitOf, type SavedSplit } from './split';
 import { onPaneFocus, trackPanes, type Pane } from './split-panes';
 import { forgetTab as forgetTabMedia, isMicActive, onTabMediaChanged, restoreTabMediaDevices, tabMediaDevices } from './audio-devices/state';
 import { forgetTabAudio, onTabAudioChanged, restoreTabAudio, tabAudioSettings } from './audio-mixer/state';
 import type { TabAudioSettings } from '../shared/audio-mixer';
+import type { ArchivedGroup, ClosedTabEntry } from '../shared/tab-archive';
+import type { ArchiveCandidate } from './tab-archive/policy';
 import { normalizeCountry } from '../shared/vpn-route';
 import { attachViewBackdrop } from './page-theme';
 
@@ -50,7 +54,12 @@ export interface CreateTabOpts {
   afterId?: number;
   /** Join this group (same space only). Defaults to the group of `afterId`'s tab. */
   groupId?: TabGroupId | null;
+  /** Adopt this live page view (built with `pageWebPreferences`) instead of loading `url` (Peek → tab). */
+  view?: WebContentsView;
 }
+
+/** Return true to take over a window-open request of a tab (e.g. a shift-click opening Peek). */
+type WindowOpenInterceptor = (tabId: number, url: string, disposition: string, features: string) => boolean;
 
 interface Tab {
   id: number;
@@ -67,7 +76,7 @@ interface Tab {
   blockedCount: number;
   zoom: number;
   lastActiveAt: number;
-  /** Original URL while the vela://error page is shown in its place. */
+  /** Original URL while the tarnel://error page is shown in its place. */
   errorUrl: string | null;
   findText: string;
   /** Navigation history captured when put to sleep, restored on wake. */
@@ -80,6 +89,8 @@ interface Tab {
 }
 
 type WebContentsHook = (wc: WebContents, tabId: number) => void;
+/** Consulted before a tab loads a web URL; true = the gate took over (site rules) and nothing is loaded. */
+type NavigationGate = (wc: WebContents, tabId: number, url: string) => boolean;
 
 const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 const CLOSED_STACK_MAX = 20;
@@ -92,12 +103,15 @@ let order: number[] = [];
 let activeTabId: number | null = null;
 const activeBySpace = new Map<SpaceId, number>();
 const wcToTab = new Map<number, number>();
-const closedStack: { url: string; spaceId: SpaceId }[] = [];
+const closedStack: ClosedTabEntry[] = [];
+let closedSeq = 0;
 const stateListeners = new Set<() => void>();
 const wcHooks: WebContentsHook[] = [];
+let navigationGate: NavigationGate | null = null;
 let nextId = 1;
 let emitPending = false;
 let spacesHooked = false;
+let windowOpenInterceptor: WindowOpenInterceptor | null = null;
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -143,7 +157,7 @@ function groupOf(id: number): TabGroupId | null {
 
 function errorPageUrl(code: number | string, desc: string, url: string): string {
   const params = new URLSearchParams({ code: String(code), desc, url });
-  return `vela://error/?${params.toString()}`;
+  return `tarnel://error/?${params.toString()}`;
 }
 
 function load(wc: WebContents, url: string): void {
@@ -159,6 +173,7 @@ function loadInTab(tab: Tab, wc: WebContents, url: string, navigate: () => Promi
     navigate().catch(() => undefined);
     return;
   }
+  if (navigationGate?.(wc, tab.id, url)) return;
   const view = tab.view;
   const stillCurrent = (): boolean => !wc.isDestroyed() && tab.view === view && tabs.get(tab.id) === tab;
   whenSessionReady(tab.spaceId, tab.vpn).then(
@@ -175,8 +190,13 @@ function loadInTab(tab: Tab, wc: WebContents, url: string, navigate: () => Promi
   );
 }
 
+/** Text, JSON and media files have no title of their own (Chromium reports '' or the URL). */
+function untitledFile(url: string, title: string): boolean {
+  return isFileUrl(url) && (!title || title === url || (title.includes('/') && url.endsWith(title)));
+}
+
 function setTabUrl(tab: Tab, url: string): void {
-  if (url.startsWith('vela://error/') && tab.errorUrl) return;
+  if (url.startsWith('tarnel://error/') && tab.errorUrl) return;
   tab.url = url;
   tab.errorUrl = null;
 }
@@ -194,7 +214,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   });
   wc.on('page-title-updated', (_e, title) => {
     if (!current()) return;
-    tab.title = title;
+    tab.title = untitledFile(tab.url, title) ? fileTitle(tab.url) : title;
     if (!isEphemeral(tab.spaceId) && !isInternalUrl(tab.url)) updateTitle(tab.url, title);
     scheduleEmit();
   });
@@ -225,6 +245,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   wc.on('did-navigate', (_e, url) => {
     if (!current()) return;
     setTabUrl(tab, url);
+    if (isFileUrl(url)) tab.title = untitledFile(url, wc.getTitle()) ? fileTitle(url) : wc.getTitle();
     if (Math.abs(wc.getZoomFactor() - tab.zoom) > 0.001) wc.setZoomFactor(tab.zoom);
     if (!isEphemeral(tab.spaceId) && !isInternalUrl(url)) recordVisit(url, wc.getTitle());
     scheduleEmit();
@@ -236,7 +257,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     scheduleEmit();
   });
   wc.on('did-fail-load', (_e, code, desc, validatedURL, isMainFrame) => {
-    if (!current() || !isMainFrame || code === ERROR_ABORTED || validatedURL.startsWith('vela://error/')) return;
+    if (!current() || !isMainFrame || code === ERROR_ABORTED || validatedURL.startsWith('tarnel://error/')) return;
     tab.errorUrl = validatedURL;
     tab.url = validatedURL;
     load(wc, errorPageUrl(code, desc, validatedURL));
@@ -279,9 +300,15 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     if (current() && windowLayer.isHtmlFullscreen()) windowLayer.setHtmlFullscreen(false);
   });
   wc.on('will-frame-navigate', (details) => {
-    // Web content may never navigate (any frame) into privileged vela:// pages.
+    // Web content may never navigate (any frame) into privileged tarnel:// pages.
     const from = details.initiator?.url ?? wc.getURL();
     if (isInternalUrl(details.url) && !isInternalUrl(from)) details.preventDefault();
+    else if (isLegacyInternalUrl(details.url)) {
+      // Old vela:// links on internal pages open the same tarnel:// page.
+      details.preventDefault();
+      if (details.isMainFrame) load(wc, canonicalInternalUrl(details.url));
+    }
+    else if (blocksFileNavigation(details.url, details.initiator?.url)) details.preventDefault();
   });
   wc.on('will-navigate', (details) => {
     if (!details.isMainFrame || details.isSameDocument || !getSettings().httpsOnly) return;
@@ -292,7 +319,8 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   });
   wc.on('will-attach-webview', (event) => event.preventDefault());
 
-  wc.setWindowOpenHandler(({ url, disposition }) => {
+  wc.setWindowOpenHandler(({ url, disposition, features }) => {
+    if (windowOpenInterceptor?.(tab.id, url, disposition, features)) return { action: 'deny' };
     if (disposition === 'new-window') {
       if (!isOpenableFromWeb(url)) return { action: 'deny' };
       return {
@@ -304,7 +332,8 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
         },
       };
     }
-    const allowed = isOpenableFromWeb(url) || (isInternalUrl(url) && isInternalUrl(wc.getURL()));
+    const allowed =
+      isOpenableFromWeb(url) || (isInternalUrl(url) && isInternalUrl(wc.getURL())) || (isFileUrl(url) && mayOpenFiles(wc.getURL()));
     if (allowed) createTab({ url, spaceId: tab.spaceId, vpn: tab.vpn, active: disposition !== 'background-tab' && tab.id === activeTabId, afterId: tab.id });
     return { action: 'deny' };
   });
@@ -315,7 +344,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     });
     child.webContents.on('will-attach-webview', (event) => event.preventDefault());
     child.webContents.on('will-frame-navigate', (details) => {
-      if (isInternalUrl(details.url)) details.preventDefault();
+      if (isInternalUrl(details.url) || isFileUrl(details.url)) details.preventDefault();
     });
     child.webContents.on('will-navigate', (details) => {
       if (!details.isMainFrame || details.isSameDocument || !getSettings().httpsOnly) return;
@@ -327,22 +356,47 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
   });
 }
 
+/**
+ * file:// may only be entered by the user (address bar, OS open, drop: no initiator frame), from
+ * another file:// page or from a tarnel:// page. Web pages (http(s), data:, extensions) never can.
+ */
+function blocksFileNavigation(url: string, initiatorUrl: string | undefined): boolean {
+  return isFileUrl(url) && initiatorUrl !== undefined && !mayOpenFiles(initiatorUrl);
+}
+
+/** Pages that may open file:// (links, drops): other local files and Tarnel's own pages (new tab). */
+function mayOpenFiles(fromUrl: string): boolean {
+  return isFileUrl(fromUrl) || isInternalUrl(fromUrl);
+}
+
+/** Web preferences of every page view (tabs and Peek), so a Peek view can become a tab as is. */
+export function pageWebPreferences(spaceId: SpaceId, vpn: string | null): Electron.WebPreferences {
+  return {
+    session: getSpaceSession(spaceId, vpn),
+    sandbox: true,
+    contextIsolation: true,
+    nodeIntegration: false,
+    webviewTag: false,
+    // Only enables Chromium's built-in PDF viewer (Electron ships no other plugins). It is a
+    // per-view flag, so it applies to every Space / VPN partition alike.
+    plugins: true,
+    // Like Chrome: a file or link dropped on a page the page does not handle opens in that tab
+    // (still subject to the will-frame-navigate / will-navigate guards).
+    navigateOnDragDrop: true,
+    // Sandboxed, so no Node anywhere: this only lets the fingerprint session preload run in
+    // iframes too. The pages and cosmetic-filter preloads ignore subframes.
+    nodeIntegrationInSubFrames: true,
+    preload: PAGES_PRELOAD,
+    backgroundThrottling: true,
+    spellcheck: false,
+  };
+}
+
 function createView(tab: Tab): WebContentsView {
-  const view = new WebContentsView({
-    webPreferences: {
-      session: getSpaceSession(tab.spaceId, tab.vpn),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      webviewTag: false,
-      // Sandboxed, so no Node anywhere: this only lets the fingerprint session preload run in
-      // iframes too. The pages and cosmetic-filter preloads ignore subframes.
-      nodeIntegrationInSubFrames: true,
-      preload: PAGES_PRELOAD,
-      backgroundThrottling: true,
-      spellcheck: false,
-    },
-  });
+  return adoptView(tab, new WebContentsView({ webPreferences: pageWebPreferences(tab.spaceId, tab.vpn) }));
+}
+
+function adoptView(tab: Tab, view: WebContentsView): WebContentsView {
   tab.view = view;
   attachViewBackdrop(view, tab.errorUrl ?? tab.url);
   const wc = view.webContents;
@@ -424,8 +478,16 @@ export function initTabs(win: BaseWindow): void {
   if (activeTabId !== null && tabs.has(activeTabId)) activateTab(activeTabId);
 }
 
+export function setWindowOpenInterceptor(fn: WindowOpenInterceptor | null): void {
+  windowOpenInterceptor = fn;
+}
+
 export function onTabWebContents(hook: WebContentsHook): void {
   wcHooks.push(hook);
+}
+
+export function setNavigationGate(gate: NavigationGate): void {
+  navigationGate = gate;
 }
 
 export function onStateChanged(cb: () => void): void {
@@ -440,7 +502,7 @@ export function createTab(opts: CreateTabOpts = {}): number {
     spaceId,
     vpn: normalizeCountry(opts.vpn),
     view: null,
-    url: opts.url || NEWTAB_URL,
+    url: canonicalInternalUrl(opts.url || NEWTAB_URL),
     title: opts.title ?? '',
     favicon: opts.favicon ?? null,
     loading: false,
@@ -458,6 +520,10 @@ export function createTab(opts: CreateTabOpts = {}): number {
     groupId: !opts.pinned && groupId && getGroup(groupId)?.spaceId === spaceId ? groupId : null,
   };
   tabs.set(tab.id, tab);
+  if (opts.view && !opts.view.webContents.isDestroyed()) {
+    adoptView(tab, opts.view);
+    tab.loading = opts.view.webContents.isLoading();
+  }
   const afterIndex = opts.afterId === undefined ? -1 : order.indexOf(opts.afterId);
   if (afterIndex === -1) order.push(tab.id);
   else order.splice(afterIndex + 1, 0, tab.id);
@@ -516,14 +582,14 @@ function showActive(): void {
   trackPanes(panes);
 }
 
-function closeTabInternal(id: number, replace: boolean): void {
+function closeTabInternal(id: number, replace: boolean, remember = true): void {
   const tab = tabs.get(id);
   if (!tab) return;
   const siblings = tabsInSpace(tab.spaceId);
   const index = siblings.indexOf(tab);
   const url = tab.errorUrl ?? tab.url;
-  if (url !== NEWTAB_URL) {
-    closedStack.push({ url, spaceId: tab.spaceId });
+  if (remember && url !== NEWTAB_URL) {
+    closedStack.push({ id: `c${++closedSeq}`, url, spaceId: tab.spaceId, title: tab.title, favicon: tab.favicon, closedAt: Date.now() });
     if (closedStack.length > CLOSED_STACK_MAX) closedStack.shift();
   }
   const wasOnScreen = isOnScreen(id);
@@ -565,6 +631,72 @@ export function reopenClosedTab(): number | null {
   return createTab({ url: entry.url, spaceId: getSpace(entry.spaceId) ? entry.spaceId : getActiveSpaceId(), active: true });
 }
 
+/** Recently closed tabs of a Space, newest first. */
+export function listClosedTabs(spaceId: SpaceId): ClosedTabEntry[] {
+  return closedStack.filter((entry) => entry.spaceId === spaceId).reverse();
+}
+
+export function reopenClosedById(id: string): number | null {
+  const index = closedStack.findIndex((entry) => entry.id === id);
+  if (index === -1) return null;
+  const [entry] = closedStack.splice(index, 1);
+  if (!entry || !getSpace(entry.spaceId)) return null;
+  return createTab({ url: entry.url, spaceId: entry.spaceId, active: true });
+}
+
+export function listArchiveCandidates(): Omit<ArchiveCandidate, 'downloading'>[] {
+  return order.map((id) => {
+    const tab = tabs.get(id)!;
+    return {
+      id: tab.id,
+      url: tab.errorUrl ?? tab.url,
+      lastActiveAt: tab.lastActiveAt,
+      pinned: tab.pinned,
+      active: isOnScreen(tab.id),
+      audible: tab.audible,
+      capturing: isMicActive(tab.id),
+    };
+  });
+}
+
+export interface DetachedTab {
+  spaceId: SpaceId;
+  url: string;
+  title: string;
+  favicon: string | null;
+  group?: ArchivedGroup;
+}
+
+/**
+ * Close tabs for the archive: not pushed to the recently-closed stack, pinned tabs skipped. A Space
+ * never ends up empty (a Burner Space would be discarded): its last tab is replaced by a start page.
+ */
+export function detachTabsForArchive(ids: readonly number[]): DetachedTab[] {
+  const detached: DetachedTab[] = [];
+  for (const id of ids) {
+    const tab = tabs.get(id);
+    if (!tab || tab.pinned) continue;
+    const url = tab.errorUrl ?? tab.url;
+    if (url.startsWith(NEWTAB_URL)) continue;
+    const group = savedGroup(tab.groupId);
+    detached.push({
+      spaceId: tab.spaceId,
+      url,
+      title: tab.title,
+      favicon: tab.favicon,
+      ...(group ? { group: { id: group.id, name: group.name, color: group.color } } : {}),
+    });
+    if (tabsInSpace(tab.spaceId).length === 1) createTab({ spaceId: tab.spaceId, active: activeTabId === id });
+    closeTabInternal(id, true, false);
+  }
+  return detached;
+}
+
+/** Tabs of a group in display order. */
+export function tabIdsInGroup(groupId: TabGroupId): number[] {
+  return order.filter((id) => tabs.get(id)?.groupId === groupId);
+}
+
 export function getActiveTab(): number | null {
   return activeTabId;
 }
@@ -575,6 +707,11 @@ export function getTabSpaceId(id: number): SpaceId | null {
 
 export function getTabWebContents(id: number): WebContents | null {
   return liveWc(tabs.get(id));
+}
+
+/** Where the tab's page view currently sits in the window (null while it has no view). */
+export function getTabViewBounds(id: number): Electron.Rectangle | null {
+  return tabs.get(id)?.view?.getBounds() ?? null;
 }
 
 export function tabIdForWebContents(wcId: number): number | null {
@@ -771,7 +908,8 @@ export function setTabVpn(id: number, country: string | null): void {
   scheduleEmit();
 }
 
-export function moveToSpace(id: number, spaceId: SpaceId): void {
+/** `url` (site rules): load this instead of the tab's current page once it is in the new Space. */
+export function moveToSpace(id: number, spaceId: SpaceId, url?: string): void {
   const tab = tabs.get(id);
   if (!tab || tab.spaceId === spaceId || !getSpace(spaceId)) return;
   const wasActive = id === activeTabId;
@@ -783,6 +921,10 @@ export function moveToSpace(id: number, spaceId: SpaceId): void {
   if (wasOnScreen && !wasActive) showActive();
   tab.savedHistory = null;
   tab.blockedCount = 0;
+  if (url) {
+    tab.url = url;
+    tab.errorUrl = null;
+  }
   tab.spaceId = spaceId;
   tab.groupId = null;
   order = order.filter((tid) => tid !== id);
@@ -1004,7 +1146,7 @@ export function restoreSession(saved: unknown): number {
   let restored = 0;
   const splitEntries: { tabId: number; saved: unknown }[] = [];
   list.forEach((entry, i) => {
-    if (!getSpace(entry.spaceId) || !/^(https?|vela|file):/i.test(entry.url)) return;
+    if (!getSpace(entry.spaceId) || !/^(https?|tarnel|vela|file):/i.test(entry.url)) return;
     const id = createTab({
       url: entry.url,
       spaceId: entry.spaceId,

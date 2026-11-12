@@ -1,4 +1,5 @@
 import type { SecureDnsMode } from './doh';
+import type { BatterySaverMode } from './battery';
 
 export type SpaceId = string;
 
@@ -173,7 +174,7 @@ export type WindowMaterial = 'mica' | 'acrylic' | 'none';
 export const NEWTAB_HEROES = ['clock', 'clock-seconds', 'logo', 'date', 'greeting', 'minimal'] as const;
 export type NewtabHero = (typeof NEWTAB_HEROES)[number];
 
-/** Memory saver: sleep LRU background tabs while Vela uses more than the threshold. */
+/** Memory saver: sleep LRU background tabs while Tarnel uses more than the threshold. */
 export const MEMORY_SAVER_MODES = ['off', 'balanced', 'maximum'] as const;
 export type MemorySaverMode = (typeof MEMORY_SAVER_MODES)[number];
 
@@ -185,9 +186,13 @@ export interface Settings {
   sleepAfterMinutes: number;
   /** Minutes of inactivity before a background tab is frozen (kept in memory, no CPU). 0 = never. */
   freezeAfterMinutes: number;
+  /** Hours of inactivity before a background tab moves to the Space's tab archive. 0 = never. */
+  archiveAfterHours: number;
   memorySaver: MemorySaverMode;
-  /** Memory saver threshold: total memory Vela may use before it sleeps tabs (GB). */
+  /** Memory saver threshold: total memory Tarnel may use before it sleeps tabs (GB). */
   memorySaverThresholdGB: number;
+  /** When battery saver kicks in (shared/battery.ts, docs/PERFORMANCE.md → Battery saver). */
+  batterySaver: BatterySaverMode;
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
   sendDoNotTrack: boolean;
@@ -204,6 +209,8 @@ export interface Settings {
   autoHideToolbar: boolean;
   /** Bookmarks bar under the top island (Ctrl+Shift+B). */
   showBookmarksBar: boolean;
+  /** Web panel rail on the right edge; switched on when the first panel is added. */
+  showPanelRail: boolean;
   windowMaterial: WindowMaterial;
   /** Start-page hero style; shared across all tabs and spaces. */
   newtabHero: NewtabHero;
@@ -230,22 +237,35 @@ export interface Settings {
   secureDnsNextDns: string;
   /** Custom DoH URI template; always valid or ''. */
   secureDnsTemplate: string;
-  /** User-Agent for every Space without its own; '' = Vela's default (stock Chromium). */
+  /** User-Agent for every Space without its own; '' = Tarnel's default (stock Chromium). */
   userAgent: string;
   /** Password manager: ask to save logins submitted on web pages. */
   offerToSavePasswords: boolean;
   /** Password manager: offer saved accounts on login forms (filling always needs a click). */
   passwordAutofill: boolean;
+  /** Click "reject" / "only necessary" on cookie consent banners (src/main/cookie-banners). */
+  rejectCookieBanners: boolean;
+  /** Shift-click on a link previews it in Peek instead of opening a new window. */
+  peekOnShiftClick: boolean;
+  /** Start page: a small "N trackers blocked this week" line linking to tarnel://privacy. */
+  newtabPrivacyStat: boolean;
+  /** A weekly system notification summarising the privacy report. */
+  privacyWeeklySummary: boolean;
+  /** Device-local opt-in; native encrypted media changes require a restart. */
+  drmEnabled: boolean;
 }
 
 export interface Suggestion {
-  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab' | 'bookmark';
+  kind: 'url' | 'history' | 'search' | 'tab' | 'remote-tab' | 'bookmark' | 'archived';
   title: string;
   url: string;
   /** Present when kind === 'tab': switching to an existing tab. */
   tabId?: number;
   /** Present when kind === 'remote-tab': name of the device the tab is open on. */
   device?: string;
+  /** Present when kind === 'archived': the archive entry to restore. */
+  archiveId?: string;
+  archivedAt?: number;
 }
 
 export interface TopSite {
@@ -290,6 +310,8 @@ export interface PerfStats {
   tabsFrozen?: number;
   /** Last memory saver action: memory freed (MB) and when (epoch ms); null if it has not acted. */
   memorySaver?: { freedMB: number; at: number } | null;
+  /** Battery saver is currently on. */
+  batterySaver?: boolean;
 }
 
 export interface FindResult {
@@ -323,6 +345,7 @@ export type UICommand =
   | 'audio-mixer'
   | 'task-manager'
   | 'bookmark-page'
+  | 'screenshot'
   | 'escape';
 
 export const SPACE_COLORS: readonly SpaceColor[] = [
@@ -342,8 +365,10 @@ export const DEFAULT_SETTINGS: Settings = {
   adblock: true,
   sleepAfterMinutes: 10,
   freezeAfterMinutes: 5,
+  archiveAfterHours: 24,
   memorySaver: 'balanced',
   memorySaverThresholdGB: 4,
+  batterySaver: 'battery',
   httpsOnly: true,
   blockThirdPartyCookies: true,
   sendDoNotTrack: true,
@@ -354,6 +379,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarWidth: 240,
   autoHideToolbar: false,
   showBookmarksBar: false,
+  showPanelRail: false,
   windowMaterial: 'mica',
   newtabHero: 'clock',
   tabLayout: 'horizontal',
@@ -371,6 +397,11 @@ export const DEFAULT_SETTINGS: Settings = {
   userAgent: '',
   offerToSavePasswords: true,
   passwordAutofill: true,
+  rejectCookieBanners: true,
+  peekOnShiftClick: true,
+  newtabPrivacyStat: true,
+  privacyWeeklySummary: false,
+  drmEnabled: false,
 };
 
 /** Where an installed extension came from. */
@@ -476,7 +507,7 @@ export interface SyncCategories {
 
 export const DEFAULT_SYNC_CATEGORIES: SyncCategories = { settings: true, spaces: true, tabs: true, history: false };
 
-/** User-owned sync storage. Vela never runs a sync server. */
+/** User-owned sync storage. Tarnel never runs a sync server. */
 export type SyncTransportInput =
   | { kind: 'folder'; path: string }
   | { kind: 'webdav'; url: string; username: string; password: string };

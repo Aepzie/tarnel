@@ -24,7 +24,7 @@ async function findTests(dir) {
 }
 
 const tests = await findTests(join(root, 'src'));
-const outdir = await mkdtemp(join(tmpdir(), 'vela-test-'));
+const outdir = await mkdtemp(join(tmpdir(), 'tarnel-test-'));
 try {
   await build({
     entryPoints: tests,

@@ -31,7 +31,7 @@ export interface SafetyWarning {
   target: URL | null;
 }
 
-/** `vela://error/?threat=…&source=…&url=…` → warning params; null for ordinary error pages. */
+/** `tarnel://error/?threat=…&source=…&url=…` → warning params; null for ordinary error pages. */
 export function parseWarning(search: string): SafetyWarning | null {
   const params = new URLSearchParams(search);
   const threat = params.get('threat');
@@ -59,7 +59,7 @@ export function Warning({ warning }: { warning: SafetyWarning }) {
 
   const backToSafety = (): void => {
     if (canGoBack) history.back();
-    else if (hasBridge()) void velaPages().navigate('vela://newtab/');
+    else if (hasBridge()) void velaPages().navigate('tarnel://newtab/');
   };
 
   const proceed = async (): Promise<void> => {

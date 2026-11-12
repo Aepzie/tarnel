@@ -1,11 +1,74 @@
 # Changelog
 
-All notable changes to Vela are documented in this file.
+All notable changes to Tarnel (called Vela up to 0.9.1) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+- New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
+- `tarnel://` is the address of the internal pages (`tarnel://settings`, `tarnel://newtab`, `tarnel://privacy`, …).
+- Settings → Privacy → Protected content (DRM), off by default. Needs a DRM-capable build; release builds don't include one yet.
+
+### Changed
+- Vela is now Tarnel: new name and logo. Existing profiles, settings and vela:// links carry over automatically.
+- `vela://` addresses keep working as an alias and open the same `tarnel://` page, so old bookmarks, history and restored tabs still work.
+- Windows: installer, shortcuts and Default apps entry are now called Tarnel (`Tarnel-<version>-setup-x64.exe`); updating removes the old Vela registrations so Windows doesn't list two browsers.
+- The profile folder moves from `Vela` to `Tarnel` on first start (moved, or copied if moving fails; nothing is deleted). For isolated test instances use `TARNEL_USER_DATA` (`VELA_USER_DATA` still works).
+- The project now lives at https://github.com/Aepzie/tarnel.
+- Ad blocking takes the uBlock Origin lists straight from uBlock Origin (including the 2025/2026 lists) instead of Ghostery's weeks-old copy, so new YouTube ad fixes arrive within a day. Falls back to Ghostery's copy if uBlock Origin's site is unreachable.
+
+### Fixed
+- Ad blocking now also blocks ad-SDK, analytics and device-maker telemetry hosts (Unity Ads, Yahoo, Yandex, TikTok/ByteDance, Xiaomi, Oppo/Realme, Huawei, Apple) through a small list bundled with Tarnel. adblock.turtlecute.org now scores 100% (was 69%).
+- A cached ad-block engine could fail to load at startup ("start offset of Uint32Array should be a multiple of 4") and was rebuilt from the network on every launch, depending on the length of its cache key.
+
+### Fixed
+- YouTube ads are blocked again: ad-blocking scriptlets now run before the page's own scripts (also in YouTube embeds), so ad data is removed before the player reads it. Each scriptlet still runs only once per page.
+
+### Security
+- Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.
+
+## [0.9.1] - 2026-11-11
+
+### Added
+- Open local files in tabs: PDF (Chromium's PDF viewer), HTML, images, SVG, text, JSON, audio and video. Paths on the command line ("Open with", double-click, `vela C:\pathile.pdf`, relative paths, `file://` URLs, a bare `--` before targets) and macOS `open-file` / `open-url` open in new tabs; tabs of untitled files show the file name.
+- Drag and drop: files or links dropped on the tab strip, vertical tab list or other browser UI open in new tabs (subtle accent ring while dragging); drops on the new-tab page or a local file open next to it, links dropped on a web page open in a new tab.
+- Default browser: Settings → General shows whether Vela is your default browser and has a "Make default" button (on Windows it opens Settings → Default apps on Vela's page; on macOS and Linux it sets it directly). The Windows installer now registers Vela as a full browser, so it appears in Default apps and in "Open with" for web links, HTML, XHTML, MHTML, PDF, SVG and WebP files, without taking any file type over. The portable version can't be the default browser.
+
+### Changed
+- README: shorter and focused, with a demo recording of the real app at the top (`docs/media/vela-demo.gif`, full quality as `vela-demo.mp4`). The complete feature list, all keyboard shortcuts, the Spaces details, performance notes and the security model moved to the new [docs/FEATURES.md](docs/FEATURES.md); features missing from the old README (VPN, passwords, translation, site rules, privacy report, cookie banners and more) are listed there now.
+
+### Fixed
+- Clock seconds keep each digit fully visible instead of inheriting the main time’s negative letter spacing.
+- The new-tab background fills the whole page without reserving an unused scrollbar gutter.
+- Vertical tab lists have clear inner spacing, and pinned tiles fit the collapsed rail.
+- Segmented controls use consistent padding and concentric selection corners in light and dark themes.
+- Toolbar and caption buttons use the shared 10px radius token.
+
+### Security
+- Web pages can never navigate, frame or open `file://`; only the user, other local files and Vela's own pages can. Local files never get the `window.vela` / `window.velaPages` bridges.
+
+## [0.9.0] - 2026-11-11
+
+### Added
+- Privacy report: rejected cookie banners are counted and shown as a weekly tile (replaces the referrer tile; referrers stay in the per-Space line).
+- Screenshots (Ctrl+Shift+X, "Screenshot" in the command palette, or "Take screenshot" in the page context menu): drag an area over the frozen page, or take the visible part or the full page (long pages are cut at 16,000 px). The editor offers crop, arrow, rectangle, pen, text, highlighter and blur (pixelate) to hide personal data, six colours, undo/redo and zoom; copy to the clipboard or save as PNG or JPEG (`Vela screenshot <date>.png` by default).
+- Web panels: pin web apps (WhatsApp Web, Telegram, Discord, Spotify, a calendar, any URL) to a slim rail on the right edge and open them as a resizable side view next to the page. Each panel has its own isolated session, an optional mobile layout, an unread badge from the page title and a menu to reload, mute, change the URL, open as a tab or remove it. Collapsed panels stay signed in and follow the tab freeze/sleep timeouts (never while playing sound). Settings → Appearance → Web panels.
+- Reject cookie banners (Settings → Privacy, on by default): consent pop-ups from common consent tools (OneTrust, Sourcepoint, Didomi, Cookiebot, Usercentrics, Google's consent page and more) are answered with "reject" / "only necessary" and hidden. Built on DuckDuckGo's autoconsent rules (MPL-2.0), bundled at build time — nothing is fetched or sent. The site-info popover shows how many banners were rejected on the page and can allow banners on a site; exceptions are listed in Settings → Privacy.
+- On-device page translation: pages are translated locally with Mozilla's Firefox Translations engine (Bergamot) and models; no page text leaves the device. Models (~37 MB per direction) are downloaded on demand, SHA-256 verified, and can be deleted. Translate button in the address popup when the page language differs, palette command "Translate page" / "Show original page", and Settings → General → Languages (target language, always translate, downloaded models). 109 directions (every language ↔ English; other pairs pivot through English).
+- Site rules (Settings → Rules): connect a domain card (`example.com`, `*.example.com` or a wildcard like `shop-*.example.*`) to actions — open in a Space, route through a MantelVPN country, fingerprint level (off / standard / strict / random per visit), user agent, or block the site. Applied before the page loads, also for link clicks and new tabs. A workflow editor (drag cards, connect them; fully usable by keyboard) plus a plain list view and a "Which rules apply to…" tester. The tab menu has "Create rule for this site…". When a VPN rule can't apply because you're signed out, a short hint appears.
+- Peek: shift-click a link (or "Open in Peek" in the page menu, or "Peek" in the address bar) to preview it in a floating window over the page, in the same Space and VPN route. Back, reload, "Open as tab" (keeps the page, no reload), "Open in split view" and close; Esc or a click on the dimmed page closes it. Toggle in Settings → General.
+- Email aliases (Settings → Privacy): connect SimpleLogin or addy.io with an API key and Vela offers "Use an alias for <site>?" when you focus the email field of a sign-up form. The alias is created only after your click, filled into that field, and kept with the login if you save the password (shown in vela://passwords with a link to manage it). The key is encrypted by your OS and never shown to pages.
+- Privacy report (`vela://privacy`, Settings → Privacy → Privacy report, or "Privacy report" in the command palette): this week vs last week for trackers and ads blocked (Vela's blocker and extension rules), tracking parameters removed, referrers trimmed and dangerous sites warned, with estimated data and time saved, the tracker domains and companies that tried to track you most, and a per-Space breakdown. Counted on this device only as daily totals (tracker domains only, never the pages you visited), kept for 90 days; "Reset stats" clears them. Burner Spaces count towards the totals only.
+- Start page: a small "N trackers blocked this week" line that opens the report (Settings → Appearance → Start page → Privacy stat, on by default).
+- Optional weekly summary notification (Settings → Privacy → Weekly summary, off by default).
+- Tab archive: tabs unused for a while (Settings → Performance: Off / 6 h / 12 h / 24 h / 3 days / 1 week, default 24 h) move into a per-Space archive with URL, title, favicon, group and time; pinned tabs, tabs playing audio, using the mic/camera or downloading are never archived, Burner Spaces keep their archive in memory only. `Ctrl+Shift+E`, "Move to archive", "Archive other tabs" and "Archive group" archive by hand. The archive view (archive button in the tab strip / vertical list, palette command "Tab archive") has search, days, restore (into its Space and group), restore all of a day, delete and clear, plus the Space's recently closed tabs. Address-bar suggestions include archived tabs ("Archived · 2 days ago").
+- Battery saver (Settings → Performance): Off, On battery (default), Below 20 % or Always. While on, background tabs freeze and sleep twice as fast, the memory saver acts as Maximum, address-bar preloading is skipped, adblock lists refresh less often, the perf chip stops polling and shows a leaf, and the browser's own animations are calmed. Security features are never reduced.
+
+### Changed
+- The "halve freeze/sleep delays on battery" rule now follows the Battery saver setting (it can be turned off).
 
 ### Fixed
 - "New fingerprint" now changes every seed-based value: CPU cores, memory and GPU model no longer stay the same by chance, and ClientRects (`getBoundingClientRect` / `getClientRects`) are now protected too, so their hash changes with the fingerprint.
@@ -262,17 +325,17 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.8.3...HEAD
-[0.8.3]: https://github.com/Aepzie/vela/compare/v0.8.0...v0.8.3
-[0.8.0]: https://github.com/Aepzie/vela/compare/v0.7.1...v0.8.0
-[0.7.1]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.1
-[0.7.0]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/Aepzie/vela/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/Aepzie/vela/compare/v0.4.1...v0.5.0
-[0.4.1]: https://github.com/Aepzie/vela/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/Aepzie/vela/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/Aepzie/vela/compare/v0.2.1...v0.3.0
-[0.2.1]: https://github.com/Aepzie/vela/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/Aepzie/vela/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/Aepzie/vela/compare/v0.1.0...v0.1.1
+[Unreleased]: https://github.com/Aepzie/tarnel/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/Aepzie/tarnel/compare/v0.8.0...v0.8.3
+[0.8.0]: https://github.com/Aepzie/tarnel/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/Aepzie/tarnel/compare/v0.6.0...v0.7.1
+[0.7.0]: https://github.com/Aepzie/tarnel/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Aepzie/tarnel/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/Aepzie/tarnel/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/Aepzie/tarnel/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/Aepzie/tarnel/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Aepzie/tarnel/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/Aepzie/tarnel/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/Aepzie/tarnel/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Aepzie/tarnel/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Aepzie/vela/releases/tag/v0.1.0

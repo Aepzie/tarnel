@@ -1,12 +1,14 @@
 import { app, webContents, type Session } from 'electron';
 import type { SpaceId } from '../shared/types';
 import { cleanUserAgent } from './privacy';
+import { userAgentOverrideOf } from './site-rules/overrides';
 import { getSettings, onSettingsChanged } from './settings';
 import { getSpace, onSessionCreated, onSessionRemoved, onSpacesChanged } from './spaces';
 
 /**
- * User-Agent per Space: the Space's own value, else the global setting, else Vela's clean Chromium
+ * User-Agent per Space: the Space's own value, else the global setting, else Tarnel's clean Chromium
  * UA (privacy.ts). Applied to the session (network + new pages) and to its open pages (next load).
+ * Tabs with a site-rule UA (site-rules/overrides.ts) keep theirs: rule > Space > global.
  * Accept-Language is left untouched (setUserAgent without the second argument keeps it).
  */
 
@@ -24,7 +26,7 @@ function apply(session: Session, spaceId: SpaceId): void {
     return; /* session gone */
   }
   for (const wc of webContents.getAllWebContents()) {
-    if (wc.isDestroyed() || wc.session !== session || wc.getUserAgent() === ua) continue;
+    if (wc.isDestroyed() || wc.session !== session || wc.getUserAgent() === ua || userAgentOverrideOf(wc)) continue;
     wc.setUserAgent(ua);
   }
 }

@@ -1,240 +1,128 @@
 <div align="center">
 
-<img src="build/icon.svg" width="112" height="112" alt="Vela logo">
+<img src="build/icon.svg" width="96" height="96" alt="Tarnel logo">
 
-# Vela
+# Tarnel
 
 **Fast. Quiet. Isolated.**
 
-A minimal Chromium-based desktop browser with sandboxed multi-session Spaces.
+A minimal Chromium browser where every Space is its own sealed session.<br>
+Work, personal, clients, throwaway: one window, no leaks between them.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Aepzie/vela/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Aepzie/vela/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Aepzie/vela?include_prereleases&style=flat-square)](https://github.com/Aepzie/vela/releases)
-[![License: MIT](https://img.shields.io/github/license/Aepzie/vela?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Aepzie/tarnel?include_prereleases&style=flat-square&label=release)](https://github.com/Aepzie/tarnel/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Aepzie/tarnel/total?style=flat-square&label=downloads)](https://github.com/Aepzie/tarnel/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Aepzie/tarnel/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Aepzie/tarnel/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Aepzie/tarnel?style=flat-square)](LICENSE)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20·%20macOS%20·%20Linux%20·%20Android-555?style=flat-square)
 
-[Download](#download) · [Features](#features) · [Screenshots](#screenshots) · [Shortcuts](#keyboard-shortcuts) · [Architecture](docs/ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
+**[Download](#download)** · [Features](docs/FEATURES.md) · [Shortcuts](#shortcuts) · [Architecture](docs/ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
+<br>
+
 <p align="center">
-  <img src="docs/screenshots/hero.png" alt="Vela new tab page with clock, search bar and top sites, dark theme" width="100%">
+  <img src="docs/media/vela-demo.gif" width="100%" alt="Tarnel demo: command palette, two Spaces signed in as different users on the same site, a Burner space with no cookies, and split view">
+  <br>
+  <sub>The real app, recorded on Linux. Two Spaces, same site, two different logins. <a href="https://github.com/Aepzie/tarnel/raw/main/docs/media/vela-demo.mp4">Download the MP4</a></sub>
 </p>
+
+## Why Tarnel
+
+Most browsers get heavier with every release. Tarnel goes the other way: a small toolbar that stays out of the way,
+ads and trackers blocked before they load, idle tabs put to sleep, and **Spaces** that keep your identities apart.
+
+**No account. No telemetry. No sync servers.** Just the web.
+
+> **Formerly Vela.** Same browser, new name and logo. Updating from Vela keeps your profile, Spaces, settings
+> and `vela://` links automatically.
+
+## Highlights
+
+**Spaces, actually isolated.** Each Space has its own cookies, storage, cache, logins, permissions, passwords and
+proxy. Sign in to two accounts on the same site, side by side. Each Space also shows sites its own stable
+fingerprint, so identities can't be linked across Spaces.
+
+**Burner spaces.** `Ctrl+Shift+N` opens a Space that lives only in memory. Close it and it's gone, cookies, history
+and all.
+
+**Privacy without add-ons.** Built-in ad and tracker blocking (Ghostery engine), cookie banners rejected for you,
+local phishing protection, HTTPS-only, Secure DNS, a weekly privacy report and page translation. Blocking, phishing
+checks and translation all run on your device.
+
+**Built for flow.** Command palette (`Ctrl+K`), split view up to 2×2, Peek previews, web panels, tab groups,
+vertical tabs, a screenshot editor and a per-tab audio mixer. Chrome extensions work too, including uBlock Origin Lite.
+
+**Light on your machine.** Same engine as Chrome, so no faster-engine claims: Tarnel just does less. Sleeping tabs
+free their renderer, sessions restore lazily, old tabs move to an archive, and a battery saver kicks in on battery.
+
+→ **[See every feature](docs/FEATURES.md)**
 
 ## Download
 
-**[Download the latest release](https://github.com/Aepzie/vela/releases/latest)**
+**[Latest release](https://github.com/Aepzie/tarnel/releases/latest)**
 
-| Platform | File |
-|----------|------|
-| Windows (installer) | [`Vela-0.1.0-setup-x64.exe`](https://github.com/Aepzie/vela/releases/latest) |
-| Windows (portable) | [`Vela-0.1.0-portable-x64.exe`](https://github.com/Aepzie/vela/releases/latest) — no install, runs from a USB stick |
-| macOS / Linux | `.dmg`, `.AppImage` and `.deb` builds are produced by CI and attached to the [same release page](https://github.com/Aepzie/vela/releases/latest) |
+| Platform | Files |
+|----------|-------|
+| Windows  | `setup-x64.exe` (installer, auto-updates) · `portable-x64.exe` (no install) |
+| macOS    | `.dmg` for Apple Silicon and Intel |
+| Linux    | `.AppImage` (auto-updates) · `.deb` |
+| Android  | `.apk` (Android 10+) |
 
-Builds are not code-signed yet (the release pipeline signs automatically once certificates are added —
-see [docs/RELEASING.md](docs/RELEASING.md)). Until then, Windows SmartScreen may show a warning on first
-launch — click **More info → Run anyway**. On macOS, right-click the app → **Open** the first time, or
-allow it under **System Settings → Privacy & Security**. Every release lists SHA-256 checksums in
-`SHA256SUMS.txt`.
-
-**Updates:** the Windows installer and the Linux AppImage update themselves — new versions download in the
-background and install when you restart Vela (or click **Update ready · Restart** in the toolbar). The portable
-`.exe`, the `.deb` and the (unsigned) macOS build only tell you when a new version is out and link to the
-release page. Configure it in **Settings → About → Updates**.
-
----
-
-## Why Vela
-
-Most browsers grow heavier with every release: more panels, more services, more background work.
-Vela goes the other way. It keeps the browser chrome small and out of the way, blocks ads and trackers
-at the network level, puts idle tabs to sleep, and gives you **Spaces** — fully separate browsing
-contexts for work, personal, client accounts or throwaway sessions, in one window.
-
-No account, no telemetry, no sync servers. Just the web, out of the way.
-
-## Features
-
-- **Spaces** — isolated sessions with their own cookies, storage, cache, logins, permissions and optional proxy.
-- **Burner spaces** — live only in memory and are wiped when closed. Open one with `Ctrl+Shift+N`.
-- **Per-space fingerprint protection** — each Space shows sites its own stable, plausible fingerprint (canvas, WebGL, audio, hardware, consistently in workers too; Strict also screen, devices, client hints), so identities can't be linked across Spaces.
-- **Built-in ad and tracker blocking** — network-level, powered by the [Ghostery adblocker](https://github.com/ghostery/adblocker) engine.
-- **Chrome extensions** — install from the Chrome Web Store (link or ID) or load unpacked; pin action buttons to the toolbar and choose which Spaces each extension runs in. Manifest V3 content blockers work: Vela implements `declarativeNetRequest`, so [uBlock Origin Lite](https://chromewebstore.google.com/detail/ddkjiahejlhfcafbddmgiahcphecmpfh) blocks with its static, dynamic and per-site rules (you can turn the built-in blocker off in Settings if you prefer it).
-- **Tab sleeping** — idle tabs release their renderer process entirely; they reload when you come back.
-- **Lazy session restore** — restored tabs stay asleep until you open them.
-- **Preconnect on hover** — hovering a suggestion warms up the connection before you choose it.
-- **Command palette** (`Ctrl+K`) — navigate, search history, switch tabs and run commands from the keyboard.
-- **Floating Islands UI** — a detached glass toolbar hovering over the desktop (Windows 11 Mica / Acrylic), the active tab doubles as the address bar and morphs into the command palette. Focus mode hides the toolbar entirely. Built with React, Tailwind CSS, shadcn/ui and Motion.
-- **Tab groups and vertical tabs** — named, colored, collapsible groups (drag tabs in and out, reorder groups), and an optional floating vertical tab island (`Ctrl+Shift+,`) that resizes and folds to an icon rail.
-- **Split view** — two tabs side by side (up to four in a 2×2 grid) with a draggable divider; the focused pane drives the address bar, find and zoom. Drag a tab onto the edge of the page, use the tab menu or `Ctrl+Shift+D`. Splits show as one joined tab and come back with the session.
-- **Optional end-to-end encrypted sync** — settings, Spaces, open tabs and (opt-in) history through a folder you already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
-- **Per-tab audio devices** — send each tab to its own speakers or headphones and pick its microphone (and camera) from the tab menu or the tab's speaker indicator; restored with the session.
-- **Per-tab audio mixer** (`Ctrl+Shift+M`) — every tab that plays sound gets a channel strip with volume up to 200 %, balance, mute, solo and live meters; plus a 10-band equalizer with presets, bass boost, mono, an "even out volume" compressor and its speaker / microphone, from the mixer button in the toolbar.
-- Find bar, zoom, downloads with a live progress ring, and DevTools.
-- **Auto-update** — checks GitHub releases quietly in the background, shows what's new, and installs on restart (optional pre-releases).
-- **Android app** — a native Vela for phones with the same Spaces, Burner spaces, sleeping tabs and privacy defaults ([details](#android)).
-- **Privacy defaults** — cleaned user agent, permissions denied by default, HTTPS-only upgrades,
-  optional Do Not Track / Global Privacy Control and third-party cookie blocking.
-
-### Spaces, explained
-
-Every Space is backed by its own Chromium **session partition**. Tabs in different Spaces cannot see each
-other's cookies or storage — you can be signed in to two accounts on the same site side by side.
-
-```mermaid
-flowchart LR
-    W[Vela window] --> P[Space: Personal]
-    W --> K[Space: Work]
-    W --> B[Burner space]
-
-    P --> PP[("persist:space-a<br/>cookies · storage · cache<br/>permissions · proxy")]
-    K --> KP[("persist:space-b<br/>cookies · storage · cache<br/>permissions · proxy")]
-    B --> BP[("space-c<br/>in memory only<br/>wiped on close")]
-```
-
-| Space type | Partition            | Stored         | Lifetime                              |
-|------------|----------------------|----------------|---------------------------------------|
-| Regular    | `persist:space-<id>` | on disk        | survives restarts                     |
-| Burner     | `space-<id>`         | in memory only | wiped when the space is closed or Vela quits |
+Builds are not code-signed yet, and every release lists SHA-256 checksums in `SHA256SUMS.txt`.
+- **Windows:** SmartScreen may warn on first launch. Click **More info → Run anyway**.
+- **macOS:** right-click the app → **Open**.
 
 ## Screenshots
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/browsing.png" alt="Browsing GitHub in Vela"><br><sub><b>Floating island toolbar</b> — tabs, address bar and the blocked-tracker badge in one row.</sub></td>
-    <td width="50%"><img src="docs/screenshots/palette.png" alt="Command palette with the query git"><br><sub><b>Command palette</b> (<code>Ctrl+K</code>) — open tabs, history and search from one box.</sub></td>
+    <td width="50%"><img src="docs/screenshots/spaces.png" alt="Space switcher with Personal, Work and Burner"><br><sub><b>Spaces</b>: switch between isolated sessions, or open a Burner.</sub></td>
+    <td width="50%"><img src="docs/screenshots/palette.png" alt="Command palette with the query git"><br><sub><b>Command palette</b>: tabs, history, commands and search in one box.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/spaces.png" alt="Space switcher with Personal, Work and Burner"><br><sub><b>Spaces</b> — switch between isolated sessions, or open a Burner that forgets everything.</sub></td>
-    <td width="50%"><img src="docs/screenshots/settings.png" alt="Spaces settings page"><br><sub><b>Per-Space settings</b> — color, optional proxy, clear data.</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/logo.png" alt="New tab page with the Vela logo hero"><br><sub><b>New tab styles</b> — clock, logo, date, greeting or minimal.</sub></td>
-    <td width="50%"><img src="docs/screenshots/light.png" alt="New tab page in light theme"><br><sub><b>Light theme</b> — or follow the system setting.</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/history.png" alt="History page"><br><sub><b>History</b> — searchable, grouped by day.</sub></td>
-    <td width="50%"></td>
+    <td width="50%"><img src="docs/screenshots/browsing.png" alt="Browsing GitHub in Tarnel"><br><sub><b>Floating island toolbar</b>: tabs, address and tracker badge in one row.</sub></td>
+    <td width="50%"><img src="docs/screenshots/light.png" alt="New tab page in light theme"><br><sub><b>Light and dark</b>, or follow the system.</sub></td>
   </tr>
 </table>
 
-## Performance
+## Shortcuts
 
-Vela uses the same Chromium engine as Chrome (via Electron), so **JavaScript and rendering benchmarks
-are roughly equal to Chrome**. Vela does not claim a faster engine. The gains come from doing less:
+| Shortcut | Action | Shortcut | Action |
+|---|---|---|---|
+| `Ctrl+K` | Command palette | `Ctrl+Shift+N` | New Burner space |
+| `Ctrl+T` | New tab | `Ctrl+Shift+D` | Split view on / off |
+| `Ctrl+Shift+T` | Reopen closed tab | `Ctrl+Shift+X` | Screenshot |
+| `Ctrl+Shift+,` | Vertical tabs | `Ctrl+Shift+Delete` | Panic: hide, mute, wipe Burners |
 
-- **Memory** — sleeping tabs have their renderer destroyed, not just throttled, so a large tab count
-  costs little RAM. Under system memory pressure the oldest idle tabs are put to sleep first.
-- **Bytes and requests** — ads and trackers are blocked before they are fetched, which reduces data
-  transferred and main-thread work on ad-heavy pages.
-- **Startup** — a small, code-split UI bundle and lazy session restore mean only the active tab loads at launch.
+On macOS use `Cmd`. [All shortcuts](docs/FEATURES.md#keyboard-shortcuts)
 
-Methodology and how to reproduce measurements: [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
-
-## Keyboard shortcuts
-
-On macOS, use `Cmd` in place of `Ctrl`.
-
-| Shortcut                  | Action                              |
-|---------------------------|-------------------------------------|
-| `Ctrl+T`                  | New tab (opens the command palette) |
-| `Ctrl+K`                  | Command palette                     |
-| `Ctrl+L`                  | Focus address                       |
-| `Ctrl+W`                  | Close tab                           |
-| `Ctrl+Shift+T`            | Reopen closed tab                   |
-| `Ctrl+F`                  | Find in page                        |
-| `Ctrl+Shift+S`            | Toggle focus mode (hide toolbar)    |
-| `Ctrl+Shift+,`            | Toggle horizontal / vertical tabs   |
-| `Ctrl+Shift+D`            | Split view on / off                 |
-| `Ctrl+Shift+N`            | New Burner space                    |
-| `Ctrl+Shift+M`            | Audio mixer                         |
-| `Ctrl+Shift+Delete`       | Panic: hide, mute, wipe Burners     |
-| `Shift+Esc`               | Task manager                        |
-| `Ctrl+1` – `Ctrl+9`       | Switch to tab 1–9                   |
-| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab             |
-| `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Zoom in / out / reset          |
-| `F12`                     | Developer tools                     |
-| `F11`                     | Fullscreen                          |
-
-## Install
-
-### Download
-
-See [Download](#download) above, or browse all versions on the [Releases page](https://github.com/Aepzie/vela/releases):
-
-| Platform | Formats                                  |
-|----------|------------------------------------------|
-| Windows  | `setup.exe` (NSIS installer), portable `.exe` |
-| macOS    | `.dmg` for Apple Silicon (arm64) and Intel (x64) |
-| Linux    | `.AppImage`, `.deb`                      |
-
-### Build from source
+## Build from source
 
 Requires Node.js 20 or newer.
 
 ```bash
-git clone https://github.com/Aepzie/vela.git
-cd vela
+git clone https://github.com/Aepzie/tarnel.git && cd tarnel
 npm install
 npm run dev      # build and launch
-npm run dist     # build installers for your OS into release/
+npm run dist     # installers for your OS, into release/
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for all scripts.
+The Android app lives in [`android/`](android/README.md) (Kotlin + Jetpack Compose).
 
-## Android
+## Security
 
-Vela also runs on Android 10+ as a native app (Kotlin + Jetpack Compose on Android System WebView), in
-[`android/`](android/):
-
-- **Floating bottom island** — back/forward, address bar with search suggestions from history, tab count and menu;
-  it shrinks to a small address pill while you read and springs back when you scroll up.
-- **Spaces and Burner spaces** — each Space has its own WebView profile (cookies, storage, cache, permissions);
-  a Burner forgets everything when you close it.
-- **Tabs that sleep** — idle tabs release their WebView and wake up when you return; tabs are restored on launch.
-- **Desktop-style new tab page** — tap the clock to cycle clock, seconds, logo, date, greeting and minimal.
-- **Privacy defaults** — HTTPS-only, third-party cookies blocked, Do Not Track / GPC, Safe Browsing, in-app
-  permission prompts, no cloud backup.
-
-Build it with `cd android && ./gradlew :app:assembleDebug` (JDK 17+, Android SDK 37). See
-[android/README.md](android/README.md) for release signing and architecture.
-
-## Architecture
-
-Vela is an Electron app. The browser chrome is a small TypeScript UI in one `WebContentsView`; each web page
-runs in its own sandboxed `WebContentsView`, and only the active tab is attached to the window. Main-process
-modules handle tabs, Spaces, IPC, the `vela://` protocol, privacy and performance features.
-
-Full details, including module contracts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Security model
-
-- **Sandboxed web content** — every tab runs with `sandbox: true`, `contextIsolation: true` and
-  `nodeIntegration: false`, with Chromium site isolation enabled.
-- **Minimal preloads** — preload scripts expose narrow, typed APIs via `contextBridge`; web pages never get Node.js access.
-- **IPC sender validation** — main-process handlers verify which `webContents` sent each message, so ordinary web
-  pages cannot call browser-chrome APIs.
-- **Privileged `vela://` pages** — internal pages (new tab, settings, error) are served from the app bundle through a
-  custom protocol with path-traversal protection, isolated from regular web origins.
-- **Partition isolation** — Spaces never share session state; Burner spaces are never written to disk.
-
-Found a vulnerability? Please follow [SECURITY.md](SECURITY.md).
-
-## Roadmap
-
-Planned:
-
-- [ ] Signed builds (Windows, macOS)
-
-Ideas and discussion are welcome in [issues](https://github.com/Aepzie/vela/issues).
+Every tab is sandboxed with context isolation and site isolation. Pages never get Node.js access, and Spaces never
+share session state. Details: [security model](docs/FEATURES.md#security-model) and
+[hardening](docs/ARCHITECTURE.md#security-hardening). Found a vulnerability? Please follow [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Contributions of all sizes are welcome — bug reports, fixes, docs and features. Start with
-[CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+Bug reports, fixes, docs and ideas are all welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md), or open an [issue](https://github.com/Aepzie/tarnel/issues).
 
 ## License
 
-[MIT](LICENSE) © 2026 Vela contributors.
-
-Vela is built on [Electron](https://www.electronjs.org/) and [Chromium](https://www.chromium.org/).
-Ad blocking uses [@ghostery/adblocker](https://github.com/ghostery/adblocker) (MPL-2.0).
+[MIT](LICENSE) © 2026 Tarnel contributors. Built on [Electron](https://www.electronjs.org/) and
+[Chromium](https://www.chromium.org/). Ad blocking uses [@ghostery/adblocker](https://github.com/ghostery/adblocker)
+(MPL-2.0).

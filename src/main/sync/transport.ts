@@ -3,7 +3,7 @@ import { watch as watchDir } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-/** Name of the directory Vela creates inside the user's folder / WebDAV collection. */
+/** Name of the directory Tarnel creates inside the user's folder / WebDAV collection. */
 export const SYNC_DIR = 'vela-sync';
 /** Only these names are ever read, written or deleted at the remote. */
 export const KEY_FILE = 'key.json';

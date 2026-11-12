@@ -1,0 +1,211 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test from 'node:test';
+import { downloadVerified, grantWindowsRuntimeAccess, installRuntime, parseCommand, runtimeTarget, resolveArchiveExtractor } from './drm-runtime.mjs';
+
+const bytes = Buffer.from('verified runtime test archive');
+const digest = createHash('sha256').update(bytes).digest('hex');
+
+async function fixture(t) {
+  // Match the installer's canonical paths, including macOS /var and Windows short-name aliases.
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'tarnel-drm-runtime-')));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  return root;
+}
+
+test('only published supported platform pairs produce an official pinned target', () => {
+  for (const platform of ['win32', 'darwin', 'linux']) {
+    for (const arch of ['x64', 'arm64']) {
+      const target = runtimeTarget(platform, arch);
+      assert.equal(target.version, '45.2.1+wvcus');
+      assert.match(target.sha256, /^[a-f0-9]{64}$/);
+      assert.ok(target.url.startsWith('https://github.com/castlabs/electron-releases/releases/download/'));
+      assert.ok(target.url.includes(encodeURIComponent(`electron-v45.2.1+wvcus-${platform}-${arch}.zip`)));
+    }
+  }
+  assert.throws(() => runtimeTarget('win32', 'ia32'), /not supported/);
+  assert.throws(() => runtimeTarget('../elsewhere', 'x64'), /not supported/);
+});
+
+test('archive bytes must match the pinned SHA256 before extraction is possible', async (t) => {
+  const root = await fixture(t);
+  const archive = join(root, 'runtime.zip');
+  await downloadVerified('https://example.test/runtime.zip', archive, digest, async () => new Response(bytes));
+  assert.deepEqual(await readFile(archive), bytes);
+  await assert.rejects(
+    downloadVerified('https://example.test/runtime.zip', join(root, 'corrupt.zip'), digest, async () => new Response('modified')),
+    /SHA256 mismatch/,
+  );
+  await assert.rejects(
+    downloadVerified('https://example.test/runtime.zip', join(root, 'error.zip'), digest, async () => new Response('missing', { status: 404 })),
+    /404/,
+  );
+});
+
+test('installation is isolated, reusable offline, and only activated after extraction', async (t) => {
+  const root = await fixture(t);
+  const normal = join(root, 'node_modules', 'electron');
+  await mkdir(normal, { recursive: true });
+  await writeFile(join(normal, 'sentinel'), 'untouched');
+  const target = { ...runtimeTarget('win32', 'x64'), sha256: digest };
+  let requests = 0;
+  let accessPreparations = 0;
+  const options = {
+    projectRoot: root,
+    target,
+    fetchImpl: async () => { requests++; return new Response(bytes); },
+    prepareAccess: async () => { accessPreparations++; },
+    extractArchive: async (_archive, { dir }) => {
+      await writeFile(join(dir, 'version'), target.version);
+      await writeFile(join(dir, 'electron.exe'), 'test executable');
+    },
+    log: () => {},
+  };
+  const first = await installRuntime(options);
+  assert.ok(first.directory.startsWith(join(root, '.cache', 'drm-runtime')));
+  assert.ok(JSON.parse(await readFile(join(first.directory, 'tarnel-runtime.json'), 'utf8')).executableSha256);
+  assert.equal(await readFile(join(normal, 'sentinel'), 'utf8'), 'untouched');
+  const again = await installRuntime({ ...options, fetchImpl: async () => { throw new Error('offline'); } });
+  assert.equal(again.executable, first.executable);
+  assert.equal(requests, 1);
+  assert.equal(accessPreparations, process.platform === 'win32' ? 2 : 0);
+  await writeFile(first.executable, 'corrupted executable');
+  await assert.rejects(installRuntime(options), /integrity verification/);
+  assert.equal(requests, 1, 'a corrupt installation is reported without replacing existing files');
+});
+
+async function legacyCache(t) {
+  const root = await fixture(t);
+  const target = runtimeTarget('linux', 'x64');
+  const directory = join(root, '.cache', 'drm-runtime', target.directoryName);
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'version'), target.version);
+  await writeFile(join(directory, target.executable), 'legacy executable');
+  const marker = {
+    version: target.version, archiveSha256: target.sha256,
+    executableSha256: createHash('sha256').update('legacy executable').digest('hex'),
+  };
+  await writeFile(join(directory, 'vela-runtime.json'), JSON.stringify(marker));
+  const options = {
+    projectRoot: root, target, log: () => {},
+    fetchImpl: async () => { throw new Error('must not download a legacy cache'); },
+    extractArchive: async () => { throw new Error('must not replace a legacy cache'); },
+  };
+  return { directory, marker, options };
+}
+
+test('verified legacy caches migrate offline without replacing runtime files', async (t) => {
+  const { directory, marker, options } = await legacyCache(t);
+  await writeFile(join(directory, 'sentinel'), 'keep');
+  const installed = await installRuntime(options);
+  assert.equal(installed.directory, directory);
+  assert.equal(await readFile(installed.executable, 'utf8'), 'legacy executable');
+  assert.equal(await readFile(join(directory, 'sentinel'), 'utf8'), 'keep');
+  assert.deepEqual(JSON.parse(await readFile(join(directory, 'tarnel-runtime.json'), 'utf8')), marker);
+  assert.equal((await installRuntime(options)).executable, installed.executable);
+});
+
+test('legacy cache migration rejects invalid verification records and changed binaries', async (t) => {
+  for (const corruption of ['json', 'version', 'archive', 'hash', 'executable', 'runtime-version']) {
+    const { directory, marker, options } = await legacyCache(t);
+    if (corruption === 'version') marker.version = '0.0.0';
+    if (corruption === 'archive') marker.archiveSha256 = '0'.repeat(64);
+    if (corruption === 'hash') marker.executableSha256 = '0'.repeat(64);
+    await writeFile(join(directory, 'vela-runtime.json'), corruption === 'json' ? '{' : JSON.stringify(marker));
+    if (corruption === 'executable') await writeFile(join(directory, 'electron'), 'changed');
+    if (corruption === 'runtime-version') await writeFile(join(directory, 'version'), '0.0.0');
+    await assert.rejects(installRuntime(options), /Invalid DRM runtime|verification|version mismatch/, corruption);
+    await assert.rejects(readFile(join(directory, 'tarnel-runtime.json')), { code: 'ENOENT' });
+  }
+});
+
+test('an invalid current marker cannot fall back to a valid legacy marker', async (t) => {
+  const { directory, options } = await legacyCache(t);
+  await writeFile(join(directory, 'tarnel-runtime.json'), '{');
+  await assert.rejects(installRuntime(options), /Invalid DRM runtime/);
+  assert.equal(await readFile(join(directory, 'tarnel-runtime.json'), 'utf8'), '{');
+});
+
+test('failed extraction never leaves an active runtime or staging directory', async (t) => {
+  const root = await fixture(t);
+  const target = { ...runtimeTarget('win32', 'x64'), sha256: digest };
+  await assert.rejects(installRuntime({
+    projectRoot: root, target,
+    fetchImpl: async () => new Response(bytes),
+    extractArchive: async () => { throw new Error('broken archive'); },
+    log: () => {},
+  }), /broken archive/);
+  assert.deepEqual(await readdir(join(root, '.cache', 'drm-runtime')), []);
+});
+
+test('wrong extracted version is rejected and never activated', async (t) => {
+  const root = await fixture(t);
+  const target = { ...runtimeTarget('win32', 'x64'), sha256: digest };
+  await assert.rejects(installRuntime({
+    projectRoot: root, target,
+    fetchImpl: async () => new Response(bytes),
+    extractArchive: async (_archive, { dir }) => {
+      await writeFile(join(dir, 'version'), '44.0.0');
+      await writeFile(join(dir, 'electron.exe'), 'test executable');
+    },
+    log: () => {},
+  }), /version mismatch/);
+  assert.deepEqual(await readdir(join(root, '.cache', 'drm-runtime')), []);
+});
+
+test('start forwards Electron arguments without shell interpretation', () => {
+  assert.deepEqual(parseCommand(['start', '--app', 'A:/app path', '--', '--remote-debugging-port=1234', '--user-agent=a b']), {
+    command: 'start', appPath: 'A:/app path', args: ['--remote-debugging-port=1234', '--user-agent=a b'],
+  });
+  assert.equal(parseCommand(['install']).command, 'install');
+  assert.equal(parseCommand(['path']).command, 'path');
+  assert.throws(() => parseCommand(['start', '--app']), /requires a path/);
+  assert.throws(() => parseCommand(['remove']), /Usage/);
+  assert.throws(() => parseCommand(['install', '--unexpected']), /Usage/);
+});
+
+test('Windows permission grant is confined to the exact pinned runtime and uses read/execute only', async (t) => {
+  const root = await fixture(t);
+  const target = runtimeTarget('win32', 'x64');
+  const directory = join(root, '.cache', 'drm-runtime', target.directoryName);
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'electron.exe'), 'runtime');
+  const calls = [];
+  const notices = [];
+  const run = async (command, args) => {
+    assert.equal(notices.length, 1, 'ACL change must be disclosed before icacls runs');
+    assert.ok(notices[0].includes(directory));
+    assert.match(notices[0], /S-1-15-2-1/);
+    assert.match(notices[0], /read\/execute|RX/);
+    calls.push({command, args});
+  };
+  await grantWindowsRuntimeAccess(root, target, directory, run, (message) => notices.push(message));
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].command, /[\\/]System32[\\/]icacls\.exe$/i);
+  assert.deepEqual(calls[0].args, [directory, '/grant', '*S-1-15-2-1:(OI)(CI)(RX)', '/T', '/Q', '/L']);
+  await assert.rejects(grantWindowsRuntimeAccess(root, target, root, run), /exact pinned runtime/);
+  assert.equal(calls.length, 1);
+});
+
+test('missing transitive archive extractor gives an actionable repair without adding dependencies', async () => {
+  await assert.rejects(resolveArchiveExtractor(async () => {
+    throw Object.assign(new Error('Cannot find package'), { code: 'ERR_MODULE_NOT_FOUND' });
+  }), /@electron-internal\/extract-zip.*npm ci/);
+  const failure = new Error('invalid module');
+  await assert.rejects(resolveArchiveExtractor(async () => { throw failure; }), (error) => error === failure);
+});
+
+test('Windows permission grant rejects junctions in the runtime before launching icacls', async (t) => {
+  const root = await fixture(t);
+  const elsewhere = await fixture(t);
+  const target = runtimeTarget('win32', 'x64');
+  const directory = join(root, '.cache', 'drm-runtime', target.directoryName);
+  await mkdir(directory, { recursive: true });
+  await symlink(elsewhere, join(directory, 'redirect'), process.platform === 'win32' ? 'junction' : 'dir');
+  let calls = 0;
+  await assert.rejects(grantWindowsRuntimeAccess(root, target, directory, async () => { calls++; }), /symlink|junction|redirect/i);
+  assert.equal(calls, 0);
+});

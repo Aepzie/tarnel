@@ -10,6 +10,9 @@ import { audioCommands } from '../audio/audio-commands';
 import { mixerCommands } from '../mixer/mixer-commands';
 import { vpnCommands } from '../vpn/vpn-commands';
 import { taskManagerCommands } from '../task-manager/task-manager-commands';
+import { screenshotCommands } from '../screenshot/screenshot-commands';
+import { translateCommands } from '../translate/translate-commands';
+import { archiveCommands } from '../archive/archive-commands';
 
 export interface PaletteCommand {
   id: string;
@@ -121,21 +124,28 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       icon: History,
       keywords: 'visited recent pages past browsing',
       hint: 'Ctrl H',
-      run: () => void vela.tabs.create({ url: 'vela://history' }),
+      run: () => void vela.tabs.create({ url: 'tarnel://history' }),
+    },
+    {
+      id: 'cmd:privacy-report',
+      title: 'Privacy report',
+      icon: ShieldCheck,
+      keywords: 'trackers blocked stats statistics privacy report ads',
+      run: () => void vela.tabs.create({ url: 'tarnel://privacy' }),
     },
     {
       id: 'cmd:extensions-store',
       title: 'Extensions store',
       icon: Puzzle,
       keywords: 'extensions add-ons plugins marketplace install chrome web store',
-      run: () => void vela.tabs.create({ url: 'vela://extensions/' }),
+      run: () => void vela.tabs.create({ url: 'tarnel://extensions/' }),
     },
     {
       id: 'cmd:settings',
       title: 'Settings',
       icon: Settings2,
       keywords: 'preferences options config',
-      run: () => void vela.tabs.create({ url: 'vela://settings' }),
+      run: () => void vela.tabs.create({ url: 'tarnel://settings' }),
     },
   ];
   commands.push(...tabGroupCommands({ settings, state }));
@@ -143,6 +153,9 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
   commands.push(...mixerCommands());
   commands.push(...vpnCommands());
   commands.push(...taskManagerCommands());
+  commands.push(...screenshotCommands(activeTabId !== null));
+  commands.push(...translateCommands(state));
+  commands.push(...archiveCommands(activeTabId));
   commands.push(...audioCommands(state));
   if (activeTabId !== null) {
     commands.push({

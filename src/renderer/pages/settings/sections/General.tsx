@@ -1,8 +1,10 @@
 import { useId } from 'react';
 import type { SearchEngine } from '@shared/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DefaultBrowserRow } from '../components/default-browser';
 import { Group, Row, SectionHeader, SwitchRow } from '../components/layout';
 import { useSettings } from '../store';
+import { Languages } from './Languages';
 
 const ENGINES: readonly { value: SearchEngine; label: string }[] = [
   { value: 'duckduckgo', label: 'DuckDuckGo' },
@@ -19,6 +21,7 @@ export function General() {
     <>
       <SectionHeader title="General" description="Search and startup behavior." />
       <Group>
+        <DefaultBrowserRow />
         <Row
           title="Search engine"
           description="Used for searches from the address bar and new tab."
@@ -39,10 +42,16 @@ export function General() {
         </Row>
         <SwitchRow
           title="Restore previous session"
-          description="Reopen your tabs and Spaces when Vela starts."
+          description="Reopen your tabs and Spaces when Tarnel starts."
           setting="restoreSession"
         />
+        <SwitchRow
+          title="Shift-click opens Peek"
+          description="Preview links in a floating window over the page instead of a new window."
+          setting="peekOnShiftClick"
+        />
       </Group>
+      <Languages />
     </>
   );
 }

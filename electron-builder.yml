@@ -1,6 +1,6 @@
 appId: org.velabrowser.vela
-productName: Vela
-copyright: Copyright © 2026 Vela contributors
+productName: Tarnel
+copyright: Copyright © 2026 Tarnel contributors
 
 directories:
   output: release
@@ -33,14 +33,10 @@ electronFuses:
 
 protocols:
   - name: Web link
+    role: Viewer
     schemes:
       - http
       - https
-
-fileAssociations:
-  - ext: [html, htm]
-    name: HTML document
-    role: Viewer
 
 win:
   icon: build/icon.ico
@@ -53,12 +49,14 @@ win:
     - portable
 
 nsis:
+  # Default-apps registration (StartMenuInternet, Capabilities, ProgIDs); the portable build has none.
+  include: build/installer.nsh
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Vela
+  shortcutName: Tarnel
   artifactName: ${productName}-${version}-setup-${arch}.${ext}
 
 portable:
@@ -72,6 +70,40 @@ mac:
   # Signing is driven by the environment (see docs/RELEASING.md): without CSC_LINK the build stays
   # unsigned/ad-hoc, and notarization only runs when APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and
   # APPLE_TEAM_ID are set; otherwise electron-builder logs "skipped macOS notarization".
+
+  # Document types Tarnel can show (see docs/ARCHITECTURE.md, "Default browser and file types"). Only for
+  # macOS (Info.plist CFBundleDocumentTypes) and Linux (.desktop MimeType): on Windows electron-builder
+  # would also set each `.ext` default and silently take the type over, so build/installer.nsh
+  # registers them Chrome-style instead (ProgIDs, OpenWithProgids, Default apps Capabilities).
+  # Formats people usually open elsewhere (txt, json, png, jpg, gif) are left out on purpose.
+  fileAssociations: &fileTypes
+    - ext: [html, htm, shtml]
+      name: HTML document
+      mimeType: text/html
+      role: Viewer
+    - ext: [xhtml, xht]
+      name: XHTML document
+      mimeType: application/xhtml+xml
+      role: Viewer
+    - ext: [mht, mhtml]
+      name: Web archive
+      mimeType: multipart/related
+      role: Viewer
+    - ext: pdf
+      name: PDF document
+      mimeType: application/pdf
+      role: Viewer
+      rank: Alternate
+    - ext: svg
+      name: SVG image
+      mimeType: image/svg+xml
+      role: Viewer
+      rank: Alternate
+    - ext: webp
+      name: WebP image
+      mimeType: image/webp
+      role: Viewer
+      rank: Alternate
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
@@ -80,10 +112,10 @@ mac:
   # Hardened runtime + camera/mic/location entitlements need usage strings, or macOS kills the app
   # the first time a page asks for the device.
   extendInfo:
-    NSCameraUsageDescription: A website in Vela wants to use your camera.
-    NSMicrophoneUsageDescription: A website in Vela wants to use your microphone.
-    NSLocationWhenInUseUsageDescription: A website in Vela wants to know your location.
-    NSBluetoothAlwaysUsageDescription: A website in Vela wants to use a Bluetooth device.
+    NSCameraUsageDescription: A website in Tarnel wants to use your camera.
+    NSMicrophoneUsageDescription: A website in Tarnel wants to use your microphone.
+    NSLocationWhenInUseUsageDescription: A website in Tarnel wants to know your location.
+    NSBluetoothAlwaysUsageDescription: A website in Tarnel wants to use a Bluetooth device.
   target:
     - target: dmg
       arch:
@@ -101,12 +133,12 @@ dmg:
 linux:
   icon: build/icons
   category: Network;WebBrowser
-  maintainer: Vela contributors <noreply@github.com>
+  maintainer: Tarnel contributors <noreply@github.com>
   synopsis: Fast. Quiet. Isolated.
+  # Same file types as mac (YAML anchor). Added to their MIME types and x-scheme-handler/http(s) from `protocols`.
   mimeTypes:
-    - text/html
-    - x-scheme-handler/http
-    - x-scheme-handler/https
+    - application/x-mimearchive
+  fileAssociations: *fileTypes
   target:
     - AppImage
     - deb
@@ -114,5 +146,5 @@ linux:
 publish:
   provider: github
   owner: Aepzie
-  repo: vela
+  repo: tarnel
   releaseType: release

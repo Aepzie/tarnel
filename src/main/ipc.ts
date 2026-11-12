@@ -1,5 +1,6 @@
 import { app, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { AUDIO_IPC, IPC, PANIC_IPC } from '../shared/ipc';
+import { AUDIO_IPC, FILES_IPC, IPC, MAX_DROPPED, PANIC_IPC } from '../shared/ipc';
+import { isAbsolute } from 'node:path';
 import {
   SPACE_COLORS,
   type ContentBounds,
@@ -16,6 +17,7 @@ import { getFrameRateStatus, relaunchApp } from './perf/frame-rate';
 import { collectPerfStats } from './perf/metrics';
 import { getMemorySaverNotice } from './perf/sleeper';
 import { schedulePrefetch } from './perf/prerender';
+import { isBatterySaverActive, registerBatteryIpc } from './perf/battery-saver';
 import { pageThemeFor } from './page-theme';
 import { getSettings, updateSettings } from './settings';
 import { clearSpaceData, createSpace, getActiveSpaceId, getSpace, getSpaceSession, listSpaces, updateSpace } from './spaces';
@@ -23,6 +25,8 @@ import * as tabs from './tabs';
 import * as tabGroups from './tab-groups';
 import { getCompletedDownloadPath, getDownloadPath, isDangerousDownload } from './downloads';
 import { registerSafetyIpc } from './safety';
+import { registerPrivacyReportIpc } from './privacy-report';
+import { registerDefaultBrowserIpc } from './default-browser';
 import { registerExtensionIpc } from './extensions';
 import { forgetSpacePermissions, handlePermissionResponse } from './permissions';
 import { regenerateFingerprint } from './fingerprint';
@@ -40,8 +44,19 @@ import { registerTaskManagerIpc } from './perf/task-manager';
 import { bookmarkSuggestions } from './bookmarks';
 import { registerBookmarksIpc } from './bookmarks/ipc';
 import { registerPasswordIpc } from './passwords';
+import { registerScreenshotIpc } from './screenshot';
+import { registerPanelsIpc } from './panels';
+import { registerCookieBannerIpc } from './cookie-banners';
+import { registerTranslateIpc } from './translate';
+import { registerSiteRulesIpc } from './site-rules';
+import { registerPeekIpc } from './peek';
+import { registerAliasIpc } from './aliases';
+import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
+import { fileUrlForLocalPath } from './open-files';
+import { registerDrmIpc } from './drm';
+import { isInternalPageSender, validateDrmSettingsPatch } from './drm/ipc-policy';
 
 type Handler = (...args: unknown[]) => unknown;
 
@@ -135,8 +150,10 @@ function groupPatch(value: unknown): Partial<TabGroupInput> {
   return patch;
 }
 
-function settingsPatch(value: unknown): Partial<Settings> {
-  return plainObject(value) as Partial<Settings>;
+function settingsPatch(value: unknown, source: 'chrome' | 'page' = 'chrome', url?: string): Partial<Settings> {
+  const patch = plainObject(value);
+  validateDrmSettingsPatch(patch, source, url);
+  return patch as Partial<Settings>;
 }
 
 function bounds(value: unknown): ContentBounds {
@@ -157,8 +174,7 @@ function fromChrome(event: IpcMainInvokeEvent): boolean {
 }
 
 function fromVelaPage(event: IpcMainInvokeEvent | IpcMainEvent): boolean {
-  const frame = event.senderFrame;
-  return !!frame && frame.parent === null && frame.url.startsWith('vela://') && tabs.tabIdForWebContents(event.sender.id) !== null;
+  return isInternalPageSender(event.senderFrame, tabs.tabIdForWebContents(event.sender.id));
 }
 
 function handleChrome(channel: string, fn: Handler): void {
@@ -184,7 +200,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
   const results: Suggestion[] = [];
   const seen = new Set<string>();
   const push = (s: Suggestion): void => {
-    const key = `${s.kind === 'tab' ? `tab:${s.tabId}` : s.url}`;
+    const key = s.kind === 'tab' ? `tab:${s.tabId}` : s.kind === 'archived' ? `archived:${s.archiveId}` : s.url;
     if (seen.has(key)) return;
     seen.add(key);
     results.push(s);
@@ -195,6 +211,7 @@ function buildSuggestions(rawInput: unknown): Suggestion[] {
     push({ kind: 'tab', title: tab.title || tab.url, url: tab.url, tabId: tab.id });
   }
   for (const entry of bookmarkSuggestions(input, 3)) push(entry);
+  for (const entry of archiveSuggestions(input, 3)) push(entry);
   for (const entry of suggest(input, 6)) push(entry);
   for (const entry of remoteTabSuggestions(input, 3)) push(entry);
   return results;
@@ -213,6 +230,7 @@ async function perfStats() {
     })),
     tabsFrozen: counts.frozen,
     memorySaver: getMemorySaverNotice(),
+    batterySaver: isBatterySaverActive(),
   };
 }
 
@@ -240,12 +258,30 @@ function resolvedUrl(input: string): string {
   return url;
 }
 
+function stringList(value: unknown, name: string): string[] {
+  if (!Array.isArray(value) || value.length > MAX_DROPPED) throw new TypeError(`Invalid ${name}`);
+  return value.map((entry) => str(entry, MAX_INPUT, name));
+}
+
+/**
+ * Dropped files open by absolute path only (must exist and be a regular file, no directories);
+ * dropped links / text resolve like address-bar input but never to file:// (paths cover that).
+ */
+function openDropped(rawPaths: unknown, rawLinks: unknown): number {
+  const fileUrls = stringList(rawPaths, 'paths').map((path) => (isAbsolute(path) ? fileUrlForLocalPath(path) : null));
+  const engine = getSettings().searchEngine;
+  const linkUrls = stringList(rawLinks, 'links').map((link) => resolveInput(link.trim(), engine)).filter((url) => !url?.startsWith('file:'));
+  const urls = [...fileUrls, ...linkUrls].filter((url): url is string => !!url);
+  urls.forEach((url, index) => tabs.createTab({ url, active: index === urls.length - 1 }));
+  return urls.length;
+}
+
 /** Executables and scripts are never launched from the browser UI; the folder is shown instead. */
 const DANGEROUS_EXT = /\.(exe|msi|msix|appx|bat|cmd|com|scr|pif|ps1|psm1|vbs|vbe|js|jse|wsf|wsh|hta|lnk|jar|reg|cpl|dll|app|pkg|dmg|sh|command|run|appimage|deb|rpm)$/i;
 
 
 /**
- * Synchronous boot info for vela:// pages, read by the pages preload before first paint so pages
+ * Synchronous boot info for tarnel:// pages, read by the pages preload before first paint so pages
  * never flash the wrong theme or accent. Tiny and allocation-free on purpose (it blocks the renderer).
  */
 function registerPagesBootSync(): void {
@@ -270,6 +306,7 @@ export function registerIpc(): void {
       active: optBool(opts.active),
     });
   });
+  handleChrome(FILES_IPC.openDropped, (paths, links) => openDropped(paths, links));
   handleChrome(c.tabClose, (id) => tabs.closeTab(int(id)));
   handleChrome(c.tabActivate, (id) => tabs.activateTab(int(id)));
   handleChrome(c.tabNavigate, (id, input) => tabs.navigateTab(int(id), str(input, MAX_INPUT, 'input')));
@@ -344,15 +381,28 @@ export function registerIpc(): void {
   handleChrome(AUDIO_IPC.setDevice, (id, slot, choice) => setTabMediaDeviceFromChrome(int(id), slot, choice));
   registerMixerIpc(handleChrome);
   registerVpnIpc(handleChrome);
+  registerBatteryIpc(handleChrome);
   handleChrome(PANIC_IPC.run, () => panic());
   registerSiteDataIpc(handleChrome, handlePages);
+  registerSiteRulesIpc(handleChrome, handlePages);
   registerTaskManagerIpc(handleChrome);
   registerBookmarksIpc(handleChrome, handlePages);
   registerPasswordIpc(handleChrome, handlePages);
+  registerScreenshotIpc(handleChrome);
+  registerPanelsIpc(handleChrome, handlePages);
+  registerCookieBannerIpc(handleChrome, handlePages);
+  registerTranslateIpc(handleChrome, handlePages);
+  registerPeekIpc(handleChrome);
+  registerAliasIpc(handleChrome, handlePages);
+  registerTabArchiveIpc(handleChrome);
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
-  handlePages(p.setSettings, (_e, patch) => updateSettings(settingsPatch(patch)));
+  handlePages(p.setSettings, (event, patch) => {
+    const valid = settingsPatch(patch, 'page', event.senderFrame?.url);
+    return updateSettings(valid);
+  });
+  registerDrmIpc(handlePages);
   handlePages(p.topSites, () => topSites(8));
   handlePages(p.perf, perfStats);
   handlePages(p.frameRate, () => getFrameRateStatus());
@@ -401,5 +451,7 @@ export function registerIpc(): void {
   registerExtensionIpc(handleChrome, handlePages);
   registerSyncIpc(handlePages);
   registerSafetyIpc(handlePages);
+  registerPrivacyReportIpc(handlePages);
+  registerDefaultBrowserIpc(handlePages);
   registerImportIpc(handlePages);
 }

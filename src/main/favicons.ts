@@ -52,7 +52,8 @@ function save(host: string, data: string): void {
   });
 }
 
-async function download(faviconUrl: string, session: Session): Promise<string | null> {
+/** Fetches one favicon as a data: URL (null when not an image or too large); also used by web panels. */
+export async function fetchFaviconData(faviconUrl: string, session: Session): Promise<string | null> {
   const response = await session.fetch(faviconUrl, {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     credentials: 'omit',
@@ -78,7 +79,7 @@ export function rememberFavicon(pageUrl: string, faviconUrl: string, session: Se
   const cached = getStore().get()[host];
   if (cached && Date.now() - cached.at < FRESH_MS) return;
   attempted.add(host);
-  download(faviconUrl, session)
+  fetchFaviconData(faviconUrl, session)
     .then((data) => {
       if (data) save(host, data);
     })

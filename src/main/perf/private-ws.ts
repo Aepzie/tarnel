@@ -10,7 +10,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
  *
  * Cost: started lazily on the first request (~0.4 s CPU once), then ~1–2 ms CPU per sample; it trims
  * its own working set after every answer (~5 MB private WS while idle). It exits after
- * `IDLE_EXIT_MS` without requests (window hidden, panel closed) and when Vela quits (stdin closes),
+ * `IDLE_EXIT_MS` without requests (window hidden, panel closed) and when Tarnel quits (stdin closes),
  * so it costs nothing while nobody looks at memory. Any failure → callers fall back to private
  * commit; after `MAX_FAILURES` the helper is not tried again this session.
  */

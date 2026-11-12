@@ -105,7 +105,7 @@ class ScreenshotTest {
             listOf(
                 "https://en.wikipedia.org/wiki/Sailing" to "Sailing - Wikipedia",
                 "https://en.wikipedia.org/wiki/Vela_(constellation)" to "Vela (constellation) - Wikipedia",
-                "https://github.com/Aepzie/vela" to "Aepzie/vela: Fast. Quiet. Isolated.",
+                "https://github.com/Aepzie/tarnel" to "Aepzie/tarnel: Fast. Quiet. Isolated.",
                 "https://m.youtube.com/" to "YouTube",
                 "https://news.ycombinator.com/" to "Hacker News",
             ).forEach { (url, title) -> repeat(3) { browser.history.record(url, title) } }
@@ -236,7 +236,7 @@ class ScreenshotTest {
     @Test
     fun tabSwitcher() {
         tab("https://en.wikipedia.org/wiki/Sailing", "Sailing - Wikipedia", seed = 0)
-        val gh = tab("https://github.com/Aepzie/vela", "Aepzie/vela", seed = 1)
+        val gh = tab("https://github.com/Aepzie/tarnel", "Aepzie/tarnel", seed = 1)
         tab("https://news.ycombinator.com/", "Hacker News", seed = 4, thumb = false)
         tab("", "", seed = 5, thumb = false)
         tab("https://m.youtube.com/", "YouTube", seed = 2)
@@ -302,7 +302,7 @@ class ScreenshotTest {
         shootScreen("16-context-menu")
         browser.contextTarget = null
 
-        browser.downloads.items.add(DownloadItem(1, "vela-0.2.1.apk", "application/vnd.android.package-archive", DownloadStatus.RUNNING, 3_400_000, 9_100_000))
+        browser.downloads.items.add(DownloadItem(1, "tarnel-0.2.1.apk", "application/vnd.android.package-archive", DownloadStatus.RUNNING, 3_400_000, 9_100_000))
         render { BrowserScreen(browser, null) {} }
         shoot("17-download-chip")
     }

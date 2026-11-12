@@ -210,7 +210,7 @@ function SpaceCard({
         {space.ephemeral && (
           <Badge
             variant="outline"
-            title="In memory only. Wiped when Vela closes."
+            title="In memory only. Wiped when Tarnel closes."
             className="gap-1 border-orange-500/25 bg-orange-500/10 text-orange-600 dark:text-orange-300"
           >
             <Flame strokeWidth={2} aria-hidden />
@@ -418,7 +418,7 @@ function NewSpaceCard({ onCreated }: { onCreated: (space: Space) => void }) {
               Burner
             </span>
           }
-          description="In memory only. Everything is wiped when Vela closes."
+          description="In memory only. Everything is wiped when Tarnel closes."
           htmlFor={`${id}-burner`}
           descriptionId={`${id}-burner-desc`}
         >
