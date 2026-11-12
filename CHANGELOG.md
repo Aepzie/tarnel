@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Offline error pages offer an optional local "Trail hop" game: jump with Space, Up or the Jump button, pause with Escape, and resume or play again. It loads only when opened, pauses when hidden or unfocused, and keeps scores only in memory. Retry and back navigation remain available; security warnings never offer the game.
 - New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
 - `tarnel://` is the address of the internal pages (`tarnel://settings`, `tarnel://newtab`, `tarnel://privacy`, …).
 

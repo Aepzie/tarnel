@@ -97,6 +97,11 @@ flowchart LR
   balance, mute, solo and live meters; plus a 10-band equalizer with presets, bass boost, mono, an "even out volume"
   compressor and its speaker / microphone, from the mixer button in the toolbar.
 - **Task manager** (`Shift+Esc`): CPU and memory per tab, extension and browser process.
+- **Offline game**: eligible connection-error pages offer "Play offline", a small local "Trail hop" runner.
+  Start explicitly, jump with Space, Up or Jump, and pause with Escape or Pause. It pauses when hidden or when
+  focus leaves the game; Resume continues it. Scores stay in memory for that open game only. No downloads,
+  sound or account are needed, and reconnecting leaves you in control of retrying the page. Certificate,
+  blocked-page and dangerous-site warnings never offer it.
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 
 ## Performance
