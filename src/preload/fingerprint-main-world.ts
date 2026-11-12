@@ -342,7 +342,7 @@ export function protectMainWorld(config: FingerprintConfig): void {
      * Layout reads (getClientRects / getBoundingClientRect on elements and ranges) are scaled by one
      * tiny per-site factor (|1 - f| between 1.6e-6 and 1.4e-5): geometry stays self-consistent and
      * layout code is unaffected, but ClientRects hashes follow the Space's seed. Rects a page builds
-     * itself are never scaled; writing to a measured rect drops the scaling.
+     * itself are never scaled; writing to a measured rect stores the scaled values natively.
      */
     const rectScale = 1 + ((k1 & 0x7f) + 16) * (k1 & 0x80 ? 1e-7 : -1e-7);
     const scaledRects = new WeakSet<object>();
@@ -362,29 +362,71 @@ export function protectMainWorld(config: FingerprintConfig): void {
       wrapMethod(proto, 'getBoundingClientRect', markRect);
       wrapMethod(proto, 'getClientRects', markRectList);
     }
-    const scaled = (original: Getter): Getter =>
+    const readOnlyProto = realm.DOMRectReadOnly?.prototype;
+    const rectProto = realm.DOMRect?.prototype;
+    const baseKeys = ['x', 'y', 'width', 'height'];
+    const rectKeys = [...baseKeys, 'top', 'right', 'bottom', 'left'];
+    /** Captured before wrapping, so reading and materializing never re-enter the wrappers. */
+    const nativeBaseGetters = baseKeys.map((name) => (readOnlyProto ? getDescriptor(readOnlyProto, name)?.get : undefined));
+    const nativeBaseSetters = baseKeys.map((name) => (rectProto ? getDescriptor(rectProto, name)?.set : undefined));
+    /** The edges are derived from the scaled x/y/width/height exactly like DOMRectReadOnly derives them natively. */
+    const scaledBase = (rect: object, i: number): number => {
+      const get = nativeBaseGetters[i];
+      return get ? (apply(get, rect, []) as number) * rectScale : NaN;
+    };
+    const min = (a: number, b: number): number => (a !== a || b !== b ? NaN : a < b ? a : b);
+    const max = (a: number, b: number): number => (a !== a || b !== b ? NaN : a > b ? a : b);
+    const scaledBox = (rect: object): Record<string, number> => {
+      const x = scaledBase(rect, 0);
+      const y = scaledBase(rect, 1);
+      const width = scaledBase(rect, 2);
+      const height = scaledBase(rect, 3);
+      return {
+        x,
+        y,
+        width,
+        height,
+        top: min(y, y + height),
+        right: max(x, x + width),
+        bottom: max(y, y + height),
+        left: min(x, x + width),
+      };
+    };
+    const scaled = (name: string) => (original: Getter): Getter =>
       function (this: unknown) {
         const value = apply(original, this, []) as number;
-        return scaledRects.has(this as object) ? value * rectScale : value;
+        return scaledRects.has(this as object) ? scaledBox(this as object)[name]! : value;
       };
-    const rectKeys = ['x', 'y', 'width', 'height', 'top', 'right', 'bottom', 'left'];
     /** toJSON reads the internal slots, so JSON.stringify(rect) must be scaled exactly like the getters. */
-    wrapMethod(realm.DOMRectReadOnly?.prototype, 'toJSON', (original) =>
+    wrapMethod(readOnlyProto, 'toJSON', (original) =>
       function (this: unknown, ...args: unknown[]) {
         const json = apply(original, this, args) as Record<string, unknown>;
         if (!scaledRects.has(this as object) || !json) return json;
+        const box = scaledBox(this as object);
         for (const key of rectKeys) {
-          if (typeof json[key] === 'number') json[key] = (json[key] as number) * rectScale;
+          if (typeof json[key] === 'number') json[key] = box[key];
         }
         return json;
       },
     );
+    /**
+     * Writing to a measured rect first stores the scaled values natively, then drops the mark: every
+     * field keeps the value the page already saw, so `r.x = r.x` can't reveal the unscaled geometry.
+     */
+    const materializeRect = (rect: object): void => {
+      const box = scaledBox(rect);
+      scaledRects.delete(rect);
+      for (let i = 0; i < baseKeys.length; i++) {
+        const set = nativeBaseSetters[i];
+        if (set) apply(set, rect, [box[baseKeys[i]!]]);
+      }
+    };
     for (const name of rectKeys) {
-      wrapGetter(realm.DOMRectReadOnly?.prototype, name, scaled);
-      wrapGetter(realm.DOMRect?.prototype, name, scaled);
-      wrapSetter(realm.DOMRect?.prototype, name, (original) =>
+      wrapGetter(readOnlyProto, name, scaled(name));
+      wrapGetter(rectProto, name, scaled(name));
+      wrapSetter(rectProto, name, (original) =>
         function (this: unknown, value: unknown) {
-          scaledRects.delete(this as object);
+          if (scaledRects.has(this as object)) materializeRect(this as object);
           apply(original, this, [value]);
         },
       );

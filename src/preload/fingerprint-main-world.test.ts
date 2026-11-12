@@ -84,20 +84,51 @@ test('getClientRects items and Range rects are scaled consistently', () => {
   }
 });
 
-test('page-built rects and written rects stay native', () => {
+test('page-built rects stay native; writes to measured rects keep the scaled values', () => {
   const context = protectedRealm();
   const result = vm.runInContext(
     `const own = new DOMRect(1009, 2, 3, 4);
      const written = new Element().getBoundingClientRect();
+     const seenX = written.x;
      written.width = 10;
-     ({ own: JSON.stringify(own), ownX: own.x, written: JSON.parse(JSON.stringify(written)), writtenX: written.x })`,
+     ({ own: JSON.stringify(own), ownX: own.x, written: JSON.parse(JSON.stringify(written)), writtenX: written.x, seenX })`,
     context,
-  ) as { own: string; ownX: number; written: Record<string, number>; writtenX: number };
+  ) as { own: string; ownX: number; written: Record<string, number>; writtenX: number; seenX: number };
   assert.equal(result.ownX, 1009);
   assert.equal(result.own, '{"x":1009,"y":2,"width":3,"height":4,"top":2,"right":1012,"bottom":6,"left":1009}');
-  assert.equal(result.writtenX, 1009);
-  assert.equal(result.written.x, 1009);
+  assert.notEqual(result.seenX, 1009);
+  assert.equal(result.writtenX, result.seenX);
+  assert.equal(result.written.x, result.seenX);
   assert.equal(result.written.width, 10);
+});
+
+test('r.x = r.x on a measured rect does not reveal the unscaled geometry', () => {
+  const context = protectedRealm();
+  const result = vm.runInContext(
+    `const rect = new Element().getBoundingClientRect();
+     const before = { getters: ${JSON.stringify(KEYS)}.map((key) => rect[key]), json: JSON.stringify(rect) };
+     rect.x = rect.x;
+     const after = { getters: ${JSON.stringify(KEYS)}.map((key) => rect[key]), json: JSON.stringify(rect) };
+     ({ before, after, raw: rect._r.slice() })`,
+    context,
+  ) as { before: { getters: number[]; json: string }; after: { getters: number[]; json: string }; raw: number[] };
+  assert.notEqual(result.before.getters[2], 300.25, 'measured width is scaled');
+  const [x, y, width, height, , right, bottom] = result.before.getters as [number, number, number, number, number, number, number];
+  assert.equal(right, x + width, 'edges are derived from the scaled box');
+  assert.equal(bottom, y + height, 'edges are derived from the scaled box');
+  assert.deepEqual(result.after.getters, result.before.getters);
+  assert.equal(result.after.json, result.before.json);
+  assert.deepEqual(result.raw, result.before.getters.slice(0, 4), 'scaled values are stored natively');
+});
+
+test('wrapped DOMRect setters still throw natively on foreign receivers', () => {
+  const context = protectedRealm();
+  const threw = vm.runInContext(
+    `const set = Object.getOwnPropertyDescriptor(DOMRect.prototype, 'x').set;
+     try { set.call({}, 1); false } catch { true }`,
+    context,
+  ) as boolean;
+  assert.equal(threw, true);
 });
 
 test('wrapped toJSON keeps the original source text, name and length', () => {
