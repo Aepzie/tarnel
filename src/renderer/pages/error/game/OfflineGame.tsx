@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { act, advance, createRun, SCENE, type RunAction, type RunState } from './engine';
 
 /** Entirely local and ephemeral: a closed or inactive game owns no animation frames. */
-export default function OfflineGame({ onClose }: { onClose: () => void }) {
+export function OfflineGame({ onClose }: { onClose: () => void }) {
   const [run, setRun] = useState(createRun);
   const [best, setBest] = useState(0);
   const current = useRef(run);

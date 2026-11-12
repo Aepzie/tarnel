@@ -9,7 +9,7 @@ import { bootTheme, hasBridge } from './theme';
 import { canPlayOffline } from './game/eligibility';
 
 const DANGER = '#f87171';
-const OfflineGame = lazy(() => import('./game/OfflineGame'));
+const OfflineGame = lazy(() => import('./game/OfflineGame').then((module) => ({ default: module.OfflineGame })));
 
 export function App() {
   const reduced = useReducedMotion() ?? false;
@@ -17,6 +17,7 @@ export function App() {
   const [playing, setPlaying] = useState(false);
   const play = useRef<HTMLButtonElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
+  const wasPlaying = useRef(false);
   const error = useMemo(() => parseError(location.search), []);
   const copy = copyFor(error.code);
   const Icon = copy.icon;
@@ -32,6 +33,16 @@ export function App() {
     window.addEventListener('offline', update, { signal: events.signal });
     return () => events.abort();
   }, []);
+
+  useEffect(() => {
+    if (playing) {
+      wasPlaying.current = true;
+      return;
+    }
+    if (!wasPlaying.current) return;
+    wasPlaying.current = false;
+    (play.current ?? retryButton.current)?.focus();
+  }, [playing]);
 
   useEffect(() => {
     document.title = target ? `${target.hostname} — ${copy.title}` : copy.title;
@@ -51,7 +62,10 @@ export function App() {
         variants={stagger(0.05)}
         initial="hidden"
         animate="show"
-        className={cn('my-auto flex w-full shrink-0 flex-col items-center text-center', playing ? 'max-w-xl' : 'max-w-md')}
+        className={cn(
+          'my-auto flex w-full shrink-0 flex-col items-center text-center',
+          playing ? 'max-w-xl' : 'max-w-md -translate-y-[4vh]',
+        )}
       >
         <motion.div variants={rise} className="relative mb-7">
           <div aria-hidden="true" className="ve-glow pointer-events-none absolute -inset-10 rounded-full" />
@@ -131,11 +145,14 @@ export function App() {
 
         {playing && (
           <Suspense fallback={<p role="status" className="mt-6 text-sm text-muted-foreground">Loading game…</p>}>
-            <OfflineGame onClose={() => {
-              setPlaying(false);
-              // The entry button returns with this render; focus it without starting an idle loop.
-              requestAnimationFrame(() => (play.current ?? retryButton.current)?.focus());
-            }} />
+            <motion.div
+              variants={rise}
+              initial={reduced ? false : 'hidden'}
+              animate="show"
+              className="w-full"
+            >
+              <OfflineGame onClose={() => setPlaying(false)} />
+            </motion.div>
           </Suspense>
         )}
 
