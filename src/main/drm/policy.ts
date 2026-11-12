@@ -4,6 +4,10 @@ export function drmLaunchPolicy(consent: boolean, hasRuntime: boolean, platform:
   return { enabled, supported, componentUpdates: enabled };
 }
 
+export function drmHeaderPolicyRequired(launch: { enabled: boolean }): boolean {
+  return launch.enabled;
+}
+
 export interface DrmPermissionRequest {
   enabled: boolean;
   ready: boolean;

@@ -20,8 +20,18 @@ const DIGESTS = Object.freeze({
   'win32-arm64': 'cfc28c52aa189d3feef1f188179aa1dcf1d9dbacba957e895370b6b637a0afd2',
   'win32-x64': 'a17f87a95a62e8f336d6fa18e57b9bc83d513b02211e4e5771a45cfd7482740e',
 });
-const MARKER = 'vela-runtime.json';
+const MARKER = 'tarnel-runtime.json';
 const MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024;
+
+export async function resolveArchiveExtractor(load = () => import('@electron-internal/extract-zip')) {
+  try { return (await load()).extract; }
+  catch (error) {
+    if (error.code === 'ERR_MODULE_NOT_FOUND' || error.code === 'MODULE_NOT_FOUND') {
+      throw new Error('Missing @electron-internal/extract-zip from Electron tooling. Run npm ci in the project root, then retry npm run drm:install.', { cause: error });
+    }
+    throw error;
+  }
+}
 
 function samePath(left, right) {
   return process.platform === 'win32' ? resolve(left).toLowerCase() === resolve(right).toLowerCase() : resolve(left) === resolve(right);
@@ -55,7 +65,7 @@ async function runIcacls(command, args) {
 }
 
 /** Give Chromium's AppContainer read/execute access only to our verified runtime binaries. */
-export async function grantWindowsRuntimeAccess(projectRoot, target, directory, run = runIcacls) {
+export async function grantWindowsRuntimeAccess(projectRoot, target, directory, run = runIcacls, log = console.log) {
   const root = await realpath(projectRoot);
   const pinned = runtimeTarget(target.platform, target.arch);
   const expected = join(root, '.cache', 'drm-runtime', pinned.directoryName);
@@ -65,6 +75,7 @@ export async function grantWindowsRuntimeAccess(projectRoot, target, directory, 
   for (const ancestor of [join(root, '.cache'), join(root, '.cache', 'drm-runtime')]) await assertNoRedirect(ancestor);
   await assertNoRedirectsInTree(expected);
   const command = join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'icacls.exe');
+  log(`Granting AppContainer S-1-15-2-1 inherited read/execute (RX) only, recursively inside the pinned runtime: ${expected}`);
   // /L also avoids following links if one is introduced after the checks above.
   await run(command, [expected, '/grant', '*S-1-15-2-1:(OI)(CI)(RX)', '/T', '/Q', '/L']);
 }
@@ -139,7 +150,7 @@ export async function installRuntime({
   projectRoot = ROOT,
   target = runtimeTarget(),
   fetchImpl = fetch,
-  extractArchive = async (archive, options) => (await import('@electron-internal/extract-zip')).extract(archive, options),
+  extractArchive,
   prepareAccess = grantWindowsRuntimeAccess,
   log = console.log,
 } = {}) {
@@ -154,11 +165,13 @@ export async function installRuntime({
   requireChild(cache, directory);
   const installed = await readInstalled(directory, target);
   if (installed) {
-    if (process.platform === 'win32' && target.platform === 'win32') await prepareAccess(root, target, directory);
+    if (process.platform === 'win32' && target.platform === 'win32') await prepareAccess(root, target, directory, undefined, log);
     log(`DRM runtime: Electron ${installed.version} (${target.platform}/${target.arch}), verified cache.`);
     return installed;
   }
-  const staging = await mkdtemp(join(cache, '.install-'));
+  // Resolve optional tooling before downloading a large archive. Cached runtimes need none.
+  const extract = extractArchive ?? await resolveArchiveExtractor();
+  const staging = await mkdtemp(join(cache, 'tarnel-drm-runtime-'));
   requireChild(cache, await realpath(staging));
   try {
     const archive = join(staging, 'runtime.zip');
@@ -166,7 +179,7 @@ export async function installRuntime({
     log(`Downloading official DRM runtime: Electron ${target.version} (${target.platform}/${target.arch}).`);
     await downloadVerified(target.url, archive, target.sha256, fetchImpl);
     await mkdir(extracted);
-    await extractArchive(archive, { dir: extracted });
+    await extract(archive, { dir: extracted });
     const runtime = await checkExtracted(extracted, target);
     await writeFile(join(extracted, MARKER), JSON.stringify({
       version: runtime.version,
@@ -179,7 +192,7 @@ export async function installRuntime({
       if (!(await readInstalled(directory, target))) throw error;
     }
     const installed = await readInstalled(directory, target);
-    if (process.platform === 'win32' && target.platform === 'win32') await prepareAccess(root, target, directory);
+    if (process.platform === 'win32' && target.platform === 'win32') await prepareAccess(root, target, directory, undefined, log);
     log(`DRM runtime installed: Electron ${target.version}. Stock Electron and the lockfile are unchanged.`);
     return installed;
   } finally {

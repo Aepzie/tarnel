@@ -4,13 +4,13 @@ import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { downloadVerified, grantWindowsRuntimeAccess, installRuntime, parseCommand, runtimeTarget } from './drm-runtime.mjs';
+import { downloadVerified, grantWindowsRuntimeAccess, installRuntime, parseCommand, runtimeTarget, resolveArchiveExtractor } from './drm-runtime.mjs';
 
 const bytes = Buffer.from('verified runtime test archive');
 const digest = createHash('sha256').update(bytes).digest('hex');
 
 async function fixture(t) {
-  const root = await mkdtemp(join(tmpdir(), 'vela-drm-runtime-'));
+  const root = await mkdtemp(join(tmpdir(), 'tarnel-drm-runtime-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
@@ -65,6 +65,7 @@ test('installation is isolated, reusable offline, and only activated after extra
   };
   const first = await installRuntime(options);
   assert.ok(first.directory.startsWith(join(root, '.cache', 'drm-runtime')));
+  assert.ok(JSON.parse(await readFile(join(first.directory, 'tarnel-runtime.json'), 'utf8')).executableSha256);
   assert.equal(await readFile(join(normal, 'sentinel'), 'utf8'), 'untouched');
   const again = await installRuntime({ ...options, fetchImpl: async () => { throw new Error('offline'); } });
   assert.equal(again.executable, first.executable);
@@ -120,13 +121,28 @@ test('Windows permission grant is confined to the exact pinned runtime and uses 
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, 'electron.exe'), 'runtime');
   const calls = [];
-  const run = async (command, args) => { calls.push({command, args}); };
-  await grantWindowsRuntimeAccess(root, target, directory, run);
+  const notices = [];
+  const run = async (command, args) => {
+    assert.equal(notices.length, 1, 'ACL change must be disclosed before icacls runs');
+    assert.ok(notices[0].includes(directory));
+    assert.match(notices[0], /S-1-15-2-1/);
+    assert.match(notices[0], /read\/execute|RX/);
+    calls.push({command, args});
+  };
+  await grantWindowsRuntimeAccess(root, target, directory, run, (message) => notices.push(message));
   assert.equal(calls.length, 1);
   assert.match(calls[0].command, /[\\/]System32[\\/]icacls\.exe$/i);
   assert.deepEqual(calls[0].args, [directory, '/grant', '*S-1-15-2-1:(OI)(CI)(RX)', '/T', '/Q', '/L']);
   await assert.rejects(grantWindowsRuntimeAccess(root, target, root, run), /exact pinned runtime/);
   assert.equal(calls.length, 1);
+});
+
+test('missing transitive archive extractor gives an actionable repair without adding dependencies', async () => {
+  await assert.rejects(resolveArchiveExtractor(async () => {
+    throw Object.assign(new Error('Cannot find package'), { code: 'ERR_MODULE_NOT_FOUND' });
+  }), /@electron-internal\/extract-zip.*npm ci/);
+  const failure = new Error('invalid module');
+  await assert.rejects(resolveArchiveExtractor(async () => { throw failure; }), (error) => error === failure);
 });
 
 test('Windows permission grant rejects junctions in the runtime before launching icacls', async (t) => {

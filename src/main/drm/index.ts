@@ -4,24 +4,28 @@ import { DRM_IPC, type DrmStatus } from '../../shared/drm';
 import type { Space } from '../../shared/types';
 import { getSettings, onSettingsChanged } from '../settings';
 import { addWebRequestStage } from '../net/dispatcher';
-import { INTERNAL_SCHEME } from '../../shared/internal-url';
 import { DrmController } from './controller';
 import { detectCdmComponents } from './runtime';
-import { drmLaunchPolicy, allowsDrmPermission } from './policy';
+import { drmLaunchPolicy, drmHeaderPolicyRequired, allowsDrmPermission } from './policy';
+import { isSettingsPage } from './ipc-policy';
 import { applyDrmLaunchSwitches } from './startup';
 import { denyEncryptedMedia } from './headers';
-import { probeWidevine } from './probe';
+
+export { isSettingsPage } from './ipc-policy';
 
 let controller: DrmController | null = null;
 let startupBlocked = false;
 let startupConsent = false;
+let startupHeaderPolicy = false;
 
 /** Must run after boot resolves userData, before ready and independently of VELA_NO_FLAGS. */
-export function configureDrmStartup(): void {
+export function configureDrmStartup(): boolean {
   startupConsent = getSettings().drmEnabled;
   const castlabs = !!detectCdmComponents(electron);
   const policy = drmLaunchPolicy(startupConsent, castlabs, process.platform, process.arch);
-  startupBlocked = applyDrmLaunchSwitches(electron.app.commandLine, policy.enabled);
+  startupHeaderPolicy = drmHeaderPolicyRequired(policy);
+  startupBlocked = applyDrmLaunchSwitches(electron.app.commandLine, policy.enabled, castlabs);
+  return castlabs;
 }
 
 function broadcast(status: DrmStatus): void {
@@ -30,15 +34,10 @@ function broadcast(status: DrmStatus): void {
   }
 }
 
-export function isSettingsPage(url: string): boolean {
-  try { const parsed = new URL(url); return parsed.protocol === `${INTERNAL_SCHEME}:` && parsed.hostname === 'settings'; }
-  catch { return false; }
-}
-
 export function initDrm(): void {
   controller = new DrmController({
     enabled: startupConsent, components: detectCdmComponents(electron), platform: process.platform, arch: process.arch,
-    startupBlocked, probe: probeWidevine, changed: broadcast,
+    startupBlocked, probe: async () => (await import('./probe')).probeWidevine(), changed: broadcast,
   });
   onSettingsChanged((settings) => controller?.setEnabled(settings.drmEnabled));
   // Does no component/probe work if off. Browser startup never waits for a download.
@@ -57,6 +56,7 @@ export function canUseDrm(scope: { ephemeral: boolean } | undefined, isMainFrame
 
 /** Native Permissions-Policy adds a document fence; the startup CDM gate also covers cached/local documents. */
 export function attachDrmPolicy(session: Session, space: Space): void {
+  if (!startupHeaderPolicy) return;
   addWebRequestStage(session, 'headersReceived', 'drm', 1000, (details) => {
     if (details.resourceType !== 'mainFrame' && details.resourceType !== 'subFrame') return;
     if (!/^https?:\/\//i.test(details.url)) return;

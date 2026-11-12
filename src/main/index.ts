@@ -1,6 +1,6 @@
 import { app, type BaseWindow, protocol, session as electronSession, webContents } from 'electron';
 import { configureDrmStartup, initDrm, isSettingsPage } from './drm';
-import { DRM_PROBE_SCHEME } from './drm/probe';
+import { DRM_PROBE_SCHEME } from './drm/probe-scheme';
 import { flushCompileCache } from 'node:module';
 import { IPC } from '../shared/ipc';
 import { attachContextMenu } from './contextmenu';
@@ -64,8 +64,8 @@ function startupMark(name: string): void {
 
 // userData (TARNEL_USER_DATA / VELA_USER_DATA, Vela → Tarnel profile move) is settled in boot.ts.
 
-configureDrmStartup();
-applyChromiumFlags();
+const hasCdmRuntime = configureDrmStartup();
+applyChromiumFlags(hasCdmRuntime);
 startupMark('main-evaluated');
 
 // @ghostery/adblocker-electron fires cosmetic scriptlets with an un-awaited executeJavaScript();

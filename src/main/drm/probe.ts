@@ -1,7 +1,6 @@
 import { BrowserWindow, session } from 'electron';
 import { randomUUID } from 'node:crypto';
-
-export const DRM_PROBE_SCHEME = 'vela-drm-probe';
+import { DRM_PROBE_SCHEME } from './probe-scheme';
 
 /** One local, hidden, sandboxed CDM instantiation. No media, identifiers, licenses or remote requests. */
 export async function probeWidevine(): Promise<boolean> {

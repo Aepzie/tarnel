@@ -21,7 +21,7 @@
     "test:drm-runtime": "node --test scripts/drm-runtime.test.mjs",
     "test:drm-native": "node scripts/test-drm-native.cjs",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test.mjs",
+    "test": "node scripts/test.mjs && node --test scripts/drm-runtime.test.mjs",
     "icons": "electron scripts/icons.mjs",
     "dist": "node scripts/build.mjs --production && electron-builder",
     "dist:dir": "node scripts/build.mjs --production && electron-builder --dir"
