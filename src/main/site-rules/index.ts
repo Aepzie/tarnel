@@ -194,7 +194,7 @@ function createFor(rawTabId: unknown): void {
   const pattern = url ? suggestPattern(url) : null;
   draftToken += 1;
   pendingDraft = pattern ? { pattern, token: draftToken } : null;
-  createTab({ url: 'vela://settings/#rules', active: true, afterId: rawTabId });
+  createTab({ url: 'tarnel://settings/#rules', active: true, afterId: rawTabId });
 }
 
 export function initSiteRules(): void {

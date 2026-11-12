@@ -29,16 +29,16 @@ function useDefaultBrowserStatus(): [DefaultBrowserStatus | null, () => void] {
 }
 
 function describe(status: DefaultBrowserStatus, opened: boolean): string {
-  if (status.isDefault) return 'Links and web pages from other apps open in Vela.';
-  if (status.support === 'dev') return 'Not available in a development build — install Vela to make it the default.';
+  if (status.isDefault) return 'Links and web pages from other apps open in Tarnel.';
+  if (status.support === 'dev') return 'Not available in a development build — install Tarnel to make it the default.';
   if (status.support === 'portable') return 'The portable version can’t be the default browser. Use the installer instead.';
   if (status.support === 'unsupported') return 'Not supported on this system.';
-  if (opened) return 'Choose Vela in Windows Settings, then come back here.';
-  if (status.method === 'settings') return 'Opens Windows Settings, where you choose Vela for web links, HTML and PDF files.';
-  return 'Open links and web pages from other apps in Vela.';
+  if (opened) return 'Choose Tarnel in Windows Settings, then come back here.';
+  if (status.method === 'settings') return 'Opens Windows Settings, where you choose Tarnel for web links, HTML and PDF files.';
+  return 'Open links and web pages from other apps in Tarnel.';
 }
 
-/** Settings → General: whether Vela is the default browser, and "Make default". */
+/** Settings → General: whether Tarnel is the default browser, and "Make default". */
 export function DefaultBrowserRow() {
   const [status, reload] = useDefaultBrowserStatus();
   const [opened, setOpened] = useState(false);

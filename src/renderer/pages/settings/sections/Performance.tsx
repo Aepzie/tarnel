@@ -161,11 +161,11 @@ export function Performance() {
             onChange={(value) => update({ archiveAfterHours: Number(value) })}
           />
         </Row>
-        <Row title="Memory saver" description="When Vela uses more memory than the limit, sleep the tabs you used least recently. Maximum acts sooner and on more tabs.">
+        <Row title="Memory saver" description="When Tarnel uses more memory than the limit, sleep the tabs you used least recently. Maximum acts sooner and on more tabs.">
           <Segmented label="Memory saver" value={settings.memorySaver} options={SAVER_OPTIONS} onChange={(value) => update({ memorySaver: value })} />
         </Row>
         {settings.memorySaver !== 'off' && (
-          <Row title="Memory limit" description="Sleep background tabs when Vela uses more than this.">
+          <Row title="Memory limit" description="Sleep background tabs when Tarnel uses more than this.">
             <Segmented
               label="Memory limit"
               value={String(settings.memorySaverThresholdGB)}
@@ -220,7 +220,7 @@ export function Performance() {
         <Activity className="mt-0.5 size-4 shrink-0 text-space" strokeWidth={1.75} aria-hidden />
         <p>
           <span className="font-medium text-foreground">How tab sleeping works.</span> When a background tab sits
-          unused for the chosen time, Vela releases its page from memory. The tab keeps its spot, title and history;
+          unused for the chosen time, Tarnel releases its page from memory. The tab keeps its spot, title and history;
           it reloads the moment you switch back. Pinned tabs and tabs playing audio never sleep.
         </p>
       </motion.section>

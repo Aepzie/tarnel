@@ -73,7 +73,7 @@ function siteOf(href: string): string | null {
     return 'opaque';
   }
   if (url.protocol === 'blob:') return siteOf(url.pathname);
-  if (url.protocol === 'vela:' || url.protocol === 'devtools:' || url.protocol === 'chrome:') return null;
+  if (url.protocol === 'tarnel:' || url.protocol === 'vela:' || url.protocol === 'devtools:' || url.protocol === 'chrome:') return null;
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return url.protocol;
   return registrableDomain(url.hostname);
 }

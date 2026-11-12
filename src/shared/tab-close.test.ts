@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { isLoneStartPage } from './tab-close';
 
-const start = { id: 1, spaceId: 'a', url: 'vela://newtab/' };
+const start = { id: 1, spaceId: 'a', url: 'tarnel://newtab/' };
 const site = { id: 2, spaceId: 'a', url: 'https://example.com/' };
 
 test('lone start page in its space is not closable', () => {

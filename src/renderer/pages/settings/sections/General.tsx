@@ -42,7 +42,7 @@ export function General() {
         </Row>
         <SwitchRow
           title="Restore previous session"
-          description="Reopen your tabs and Spaces when Vela starts."
+          description="Reopen your tabs and Spaces when Tarnel starts."
           setting="restoreSession"
         />
         <SwitchRow

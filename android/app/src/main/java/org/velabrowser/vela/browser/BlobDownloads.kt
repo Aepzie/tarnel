@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Downloads that DownloadManager can't fetch: `data:` URLs are decoded directly; `blob:` URLs only exist inside
  * the page, so a script reads the blob as a data URL and posts it back over a WebMessageListener ([BRIDGE]).
- * Only replies carrying a token Vela just handed out are accepted. Files go to Downloads via MediaStore.
+ * Only replies carrying a token Tarnel just handed out are accepted. Files go to Downloads via MediaStore.
  */
 class BlobDownloads(
     private val context: Context,

@@ -3,7 +3,7 @@ import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/
 import { Cloud, Gauge, Import as ImportIcon, Info, Layers, Palette, Puzzle, Settings2, Shield, Workflow, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ease, spring, stagger } from '@/lib/motion';
-import { VelaMark } from './components/brand';
+import { BrandMark } from './components/brand';
 import { SettingsProvider } from './store';
 import { About } from './sections/About';
 import { Appearance } from './sections/Appearance';
@@ -168,7 +168,7 @@ export function App() {
           <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col py-10">
             <div className="mb-8 flex items-center gap-2.5 px-2.5">
               <span className="grid size-8 place-items-center rounded-[10px] bg-card ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]">
-                <VelaMark className="size-[18px] text-foreground" />
+                <BrandMark className="size-[18px] text-foreground" />
               </span>
               <span className="text-[15px] font-semibold tracking-tight">Settings</span>
             </div>

@@ -90,7 +90,7 @@ export function registerBookmarksIpc(handleChrome: ChromeHandler, handlePages: P
   handleChrome(BOOKMARKS_IPC.chromeRemove, (id, space) => removeBookmark(knownSpace(space, active), nodeId(id)));
   handleChrome(BOOKMARKS_IPC.chromeSearch, (text, limit, space) => searchBookmarks(knownSpace(space, active), query(text), limitOf(limit)));
   handleChrome(BOOKMARKS_IPC.chromeOpenManager, () => {
-    createTab({ url: 'vela://bookmarks/', spaceId: getActiveSpaceId(), active: true });
+    createTab({ url: 'tarnel://bookmarks/', spaceId: getActiveSpaceId(), active: true });
   });
 
   const hostSpace = (event: IpcMainInvokeEvent) => (): SpaceId | null => {

@@ -4,7 +4,7 @@ import { AlertCircle, RotateCw } from 'lucide-react';
 import { applyTheme, velaPages } from '@/lib/vela';
 import { Button } from '@/components/ui/button';
 
-/** True when running as a vela:// page with the pages bridge available. */
+/** True when running as a tarnel:// page with the pages bridge available. */
 export const hasBridge = (): boolean => typeof window.velaPages !== 'undefined';
 
 /** Electron wraps thrown errors as "Error invoking remote method 'x': Error: msg" — keep only msg. */
@@ -49,7 +49,7 @@ export function SettingsProvider({ children, fallback }: { children: ReactNode; 
       .getSettings()
       .then(
         (loaded) => alive && setSettings(loaded),
-        (error) => alive && setLoadError(errorText(error, 'Vela could not read your settings.')),
+        (error) => alive && setLoadError(errorText(error, 'Tarnel could not read your settings.')),
       );
     return () => {
       alive = false;

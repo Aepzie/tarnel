@@ -141,7 +141,7 @@ function RecoveryKey({ value, onDismiss }: { value: string; onDismiss?: () => vo
         <div className="min-w-0 flex-1">
           <p className="text-[13px] leading-5 font-medium text-foreground">Recovery key</p>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            Store it somewhere safe. It joins a new device without the passphrase — and nobody, including Vela, can recover your data without one of them.
+            Store it somewhere safe. It joins a new device without the passphrase — and nobody, including Tarnel, can recover your data without one of them.
           </p>
           <p className="mt-3 rounded-lg bg-muted px-3 py-2 font-mono text-[12px] leading-5 tracking-wide break-all text-foreground ring-1 ring-border select-all">
             {value}
@@ -297,8 +297,8 @@ function SetupWizard({ onCancel, onEnabled }: { onCancel: () => void; onEnabled:
           <motion.form key="secret" {...swap} onSubmit={submitSecret} className="divide-y divide-border">
             <div className="px-4 py-3 text-xs leading-5 text-muted-foreground">
               {mode === 'join'
-                ? 'This location already holds Vela sync data. Enter its passphrase or recovery key to join.'
-                : 'Your passphrase encrypts everything before it leaves this device. Vela can’t reset it — you’ll get a recovery key next.'}
+                ? 'This location already holds Tarnel sync data. Enter its passphrase or recovery key to join.'
+                : 'Your passphrase encrypts everything before it leaves this device. Tarnel can’t reset it — you’ll get a recovery key next.'}
             </div>
             <Field label={mode === 'join' ? 'Passphrase or recovery key' : 'Passphrase'} htmlFor={`${id}-secret`}>
               <Input id={`${id}-secret`} type="password" autoFocus value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" className={inputClass} />
@@ -521,7 +521,7 @@ export function Sync() {
 
   return (
     <>
-      <SectionHeader title="Sync" description="Optional and end-to-end encrypted. Your data goes to storage you own — Vela runs no servers." />
+      <SectionHeader title="Sync" description="Optional and end-to-end encrypted. Your data goes to storage you own — Tarnel runs no servers." />
       <AnimatePresence mode="wait" initial={false}>
         {status?.enabled ? (
           <motion.div key="on" variants={sectionSwap} initial="hidden" animate="show" exit="exit">

@@ -5,7 +5,7 @@
  */
 
 export const COOKIE_BANNER_IPC = {
-  /** Frame → main (invoke): rules + config for this frame, or null when Vela should stay out. */
+  /** Frame → main (invoke): rules + config for this frame, or null when Tarnel should stay out. */
   frameInit: 'cookie-banners:frame-init',
   /** Frame → main (send): a banner was handled ({ cmp, cosmetic }). */
   frameDone: 'cookie-banners:frame-done',
@@ -27,13 +27,13 @@ export interface CookieBannerTabInfo {
 }
 
 export interface CookieBannerStats {
-  /** Banners handled since Vela started (all Spaces, in memory only). */
+  /** Banners handled since Tarnel started (all Spaces, in memory only). */
   total: number;
   /** Of those, hidden only (cosmetic rule) rather than rejected by a click. */
   cosmetic: number;
   /** Per open tab, since its last top-level navigation. */
   byTab: Record<number, number>;
-  /** Per site (same keys as the exceptions), since Vela started. */
+  /** Per site (same keys as the exceptions), since Tarnel started. */
   bySite: Record<string, number>;
 }
 

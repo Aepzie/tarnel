@@ -11,7 +11,7 @@ export const DEFAULT_BROWSER_IPC = {
 } as const;
 
 /** Value name under `Software\RegisteredApplications` (build/installer.nsh). */
-export const REGISTERED_APP_NAME = 'Vela';
+export const REGISTERED_APP_NAME = 'Tarnel';
 
 /**
  * - `ready`: the button can do something.
@@ -30,7 +30,7 @@ export interface DefaultBrowserStatus {
   method: DefaultBrowserMethod;
 }
 
-/** `opened-settings`: Windows Default apps was opened; the status changes once the user picks Vela. */
+/** `opened-settings`: Windows Default apps was opened; the status changes once the user picks Tarnel. */
 export type MakeDefaultResult = 'opened-settings' | 'done' | 'not-supported';
 
 export interface DefaultBrowserEnv {
@@ -51,7 +51,7 @@ export function defaultBrowserMethod(platform: string): DefaultBrowserMethod {
   return platform === 'win32' ? 'settings' : 'direct';
 }
 
-/** Default for the web only when both schemes go to Vela (a split setup isn't "default"). */
+/** Default for the web only when both schemes go to Tarnel (a split setup isn't "default"). */
 export function isDefaultForBoth(http: boolean, https: boolean): boolean {
   return http && https;
 }
@@ -68,7 +68,7 @@ export function isSameExecutable(handlerPath: string | null | undefined, execPat
 
 /**
  * Per-user installs register under HKCU (`registeredAppUser`), "all users" installs under HKLM
- * (`registeredAppMachine`); the link opens Vela's own page in Settings → Default apps.
+ * (`registeredAppMachine`); the link opens Tarnel's own page in Settings → Default apps.
  */
 export function defaultAppsDeepLink(scope: 'user' | 'machine', appName: string = REGISTERED_APP_NAME): string {
   const key = scope === 'machine' ? 'registeredAppMachine' : 'registeredAppUser';

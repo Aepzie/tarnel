@@ -1,5 +1,5 @@
 /**
- * Curated extensions shown on vela://extensions. Every ID was checked against
+ * Curated extensions shown on tarnel://extensions. Every ID was checked against
  * chromewebstore.google.com/detail/<id> (the listing resolved to the named extension); MV2-only
  * listings that the store no longer serves (ClearURLs, JSON Viewer) were left out on purpose.
  * Installs still download from the store and go through the normal permission review.
@@ -175,7 +175,7 @@ export function filterCatalog(entries: readonly CatalogEntry[], query: string): 
   );
 }
 
-/** vela://extensions/#install=<id> starts the install + review flow on that page. */
+/** tarnel://extensions/#install=<id> starts the install + review flow on that page. */
 export function installHashId(hash: string): string | null {
   const match = /^#install=([a-p]{32})$/.exec(hash);
   return match?.[1] ?? null;

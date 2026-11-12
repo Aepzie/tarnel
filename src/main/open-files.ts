@@ -5,7 +5,7 @@ import { fileUrlForPath, openTargetsFromArgs, type OpenTargetEnv, type PathKind 
 import { resolveInput } from './url';
 
 /**
- * Opening local files and URLs handed to Vela by the OS: command line (startup and
+ * Opening local files and URLs handed to Tarnel by the OS: command line (startup and
  * `second-instance`), macOS `open-file` / `open-url`, and paths dropped onto the chrome UI.
  */
 

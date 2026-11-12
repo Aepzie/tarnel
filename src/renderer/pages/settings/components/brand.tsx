@@ -4,8 +4,8 @@ import { BRAND_BODY_PATH, BRAND_CAP_PATH, BRAND_GLYPH_VIEWBOX, brandIconSvg } fr
 import { cn } from '@/lib/utils';
 import { ease } from '@/lib/motion';
 
-/** Vela mark (same geometry as the app icon): body in currentColor, cap in the Space accent. */
-export function VelaMark({ className }: { className?: string }) {
+/** Tarnel mark (same geometry as the app icon): mountain in currentColor, reflection in the Space accent. */
+export function BrandMark({ className }: { className?: string }) {
   return (
     <svg viewBox={BRAND_GLYPH_VIEWBOX} className={cn('size-5', className)} aria-hidden>
       <path d={BRAND_BODY_PATH} fill="currentColor" />
@@ -14,11 +14,11 @@ export function VelaMark({ className }: { className?: string }) {
   );
 }
 
-/** Same markup as the taskbar / installer icon, but the cap and glow follow the theme accent. */
+/** Same markup as the taskbar / installer icon, but the reflection follows the theme accent. */
 const APP_ICON_SVG = brandIconSvg('square', 'var(--accent-space)');
 
-/** The full-colour app icon, inline so its accent cap tracks the active Space colour live. */
-export function VelaAppIcon({ className }: { className?: string }) {
+/** The full-colour app icon, inline so its accent reflection tracks the active Space colour live. */
+export function BrandAppIcon({ className }: { className?: string }) {
   return (
     <span
       aria-hidden

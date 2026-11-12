@@ -18,7 +18,7 @@ export interface OpenTargetEnv {
 }
 
 /** Schemes passed through to the address-bar resolver as is. */
-const URL_ARG = /^(https?:|vela:)/i;
+const URL_ARG = /^(https?:|tarnel:|vela:)/i;
 const FILE_URL = /^file:/i;
 const WINDOWS_DRIVE = /^[a-z]:([\\/]|$)/i;
 const MAX_ARG = 32_768;
@@ -46,7 +46,7 @@ function pathFromFileUrl(arg: string, windows: boolean): string | null {
 
 /**
  * Tab URLs for command-line arguments, in order. `args` must already exclude the executable (and the
- * app path in development). Before a bare `--` (the OS registration launches `Vela.exe -- "%1"`, so a
+ * app path in development). Before a bare `--` (the OS registration launches `Tarnel.exe -- "%1"`, so a
  * crafted file name can never become a switch) flags (`-x`, `--foo`, `--foo=bar`, Chromium switches)
  * are skipped; after it every argument is a target. Without `--` the same rules apply to all args;
  * http(s)/vela URLs are returned unchanged for the caller to resolve; everything else is treated as

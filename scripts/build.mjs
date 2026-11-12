@@ -125,8 +125,8 @@ if (watch) {
   const contexts = await Promise.all(nodeConfigs.map((config) => context(config)));
   await Promise.all(contexts.map((ctx) => ctx.watch()));
   await buildRenderer();
-  console.log('[vela] watchingâ€¦');
+  console.log('[tarnel] watchingâ€¦');
 } else {
   await Promise.all([...nodeConfigs.map((config) => esbuild(config)), buildRenderer()]);
-  console.log('[vela] build complete');
+  console.log('[tarnel] build complete');
 }

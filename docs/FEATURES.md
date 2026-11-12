@@ -1,6 +1,6 @@
-# Vela features
+# Tarnel features
 
-Everything Vela does, in one place. The [README](../README.md) has the short version; the
+Everything Tarnel does, in one place. The [README](../README.md) has the short version; the
 [CHANGELOG](../CHANGELOG.md) has the details per release, and [ARCHITECTURE.md](ARCHITECTURE.md) explains how it works.
 
 - [Spaces](#spaces)
@@ -19,7 +19,7 @@ other's cookies or storage, so you can be signed in to two accounts on the same 
 
 ```mermaid
 flowchart LR
-    W[Vela window] --> P[Space: Personal]
+    W[Tarnel window] --> P[Space: Personal]
     W --> K[Space: Work]
     W --> B[Burner space]
 
@@ -31,7 +31,7 @@ flowchart LR
 | Space type | Partition            | Stored         | Lifetime                                     |
 |------------|----------------------|----------------|----------------------------------------------|
 | Regular    | `persist:space-<id>` | on disk        | survives restarts                            |
-| Burner     | `space-<id>`         | in memory only | wiped when the space is closed or Vela quits |
+| Burner     | `space-<id>`         | in memory only | wiped when the space is closed or Tarnel quits |
 
 - **Spaces**: isolated sessions with their own cookies, storage, cache, logins, permissions and optional proxy.
 - **Burner spaces**: live only in memory and are wiped when closed. Open one with `Ctrl+Shift+N`.
@@ -44,7 +44,7 @@ flowchart LR
 - **MantelVPN per Space or per tab**: route a whole Space, or a single tab, through a Mantel location.
 - **Site rules** (Settings → Rules): open a domain in a given Space, route it through a VPN country, set its
   fingerprint level or user agent, or block it, before the page loads.
-- **Panic button** (`Ctrl+Shift+Delete`): hides Vela, mutes every tab and wipes every Burner Space.
+- **Panic button** (`Ctrl+Shift+Delete`): hides Tarnel, mutes every tab and wipes every Burner Space.
 
 ## Privacy and security
 
@@ -54,11 +54,11 @@ flowchart LR
   necessary" and hidden (DuckDuckGo's autoconsent rules, bundled; nothing is fetched or sent).
 - **Phishing and malware protection**: pages are checked locally against public block lists; nothing you visit is
   sent anywhere.
-- **Privacy report** (`vela://privacy`): trackers, ads and tracking parameters blocked this week vs last week, counted
+- **Privacy report** (`tarnel://privacy`): trackers, ads and tracking parameters blocked this week vs last week, counted
   on this device only.
 - **On-device translation**: pages are translated locally with Mozilla's Firefox Translations engine (Bergamot); no
   page text leaves the device.
-- **Email aliases**: connect SimpleLogin or addy.io and Vela offers an alias when you focus a sign-up form's email
+- **Email aliases**: connect SimpleLogin or addy.io and Tarnel offers an alias when you focus a sign-up form's email
   field.
 - **Secure DNS** (DNS-over-HTTPS): Cloudflare, Quad9, Mullvad, NextDNS or a custom template, optionally strict.
 - **Privacy defaults**: cleaned user agent, permissions denied by default, HTTPS-only upgrades, optional Do Not Track
@@ -86,9 +86,9 @@ flowchart LR
   the palette or its suggestions, next to your recently closed tabs.
 - **Screenshots** (`Ctrl+Shift+X`): area, visible part or full page, then a small editor: crop, arrows, boxes, pen,
   text, highlighter and blur for personal data; copy or save as PNG/JPEG.
-- **Chrome extensions**: install from the Chrome Web Store (link or ID), the curated `vela://extensions` catalog, or
+- **Chrome extensions**: install from the Chrome Web Store (link or ID), the curated `tarnel://extensions` catalog, or
   load unpacked; pin action buttons to the toolbar and choose which Spaces each extension runs in. Manifest V3
-  content blockers work: Vela implements `declarativeNetRequest`, so
+  content blockers work: Tarnel implements `declarativeNetRequest`, so
   [uBlock Origin Lite](https://chromewebstore.google.com/detail/ddkjiahejlhfcafbddmgiahcphecmpfh) blocks with its
   static, dynamic and per-site rules (you can turn the built-in blocker off in Settings if you prefer it).
 - **Per-tab audio devices**: send each tab to its own speakers or headphones and pick its microphone (and camera) from
@@ -101,8 +101,8 @@ flowchart LR
 
 ## Performance
 
-Vela uses the same Chromium engine as Chrome (via Electron), so **JavaScript and rendering benchmarks are roughly
-equal to Chrome**. Vela does not claim a faster engine. The gains come from doing less:
+Tarnel uses the same Chromium engine as Chrome (via Electron), so **JavaScript and rendering benchmarks are roughly
+equal to Chrome**. Tarnel does not claim a faster engine. The gains come from doing less:
 
 - **Memory**: sleeping tabs have their renderer destroyed, not just throttled, so a large tab count costs little RAM.
   Under system memory pressure the oldest idle tabs are put to sleep first.
@@ -121,7 +121,7 @@ Methodology and how to reproduce measurements: [PERFORMANCE.md](PERFORMANCE.md).
 
 - **No account, no telemetry, no sync servers.**
 - **Optional end-to-end encrypted sync**: settings, Spaces, open tabs and (opt-in) history through a folder you
-  already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Vela server, off by default.
+  already sync (OneDrive, Dropbox, iCloud, Syncthing) or your own WebDAV server; no Tarnel server, off by default.
 - **Import** (Settings → Import): bookmarks and recent history from Chrome, Edge, Brave, Vivaldi, Opera, Chromium and
   Firefox; passwords from a CSV export.
 - **Auto-update**: checks GitHub releases quietly in the background, shows what's new, and installs on restart
@@ -161,7 +161,7 @@ On macOS, use `Cmd` in place of `Ctrl`.
 
 ## Android
 
-Vela also runs on Android 10+ as a native app (Kotlin + Jetpack Compose on Android System WebView), in
+Tarnel also runs on Android 10+ as a native app (Kotlin + Jetpack Compose on Android System WebView), in
 [`android/`](../android/):
 
 - **Floating bottom island**: back/forward, address bar with search suggestions from history, tab count and menu;
@@ -184,7 +184,7 @@ Build it with `cd android && ./gradlew :app:assembleDebug` (JDK 17+, Android SDK
   access.
 - **IPC sender validation**: main-process handlers verify which `webContents` sent each message, so ordinary web
   pages cannot call browser-chrome APIs.
-- **Privileged `vela://` pages**: internal pages (new tab, settings, error) are served from the app bundle through a
+- **Privileged `tarnel://` pages**: internal pages (new tab, settings, error) are served from the app bundle through a
   custom protocol with path-traversal protection, isolated from regular web origins.
 - **Partition isolation**: Spaces never share session state; Burner spaces are never written to disk.
 

@@ -15,11 +15,11 @@ export const SITE_IPC = {
   pagesSetPolicy: 'pages:site-data-set-policy',
 } as const;
 
-/** What happens to a site's cookies and storage when Vela closes. */
+/** What happens to a site's cookies and storage when Tarnel closes. */
 export type SiteCloseAction = 'keep' | 'clear';
 
 export interface SiteDataPolicy {
-  /** Clear cookies and site data of this Space when Vela closes (sites marked 'keep' survive). */
+  /** Clear cookies and site data of this Space when Tarnel closes (sites marked 'keep' survive). */
   clearOnExit: boolean;
   /** Clear a site's data 30 s after its last tab in this Space closes (sites marked 'keep' survive). */
   clearOnLastTab: boolean;
@@ -51,7 +51,7 @@ export interface SiteInfo {
   /** Bytes reported by the origin's storage estimate (IndexedDB, Cache Storage, service workers); null when unknown. */
   storageBytes: number | null;
   permissions: SitePermission[];
-  /** Effective action for this site when Vela closes. */
+  /** Effective action for this site when Tarnel closes. */
   onClose: SiteCloseAction;
   /** True when `onClose` comes from a per-site override rather than the Space default. */
   overridden: boolean;
@@ -91,7 +91,7 @@ export function siteOverride(policy: SiteDataPolicy, host: string): SiteCloseAct
   return best?.action;
 }
 
-/** Whether `host`'s cookies and storage are deleted when Vela closes. */
+/** Whether `host`'s cookies and storage are deleted when Tarnel closes. */
 export function clearsOnExit(policy: SiteDataPolicy, host: string): boolean {
   const override = siteOverride(policy, host);
   if (override) return override === 'clear';

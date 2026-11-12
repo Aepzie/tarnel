@@ -173,7 +173,7 @@ export function buildTaskSnapshot(input: TaskInput): TaskSnapshot {
       kind === 'browser' ? 'Browser' : kind === 'gpu' ? 'GPU process' : kind === 'renderer' ? 'Renderer (spare or extension)' : utilityTitle(sample);
     rows.push({ ...base, key: `pid:${sample.pid}`, kind, title, ...measure([sample.pid]) });
   }
-  if (interfacePids.length > 0) rows.push({ ...base, key: 'interface', kind: 'interface', title: 'Vela interface', ...measure(interfacePids) });
+  if (interfacePids.length > 0) rows.push({ ...base, key: 'interface', kind: 'interface', title: 'Tarnel interface', ...measure(interfacePids) });
 
   const totals = input.processes.reduce(
     (sum, sample) => ({ cpuPercent: sum.cpuPercent + sample.cpuPercent, memoryKB: sum.memoryKB + sample.memoryKB }),

@@ -27,7 +27,7 @@ export const DEFAULT_BASES: Record<AliasProviderId, string> = {
 };
 
 export const MAX_KEY = 512;
-export const NOTE = 'Created by Vela';
+export const NOTE = 'Created by Tarnel';
 
 export interface ApiRequest {
   method: 'GET' | 'POST';

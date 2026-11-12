@@ -5,7 +5,7 @@ import kotlin.math.roundToInt
 
 /** Settings → Display → Refresh rate. */
 enum class RefreshRateMode(val label: String, val summary: String) {
-    AUTO("Auto", "Android decides. Vela asks for the fastest rate while you scroll or something animates."),
+    AUTO("Auto", "Android decides. Tarnel asks for the fastest rate while you scroll or something animates."),
     HIGH("High", "Always the fastest rate this screen supports. Smoothest, uses more battery."),
     STANDARD("Standard", "60 Hz. Saves battery."),
 }

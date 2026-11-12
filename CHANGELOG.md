@@ -1,11 +1,22 @@
 # Changelog
 
-All notable changes to Vela are documented in this file.
+All notable changes to Tarnel (called Vela up to 0.9.1) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+- New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
+- `tarnel://` is the address of the internal pages (`tarnel://settings`, `tarnel://newtab`, `tarnel://privacy`, …).
+
+### Changed
+- Vela is now Tarnel: new name and logo. Existing profiles, settings and vela:// links carry over automatically.
+- `vela://` addresses keep working as an alias and open the same `tarnel://` page, so old bookmarks, history and restored tabs still work.
+- Windows: installer, shortcuts and Default apps entry are now called Tarnel (`Tarnel-<version>-setup-x64.exe`); updating removes the old Vela registrations so Windows doesn't list two browsers.
+- The profile folder moves from `Vela` to `Tarnel` on first start (moved, or copied if moving fails; nothing is deleted). For isolated test instances use `TARNEL_USER_DATA` (`VELA_USER_DATA` still works).
+- The project now lives at https://github.com/Aepzie/tarnel.
 
 ## [0.9.1] - 2026-11-11
 
@@ -301,17 +312,17 @@ First public preview.
 - Privileged `vela://` pages: new tab, settings and error pages.
 - Release builds for Windows (NSIS installer, portable), macOS (dmg, arm64 and x64) and Linux (AppImage, deb).
 
-[Unreleased]: https://github.com/Aepzie/vela/compare/v0.8.3...HEAD
-[0.8.3]: https://github.com/Aepzie/vela/compare/v0.8.0...v0.8.3
-[0.8.0]: https://github.com/Aepzie/vela/compare/v0.7.1...v0.8.0
-[0.7.1]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.1
-[0.7.0]: https://github.com/Aepzie/vela/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/Aepzie/vela/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/Aepzie/vela/compare/v0.4.1...v0.5.0
-[0.4.1]: https://github.com/Aepzie/vela/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/Aepzie/vela/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/Aepzie/vela/compare/v0.2.1...v0.3.0
-[0.2.1]: https://github.com/Aepzie/vela/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/Aepzie/vela/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/Aepzie/vela/compare/v0.1.0...v0.1.1
+[Unreleased]: https://github.com/Aepzie/tarnel/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/Aepzie/tarnel/compare/v0.8.0...v0.8.3
+[0.8.0]: https://github.com/Aepzie/tarnel/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/Aepzie/tarnel/compare/v0.6.0...v0.7.1
+[0.7.0]: https://github.com/Aepzie/tarnel/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Aepzie/tarnel/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/Aepzie/tarnel/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/Aepzie/tarnel/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/Aepzie/tarnel/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Aepzie/tarnel/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/Aepzie/tarnel/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/Aepzie/tarnel/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Aepzie/tarnel/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Aepzie/vela/releases/tag/v0.1.0

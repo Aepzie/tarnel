@@ -1,6 +1,6 @@
 /**
  * On-device page translation contract shared by main (engine, model store), the chrome UI (palette
- * offer + command) and vela://settings (Languages). Pure: no electron imports.
+ * offer + command) and tarnel://settings (Languages). Pure: no electron imports.
  * See docs/ARCHITECTURE.md → Translation.
  */
 
@@ -13,7 +13,7 @@ export const TRANSLATE_IPC = {
   showOriginal: 'chrome:translate-show-original',
   /** chrome-event: TranslateTabState whenever a tab's translation state changes. */
   tabChanged: 'chrome-event:translate-tab',
-  /** pages (vela://settings): languages, prefs and installed models. */
+  /** pages (tarnel://settings): languages, prefs and installed models. */
   overview: 'pages:translate-overview',
   setPrefs: 'pages:translate-set-prefs',
   deleteModel: 'pages:translate-delete-model',
@@ -83,7 +83,7 @@ export function languageName(code: string): string {
   return LANGUAGE_NAMES[code] ?? code;
 }
 
-/** Language codes Vela knows a display name for (the catalog decides what is actually available). */
+/** Language codes Tarnel knows a display name for (the catalog decides what is actually available). */
 export function knownLanguages(): string[] {
   return Object.keys(LANGUAGE_NAMES);
 }

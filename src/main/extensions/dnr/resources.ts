@@ -8,7 +8,7 @@ import { extname, isAbsolute, relative, resolve } from 'node:path';
  * through the extension's per-session dynamic URL, which Electron neither exposes nor routes; a
  * redirect to the static `chrome-extension://<id>/…` URL fails with ERR_BLOCKED_BY_CLIENT (this is
  * what uBlock Origin Lite's surrogate scripts declare). For sub-resources such targets are served
- * as a `data:` URL with the file's contents instead, as Vela's own blocker does for its
+ * as a `data:` URL with the file's contents instead, as Tarnel's own blocker does for its
  * surrogates. Frames keep the extension URL (a data: frame would get an opaque origin).
  */
 

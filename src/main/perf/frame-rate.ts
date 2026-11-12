@@ -8,7 +8,7 @@ import { getMainWindow, savedWindowBounds } from '../window';
  * Frame pacing on Windows with displays of different refresh rates.
  *
  * Stock Chromium on Windows paces every window to the PRIMARY display's vblank. With a 144 Hz laptop
- * panel next to a 75 Hz primary monitor, Vela renders at 75 fps even on the 144 Hz panel (measured, see
+ * panel next to a 75 Hz primary monitor, Tarnel renders at 75 fps even on the 144 Hz panel (measured, see
  * docs/PERFORMANCE.md). `UseCompositorClockVSyncInterval` makes Chromium pace to the DWM compositor clock
  * instead, which ticks at the FASTEST connected display's rate — right for a window on that display,
  * wasted frames (and uneven pacing) on a slower one. So the switch is only set when the window opens on a
@@ -87,7 +87,7 @@ export function frameRateFeatures(): string[] {
   return wanted ? [COMPOSITOR_CLOCK_FEATURE] : [];
 }
 
-/** Whether this run actually started with the switch (Vela's flags, or the user's own command line). */
+/** Whether this run actually started with the switch (Tarnel's flags, or the user's own command line). */
 function compositorClockActive(): boolean {
   if (!app.commandLine.hasSwitch('enable-features')) return false;
   return app.commandLine.getSwitchValue('enable-features').split(',').includes(COMPOSITOR_CLOCK_FEATURE);

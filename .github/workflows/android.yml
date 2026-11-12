@@ -48,7 +48,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: vela-android-debug
+          name: tarnel-android-debug
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
 
@@ -56,6 +56,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vela-android-lint
+          name: tarnel-android-lint
           path: android/app/build/reports/lint-results-debug.html
           retention-days: 14

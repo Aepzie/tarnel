@@ -171,7 +171,7 @@ function fromChrome(event: IpcMainInvokeEvent): boolean {
 
 function fromVelaPage(event: IpcMainInvokeEvent | IpcMainEvent): boolean {
   const frame = event.senderFrame;
-  return !!frame && frame.parent === null && frame.url.startsWith('vela://') && tabs.tabIdForWebContents(event.sender.id) !== null;
+  return !!frame && frame.parent === null && frame.url.startsWith('tarnel://') && tabs.tabIdForWebContents(event.sender.id) !== null;
 }
 
 function handleChrome(channel: string, fn: Handler): void {
@@ -278,7 +278,7 @@ const DANGEROUS_EXT = /\.(exe|msi|msix|appx|bat|cmd|com|scr|pif|ps1|psm1|vbs|vbe
 
 
 /**
- * Synchronous boot info for vela:// pages, read by the pages preload before first paint so pages
+ * Synchronous boot info for tarnel:// pages, read by the pages preload before first paint so pages
  * never flash the wrong theme or accent. Tiny and allocation-free on purpose (it blocks the renderer).
  */
 function registerPagesBootSync(): void {

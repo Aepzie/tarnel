@@ -73,7 +73,7 @@ const EXACT: Record<string, ErrorCopy> = {
   ERR_EMPTY_RESPONSE: { ...REFUSED, title: 'No response', desc: 'The server closed the connection without sending any data.' },
   ERR_CONNECTION_TIMED_OUT: TIMEOUT,
   ERR_TIMED_OUT: TIMEOUT,
-  ERR_BLOCKED_BY_CLIENT: { title: 'Blocked by Vela', desc: 'This request matched a tracker or ad filter.', icon: ShieldBan },
+  ERR_BLOCKED_BY_CLIENT: { title: 'Blocked by Tarnel', desc: 'This request matched a tracker or ad filter.', icon: ShieldBan },
   ERR_BLOCKED_BY_ADMINISTRATOR: { title: 'Blocked', desc: 'This page has been blocked.', icon: ShieldBan },
   ERR_TOO_MANY_REDIRECTS: { ...FALLBACK, title: 'Too many redirects', desc: "The page keeps redirecting. Clearing this Space's data may help." },
   ERR_FILE_NOT_FOUND: { ...NOT_FOUND, title: 'File not found', desc: 'It may have been moved, edited or deleted.' },

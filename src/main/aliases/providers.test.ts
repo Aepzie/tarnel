@@ -72,7 +72,7 @@ test('SimpleLogin random alias request', async () => {
   const alias = await createAlias({ provider: 'simplelogin', style: 'words', site: 'example.com', domain: null, mailbox: null }, api.send);
   assert.equal(alias.email, 'brave.owl@slmail.me');
   assert.equal(api.seen[0].path, '/api/alias/random/new?hostname=example.com&mode=word');
-  assert.deepEqual(api.seen[0].body, { note: 'Created by Vela' });
+  assert.deepEqual(api.seen[0].body, { note: 'Created by Tarnel' });
 });
 
 test('SimpleLogin site-based alias uses options + custom endpoint', async () => {
@@ -83,7 +83,7 @@ test('SimpleLogin site-based alias uses options + custom endpoint', async () => 
   });
   const alias = await createAlias({ provider: 'simplelogin', style: 'site', site: 'example.com', domain: null, mailbox: null }, api.send);
   assert.equal(alias.email, 'example.y@sl.me');
-  assert.deepEqual(api.seen[2].body, { alias_prefix: 'example', signed_suffix: 'free.sig', mailbox_ids: [9], note: 'Created by Vela' });
+  assert.deepEqual(api.seen[2].body, { alias_prefix: 'example', signed_suffix: 'free.sig', mailbox_ids: [9], note: 'Created by Tarnel' });
   const blocked = fakeApi({ 'GET /api/v5/alias/options': ok({ can_create: false, suffixes: [] }) });
   await assert.rejects(createAlias({ provider: 'simplelogin', style: 'site', site: 'a.com', domain: null, mailbox: null }, blocked.send), AliasApiError);
 });
@@ -94,7 +94,7 @@ test('addy.io alias request', async () => {
     'POST /api/v1/aliases': ok({ data: { id: 'u1', email: 'shop@anonaddy.me' } }, 201),
   });
   await createAlias({ provider: 'addy', style: 'site', site: 'shop.co.uk', domain: null, mailbox: 'r1' }, api.send);
-  assert.deepEqual(api.seen[1].body, { domain: 'anonaddy.me', description: 'Created by Vela for shop.co.uk', format: 'custom', local_part: 'shop', recipient_ids: ['r1'] });
+  assert.deepEqual(api.seen[1].body, { domain: 'anonaddy.me', description: 'Created by Tarnel for shop.co.uk', format: 'custom', local_part: 'shop', recipient_ids: ['r1'] });
   const direct = fakeApi({ 'POST /api/v1/aliases': ok({ data: { id: 'u2', email: 'x1y2@mydomain.com' } }, 201) });
   await createAlias({ provider: 'addy', style: 'chars', site: 'a.com', domain: 'mydomain.com', mailbox: null }, direct.send);
   assert.equal(direct.seen.length, 1);

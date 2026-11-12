@@ -3,7 +3,7 @@ import { NEWTAB_HEROES, type NewtabHero } from '@shared/types';
 export const HERO_LABELS: Record<NewtabHero, string> = {
   clock: 'Clock',
   'clock-seconds': 'Clock with seconds',
-  logo: 'Vela logo',
+  logo: 'Tarnel logo',
   date: 'Date',
   greeting: 'Greeting',
   minimal: 'Minimal',

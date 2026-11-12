@@ -8,7 +8,7 @@ import { Group, Row } from '../components/layout';
 import { hasBridge } from '../store';
 
 /**
- * Settings → Privacy: per-Space "clear cookies and site data when Vela closes" with the sites to
+ * Settings → Privacy: per-Space "clear cookies and site data when Tarnel closes" with the sites to
  * keep, plus the optional "30 s after a site's last tab closes". Burner Spaces are always wiped.
  */
 export function SiteDataOnClose() {
@@ -67,7 +67,7 @@ function SpacePolicy({ entry, showName, onChange }: { entry: SpaceSiteDataPolicy
   return (
     <Group title={showName ? `Cookies and site data · ${entry.name}` : 'Cookies and site data'}>
       <Row
-        title="Clear cookies and site data when Vela closes"
+        title="Clear cookies and site data when Tarnel closes"
         description="Signs you out of sites in this Space every time you quit, except the sites you keep."
         htmlFor={exitId}
       >
@@ -106,7 +106,7 @@ function SpacePolicy({ entry, showName, onChange }: { entry: SpaceSiteDataPolicy
         <SiteList sites={kept} empty="No sites kept." onRemove={(site) => setSite(site, null)} />
         {cleared.length > 0 && (
           <>
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">Always deleted when Vela closes</p>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">Always deleted when Tarnel closes</p>
             <SiteList sites={cleared} empty="" onRemove={(site) => setSite(site, null)} />
           </>
         )}

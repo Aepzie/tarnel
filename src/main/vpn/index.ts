@@ -8,7 +8,7 @@ import { sendToChrome } from '../window';
 import { MantelError, mantel } from './mantel';
 
 /**
- * MantelVPN in Vela. A browser cannot bring up a system WireGuard tunnel, so "connect" routes the
+ * MantelVPN in Tarnel. A browser cannot bring up a system WireGuard tunnel, so "connect" routes the
  * active Space through an account-scoped Mantel HTTP proxy on the chosen location (Mantel's
  * "server proxies"), reusing the Space proxy plumbing (fail-closed). Proxy authentication is
  * answered from main via app "login". Secrets (account number, proxy passwords) are kept with
@@ -183,7 +183,7 @@ async function credentialFor(session: string, nodeId: string): Promise<StoredPro
   if (usable) return usable;
   const created = await mantel.createProxy(session, nodeId);
   const sealed = encrypt(created.password);
-  if (!sealed) throw new MantelError('Secure storage is unavailable on this system, so Vela cannot keep the proxy password.', 'api');
+  if (!sealed) throw new MantelError('Secure storage is unavailable on this system, so Tarnel cannot keep the proxy password.', 'api');
   const stored: StoredProxy = {
     id: created.proxy.id,
     nodeId,

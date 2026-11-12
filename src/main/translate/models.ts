@@ -35,9 +35,9 @@ function catalogFile(): string {
   return path.join(root(), 'catalog.json');
 }
 
-/** Mozilla's CDN rejects browser-like user agents without browser headers: identify as Vela, send no cookies. */
+/** Mozilla's CDN rejects browser-like user agents without browser headers: identify as Tarnel, send no cookies. */
 function fetchModelData(url: string): Promise<Response> {
-  return net.fetch(url, { cache: 'no-store', credentials: 'omit', headers: { 'User-Agent': `Vela/${app.getVersion()} (on-device translation)` } });
+  return net.fetch(url, { cache: 'no-store', credentials: 'omit', headers: { 'User-Agent': `Tarnel/${app.getVersion()} (on-device translation)` } });
 }
 
 async function fetchJson(url: string): Promise<unknown> {

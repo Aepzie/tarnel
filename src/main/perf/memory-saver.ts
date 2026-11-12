@@ -1,7 +1,7 @@
 import type { MemorySaverMode } from '../../shared/types';
 
 /**
- * Memory saver: when Vela as a whole (every process, private commit — deliberately not the private
+ * Memory saver: when Tarnel as a whole (every process, private commit — deliberately not the private
  * working set the perf chip shows, which Windows shrinks by trimming exactly when memory gets tight,
  * and which would need the sampler running all the time) uses more than the user's
  * threshold, the least-recently-used eligible background tabs are slept until the estimate falls
@@ -38,7 +38,7 @@ export function isSaverEligible(tab: SaverCandidate): boolean {
 
 /**
  * Tabs to sleep, least recently used first, until the estimated total drops under the threshold.
- * Returns [] when the saver is off or Vela is under the threshold.
+ * Returns [] when the saver is off or Tarnel is under the threshold.
  */
 export function pickSaverTargets(
   tabs: readonly SaverCandidate[],

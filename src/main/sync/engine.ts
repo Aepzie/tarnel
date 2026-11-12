@@ -500,20 +500,20 @@ export function createSyncEngine(host: SyncHost): SyncEngine {
   }
 
   async function enable(input: SyncSetupInput): Promise<SyncStatus> {
-    if (!host.secureStorageAvailable()) throw new Error('This system has no secure key storage, so Vela can’t keep your sync key safe.');
+    if (!host.secureStorageAvailable()) throw new Error('This system has no secure key storage, so Tarnel can’t keep your sync key safe.');
     if (config.enabled) throw new Error('Sync is already on');
     const candidate = transportFromInput(input.transport);
     await candidate.ensure();
     const existing = await candidate.read(KEY_FILE);
     let newKey: Buffer;
     if (input.mode === 'create') {
-      if (existing) throw new Error('This location already has Vela sync data. Join it instead.');
+      if (existing) throw new Error('This location already has Tarnel sync data. Join it instead.');
       if (input.secret.normalize('NFKC').length < MIN_PASSPHRASE) throw new Error(`Use a passphrase of at least ${MIN_PASSPHRASE} characters`);
       const created = await createKeyFile(input.secret);
       await candidate.write(KEY_FILE, Buffer.from(JSON.stringify(created.keyFile, null, 2), 'utf8'));
       newKey = created.dataKey;
     } else {
-      if (!existing) throw new Error('No Vela sync data found at this location');
+      if (!existing) throw new Error('No Tarnel sync data found at this location');
       const keyFile = parseKeyFile(existing);
       const recovery = parseRecoveryKey(input.secret);
       if (recovery) {

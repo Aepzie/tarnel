@@ -238,7 +238,7 @@ fun PermissionSheet(browser: Browser, prompt: PermissionPrompt) {
             Text("$host wants to use your $what", style = VelaType.title.copy(fontSize = VelaType.heading.fontSize * 1.2f), color = c.text)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Only for this Space, until you close Vela. Vela never grants access without asking.",
+                "Only for this Space, until you close Tarnel. Tarnel never grants access without asking.",
                 style = VelaType.body,
                 color = c.textMuted,
             )
@@ -261,7 +261,7 @@ fun ExternalAppSheet(browser: Browser, prompt: ExternalPrompt) {
             Spacer(Modifier.height(14.dp))
             Text("Open in ${prompt.target}?", style = VelaType.title, color = c.text)
             Spacer(Modifier.height(6.dp))
-            Text("This page wants to leave Vela and open another app.", style = VelaType.body, color = c.textMuted)
+            Text("This page wants to leave Tarnel and open another app.", style = VelaType.body, color = c.textMuted)
             Spacer(Modifier.height(22.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SheetButton("Stay", c.surface, c.text, Modifier.weight(1f)) { browser.externalPrompt = null }

@@ -23,7 +23,7 @@ import { initBatterySaver } from './perf/battery-saver';
 import { initSecureDns } from './dns';
 import { chromePermissionPrompter } from './permissions';
 import { applyGlobalUserAgent, onTrackingStripped, setPermissionPrompter } from './privacy';
-import { VELA_SCHEME, registerVelaProtocol } from './protocol';
+import { INTERNAL_SCHEME, LEGACY_INTERNAL_SCHEME, registerInternalProtocol } from './protocol';
 import { attachSafety, initSafety } from './safety';
 import { getSettings, onSettingsChanged } from './settings';
 import { clearSiteDataOnQuit, siteDataClearPending } from './site-data';
@@ -57,11 +57,10 @@ import { applyWindowMaterial, createMainWindow, getChromeView, getMainWindow, re
 /** VELA_STARTUP_TRACE=1 prints process-uptime marks for startup profiling (scripts measure these). */
 const traceStartup = process.env.VELA_STARTUP_TRACE === '1';
 function startupMark(name: string): void {
-  if (traceStartup) console.info(`[vela:startup] ${name} ${Math.round(process.uptime() * 1000)}ms`);
+  if (traceStartup) console.info(`[tarnel:startup] ${name} ${Math.round(process.uptime() * 1000)}ms`);
 }
 
-// Isolated profile for development/testing (separate single-instance lock + storage).
-if (process.env.VELA_USER_DATA) app.setPath('userData', process.env.VELA_USER_DATA);
+// userData (TARNEL_USER_DATA / VELA_USER_DATA, Vela → Tarnel profile move) is settled in boot.ts.
 
 applyChromiumFlags();
 startupMark('main-evaluated');
@@ -71,11 +70,13 @@ startupMark('main-evaluated');
 // noise, so it is swallowed — anything else is still reported.
 process.on('unhandledRejection', (reason) => {
   if (reason instanceof Error && reason.message.startsWith('Script failed to execute')) return;
-  console.error('[vela] unhandled rejection', reason);
+  console.error('[tarnel] unhandled rejection', reason);
 });
 protocol.registerSchemesAsPrivileged([
-  // codeCache: V8 code cache for vela:// pages (Chromium only caches http(s) by default); needs standard.
-  { scheme: VELA_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
+  // codeCache: V8 code cache for tarnel:// pages (Chromium only caches http(s) by default); needs standard.
+  { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
+  // Pre-rename alias: only redirects to tarnel:// (protocol.ts), registered alike so old URLs parse the same.
+  { scheme: LEGACY_INTERNAL_SCHEME, privileges: { standard: true, secure: true } },
 ]);
 
 let sessionStore: JsonStore<SavedTab[]> | null = null;
@@ -146,14 +147,14 @@ if (!app.requestSingleInstanceLock()) {
         const space = tabId === null ? undefined : getSpace(getTabSpaceId(tabId) ?? '');
         return space ? { spaceId: space.id, ephemeral: space.ephemeral } : null;
       },
-      openReport: () => createTab({ url: 'vela://privacy', active: true }),
+      openReport: () => createTab({ url: 'tarnel://privacy', active: true }),
     });
     registerPrivacySource('cookieBannersHandled', () => getCookieBannerStats().total);
     void initAdblock().catch(() => undefined);
     initSafety();
     initFrameRate();
     onSessionCreated((ses) => {
-      registerVelaProtocol(ses);
+      registerInternalProtocol(ses);
       attachDownloads(ses);
       trackDownloadsForSleep(ses);
       attachSafety(ses);

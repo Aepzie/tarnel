@@ -86,7 +86,7 @@ describe('BlocklistIndex', () => {
     assert.equal(index.match('https://someone.github.io/'), null);
   });
   it('ignores non-http URLs', () => {
-    assert.equal(index.match('vela://newtab/'), null);
+    assert.equal(index.match('tarnel://newtab/'), null);
     assert.equal(index.match('file:///C:/phish.test'), null);
   });
 });

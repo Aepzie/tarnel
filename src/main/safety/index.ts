@@ -10,8 +10,8 @@ import { BlocklistIndex, LIST_SOURCES, parseList, type ListSource, type ThreatMa
 /**
  * Phishing & malware protection without per-URL lookups: the blocklists in ./lists.ts are fetched
  * in bulk on start and every 6 h, cached in userData/safety and matched locally in a dispatcher
- * stage. A main-frame hit is redirected to the vela://error warning interstitial; a sub-frame hit
- * is cancelled. "Proceed anyway" allowlists the host until Vela quits.
+ * stage. A main-frame hit is redirected to the tarnel://error warning interstitial; a sub-frame hit
+ * is cancelled. "Proceed anyway" allowlists the host until Tarnel quits.
  */
 
 const REFRESH_MS = 6 * 60 * 60 * 1000;
@@ -182,7 +182,7 @@ export function isDangerousUrlChain(urls: readonly string[]): boolean {
 
 export function warningPageUrl(url: string, hit: ThreatMatch): string {
   const params = new URLSearchParams({ threat: hit.source.threat, source: hit.source.name, url });
-  return `vela://error/?${params.toString()}`;
+  return `tarnel://error/?${params.toString()}`;
 }
 
 export function attachSafety(session: Session): void {

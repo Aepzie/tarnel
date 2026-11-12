@@ -47,7 +47,7 @@ export function ReleaseNotesDialog({
           </span>
           <div className="min-w-0">
             <DialogTitle className="truncate text-[15px] leading-5 font-semibold tracking-tight">
-              What’s new in Vela {status.version}
+              What’s new in Tarnel {status.version}
             </DialogTitle>
             <DialogDescription className="text-[12px] leading-[18px] text-muted-foreground">
               {date ? `Released ${date}` : 'Release notes'}

@@ -5,7 +5,7 @@ import { RegionSelect } from '@/chrome/spaces/FingerprintPicker';
 
 type Brands = { brands?: { brand: string; version: string }[] };
 
-/** Vela's Chromium major, so the Chrome presets match what Sec-CH-UA reports. */
+/** Tarnel's Chromium major, so the Chrome presets match what Sec-CH-UA reports. */
 function chromeMajor(): number {
   const brands = (navigator as Navigator & { userAgentData?: Brands }).userAgentData?.brands;
   const version = brands?.find((entry) => entry.brand === 'Chromium')?.version ?? /Chrome\/(\d+)/.exec(navigator.userAgent)?.[1];
@@ -17,7 +17,7 @@ const PRESETS = userAgentPresets(chromeMajor());
 interface UserAgentPickerProps {
   label: string;
   value: string;
-  /** Label of the '' entry ("Vela default" globally, "Use default" in a Space). */
+  /** Label of the '' entry ("Tarnel default" globally, "Use default" in a Space). */
   defaultLabel: string;
   onChange: (value: string) => void;
 }

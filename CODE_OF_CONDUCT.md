@@ -1,6 +1,6 @@
 # Code of Conduct
 
-Vela adopts the **[Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)**
+Tarnel adopts the **[Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)**
 as its code of conduct. By participating in this project — in issues, pull requests, discussions or any
 other project space — you agree to abide by it.
 
@@ -18,7 +18,7 @@ is available at <https://www.contributor-covenant.org/version/2/1/code_of_conduc
 ## Reporting
 
 If you experience or witness unacceptable behavior, please report it privately to the maintainers by
-opening a [private security advisory](https://github.com/Aepzie/vela/security/advisories/new)
+opening a [private security advisory](https://github.com/Aepzie/tarnel/security/advisories/new)
 titled "Code of Conduct report", or by contacting a maintainer directly. All reports are reviewed
 promptly and handled confidentially. Maintainers who do not follow the code of conduct may face
 consequences determined by other project leaders.

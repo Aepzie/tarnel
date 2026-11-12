@@ -31,7 +31,7 @@ class RealListsTest {
         Triple("https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg", "https://en.wikipedia.org/wiki/Example", ResourceType.IMAGE),
         Triple("https://en.wikipedia.org/w/load.php?lang=en&modules=startup&only=scripts", "https://en.wikipedia.org/wiki/Example", ResourceType.SCRIPT),
         Triple("https://www.google.com/search?q=kotlin", null, ResourceType.DOCUMENT),
-        Triple("https://github.com/Aepzie/vela", null, ResourceType.DOCUMENT),
+        Triple("https://github.com/Aepzie/tarnel", null, ResourceType.DOCUMENT),
         Triple("https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js", "https://www.example.com/", ResourceType.SCRIPT),
         Triple("https://fonts.gstatic.com/s/inter/v13/abc.woff2", "https://www.example.com/", ResourceType.FONT),
         Triple("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", "https://www.youtube.com/", ResourceType.IMAGE),

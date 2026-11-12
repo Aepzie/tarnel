@@ -34,7 +34,7 @@ test('scaleRectInto scales and clamps to the image', () => {
 
 test('screenshotFileName has no characters Windows forbids', () => {
   const name = screenshotFileName(new Date(2026, 10, 11, 9, 5, 7), 'png');
-  assert.equal(name, 'Vela screenshot 2026-11-11 at 09.05.07.png');
+  assert.equal(name, 'Tarnel screenshot 2026-11-11 at 09.05.07.png');
   assert.ok(!/[<>:"/\\|?*]/.test(name));
   assert.ok(screenshotFileName(new Date(), 'jpeg').endsWith('.jpg'));
 });

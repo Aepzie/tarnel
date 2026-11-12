@@ -1,5 +1,5 @@
 /**
- * Privacy report (vela://privacy): local-only daily aggregates. Pure — no Electron imports, so the
+ * Privacy report (tarnel://privacy): local-only daily aggregates. Pure — no Electron imports, so the
  * aggregation, rollover and estimates are unit-tested (privacy-report.test.ts) and the types are
  * shared with the renderer.
  *

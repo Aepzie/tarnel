@@ -39,7 +39,7 @@ function statusText(status: UpdateStatus): string {
     case 'downloading':
       return `Downloading ${status.version}…`;
     case 'ready':
-      return `Version ${status.version} is ready. Restart Vela to finish updating.`;
+      return `Version ${status.version} is ready. Restart Tarnel to finish updating.`;
     case 'error':
       return status.error ?? 'Update check failed.';
     default:
@@ -132,7 +132,7 @@ function NotesDialog({ status, open, onOpenChange }: { status: UpdateStatus; ope
           </span>
           <div className="min-w-0">
             <DialogTitle className="truncate text-[15px] leading-5 font-semibold tracking-tight">
-              What’s new in Vela {status.version}
+              What’s new in Tarnel {status.version}
             </DialogTitle>
             <DialogDescription className="text-xs leading-[18px] text-muted-foreground">
               {status.releaseName && status.releaseName !== status.version ? status.releaseName : 'Release notes'}
@@ -175,7 +175,7 @@ export function UpdatesGroup() {
   return (
     <Group title="Updates">
       <Row
-        title={`Vela ${status.currentVersion}`}
+        title={`Tarnel ${status.currentVersion}`}
         description={
           <>
             <span role="status" aria-live="polite" className={cn(status.phase === 'error' && 'text-destructive')}>
@@ -219,7 +219,7 @@ export function UpdatesGroup() {
       />
       <Row
         title="Download updates automatically"
-        description={installable ? 'Updates install the next time Vela restarts.' : notifyReasonText(status)}
+        description={installable ? 'Updates install the next time Tarnel restarts.' : notifyReasonText(status)}
         htmlFor={autoDownloadId}
         descriptionId={`${autoDownloadId}-desc`}
       >

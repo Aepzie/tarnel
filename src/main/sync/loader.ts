@@ -25,7 +25,7 @@ let engine: SyncEngine | null = null;
 function host(): SyncHost {
   return {
     userDataDir: app.getPath('userData'),
-    deviceName: os.hostname().slice(0, 64) || 'Vela',
+    deviceName: os.hostname().slice(0, 64) || 'Tarnel',
     secureStorageAvailable: () => safeStorage.isEncryptionAvailable(),
     protect: (plain) => safeStorage.encryptString(plain).toString('base64'),
     unprotect: (sealed) => safeStorage.decryptString(Buffer.from(sealed, 'base64')),
