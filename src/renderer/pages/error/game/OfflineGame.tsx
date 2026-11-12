@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { ArrowUp, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { act, advance, createRun, SCENE, type RunAction, type RunState } from './engine';
+import { act, createRun, frame as step, SCENE, type RunAction, type RunState } from './engine';
 
 const SCENERY = <>
   <path d="M0 144H640" className="stroke-border" fill="none" />
@@ -30,6 +30,8 @@ export function OfflineGame({ onClose }: { onClose: () => void }) {
     const events = new AbortController();
     const pause = () => dispatch('pause');
     window.addEventListener('blur', pause, { signal: events.signal });
+    window.addEventListener('pagehide', pause, { signal: events.signal });
+    document.addEventListener('freeze', pause, { signal: events.signal });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) pause();
     }, { signal: events.signal });
@@ -43,7 +45,7 @@ export function OfflineGame({ onClose }: { onClose: () => void }) {
     const tick = (time: number) => {
       if (current.current.mode !== 'running') return;
       if (document.hidden) { dispatch('pause'); return; }
-      const next = advance(current.current, previous === undefined ? 0 : time - previous, Math.random);
+      const next = step(current.current, previous === undefined ? 0 : time - previous, Math.random);
       previous = time;
       publish(next);
       if (next.mode === 'running') frame = requestAnimationFrame(tick);

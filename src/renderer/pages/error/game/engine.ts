@@ -71,3 +71,12 @@ export function advance(run: RunState, milliseconds: number, random: () => numbe
   }
   return next;
 }
+
+/** A gap this long between two frames means the page was hidden, detached or frozen rather than just slow. */
+export const STALL_GAP = 250;
+
+/** One animation frame: a stalled gap pauses the run instead of simulating time the player never saw. */
+export function frame(run: RunState, milliseconds: number, random: () => number): RunState {
+  if (run.mode === 'running' && milliseconds > STALL_GAP) return act(run, 'pause');
+  return advance(run, milliseconds, random);
+}

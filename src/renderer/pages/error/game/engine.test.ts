@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { act, advance, createRun, RESUME_GRACE, SCENE } from './engine';
+import { act, advance, createRun, frame, RESUME_GRACE, SCENE, STALL_GAP } from './engine';
+
+test('a frame gap beyond the stall threshold pauses without advancing, normal and slow frames keep running', () => {
+  let run = act(createRun(), 'start');
+  for (let i = 0; i < 60; i++) run = frame(run, 1000 / 60, () => 0.5);
+  for (let i = 0; i < 30; i++) run = frame(run, 1000 / 30, () => 0.5);
+  assert.equal(run.mode, 'running');
+  const slow = frame(run, STALL_GAP - 1, () => 0.5);
+  assert.equal(slow.mode, 'running');
+  assert.ok(slow.distance > run.distance);
+  const stalled = frame(run, STALL_GAP + 1, () => 0.5);
+  assert.equal(stalled.mode, 'paused');
+  assert.deepEqual({ ...stalled, mode: 'running' }, run, 'the stalled frame must not advance the simulation');
+  assert.equal(frame(stalled, 16, () => 0.5), stalled);
+});
 
 test('resuming clears rocks just ahead of the runner but keeps passed and distant ones', () => {
   const near = { id: 1, x: SCENE.runnerX + SCENE.runnerSize + 10, width: 24, height: 30 };
