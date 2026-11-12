@@ -31,9 +31,9 @@
 
 **Interfaces:** `createRun(): RunState`, `act(run, action): RunState` for start/jump/pause/resume, `advance(run, milliseconds, random): RunState`, `canPlayOffline(code, online): boolean`. State includes mode, height, velocity, distance, score, spawn timer and obstacles; scene constants are exported.
 
-- [ ] Test explicit start, jump/landing/no double jump, collisions, score, pause/restart, bounded long frames and invalid timing. Test offline eligibility including security failures.
-- [ ] Run tests to observe missing behavior; implement deterministic simulation and allowlist.
-- [ ] Run `npm test`, expect success, commit behavior and tests.
+- [x] Test explicit start, jump/landing/no double jump, collisions, score, pause/restart, bounded long frames and invalid timing. Test offline eligibility including security failures.
+- [x] Run tests to observe missing behavior; implement deterministic simulation and allowlist.
+- [x] Run `npm test`, expect success, commit behavior and tests.
 
 ### Task 2: Local UI integration and verification
 
@@ -41,8 +41,8 @@
 
 **Interfaces:** consumes Task 1. `OfflineGame({onClose})` owns active frames/listeners without IPC or storage; App owns eligibility/lazy mounting.
 
-- [ ] Prepare an isolated real-app smoke test for the offline game entry; observe failure before adding UI.
-- [ ] Implement responsive SVG, controls, focused keyboard handling, state announcements, hidden/blur pause and cleanup.
-- [ ] Exercise offline navigation, pause/resume, collision/restart, retry, no remote resources, themes and narrow layout; capture screenshots.
-- [ ] Update existing docs/changelog. Run typecheck, full tests, build and diff checks; expect success.
+- [x] Prepare an isolated real-app smoke test for the offline game entry; observe failure before adding UI.
+- [x] Implement responsive SVG, controls, focused keyboard handling, state announcements, hidden/blur pause and cleanup.
+- [x] Exercise offline navigation, pause/resume, collision/restart, retry, no remote resources, themes and narrow layout; capture screenshots.
+- [x] Update existing docs/changelog. Run typecheck, full tests, build and diff checks; expect success.
 - [ ] Obtain a separate review, resolve confirmed defects and prepare the feature for the repository PR workflow, separate from DRM.

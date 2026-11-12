@@ -1,22 +1,37 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, RotateCw } from 'lucide-react';
-import { useEffect, useMemo, type CSSProperties } from 'react';
+import { ArrowLeft, Gamepad2, RotateCw } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import { rise, stagger } from '@/lib/motion';
 import { copyFor, isFallback, parseError } from './errors';
 import { velaPages } from '@/lib/vela';
 import { bootTheme, hasBridge } from './theme';
+import { canPlayOffline } from './game/eligibility';
 
 const DANGER = '#f87171';
+const OfflineGame = lazy(() => import('./game/OfflineGame'));
 
 export function App() {
   const reduced = useReducedMotion() ?? false;
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [playing, setPlaying] = useState(false);
+  const play = useRef<HTMLButtonElement>(null);
+  const retryButton = useRef<HTMLButtonElement>(null);
   const error = useMemo(() => parseError(location.search), []);
   const copy = copyFor(error.code);
   const Icon = copy.icon;
   const target = error.target;
   const description = isFallback(copy) && error.detail ? error.detail : copy.desc;
   const tone = copy.danger ? DANGER : 'var(--accent-space)';
+  const offerGame = canPlayOffline(error.code, online);
+
+  useEffect(() => {
+    const events = new AbortController();
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update, { signal: events.signal });
+    window.addEventListener('offline', update, { signal: events.signal });
+    return () => events.abort();
+  }, []);
 
   useEffect(() => {
     document.title = target ? `${target.hostname} — ${copy.title}` : copy.title;
@@ -29,14 +44,14 @@ export function App() {
 
   return (
     <div
-      className="flex h-full items-center justify-center overflow-hidden bg-background px-6"
+      className="flex h-full flex-col items-center overflow-y-auto bg-background px-6 py-8"
       style={{ '--ve-tone': tone } as CSSProperties}
     >
       <motion.main
         variants={stagger(0.05)}
         initial="hidden"
         animate="show"
-        className="flex w-full max-w-md -translate-y-[4vh] flex-col items-center text-center"
+        className={cn('my-auto flex w-full shrink-0 flex-col items-center text-center', playing ? 'max-w-xl' : 'max-w-md')}
       >
         <motion.div variants={rise} className="relative mb-7">
           <div aria-hidden="true" className="ve-glow pointer-events-none absolute -inset-10 rounded-full" />
@@ -70,9 +85,10 @@ export function App() {
           </motion.p>
         )}
 
-        <motion.div variants={rise} className="mt-7 flex items-center gap-2">
+        <motion.div variants={rise} className="mt-7 flex flex-wrap items-center justify-center gap-2">
           {target && (
             <button
+              ref={retryButton}
               type="button"
               autoFocus
               onClick={retry}
@@ -100,7 +116,28 @@ export function App() {
             <ArrowLeft size={14} strokeWidth={1.75} aria-hidden="true" />
             Go back
           </button>
+          {offerGame && !playing && (
+            <button
+              ref={play}
+              type="button"
+              onClick={() => setPlaying(true)}
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Gamepad2 size={15} strokeWidth={1.75} aria-hidden="true" />
+              Play offline
+            </button>
+          )}
         </motion.div>
+
+        {playing && (
+          <Suspense fallback={<p role="status" className="mt-6 text-sm text-muted-foreground">Loading game…</p>}>
+            <OfflineGame onClose={() => {
+              setPlaying(false);
+              // The entry button returns with this render; focus it without starting an idle loop.
+              requestAnimationFrame(() => (play.current ?? retryButton.current)?.focus());
+            }} />
+          </Suspense>
+        )}
 
         <motion.p variants={rise} className="mt-8 font-mono text-[11px] tracking-wide text-muted-foreground/60">
           {error.code}
