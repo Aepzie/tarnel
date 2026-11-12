@@ -81,8 +81,8 @@ const nodeConfigs = [
     // Runs in every web frame: always minified so the per-frame parse stays small.
     ...shared,
     minify: true,
-    entryPoints: [join(src, 'preload', 'cookie-banners.ts')],
-    outfile: join(out, 'preload', 'cookie-banners.js'),
+    entryPoints: [join(src, 'preload', 'cookie-banners.ts'), join(src, 'preload', 'adblock-early.ts')],
+    outdir: join(out, 'preload'),
     platform: 'node',
     format: 'cjs',
     target: 'chrome130',
@@ -118,6 +118,8 @@ async function buildRenderer() {
 
 await rm(out, { recursive: true, force: true });
 await copyCookieBannerRules();
+// Tarnel's own filter list, merged into the adblock engine (src/main/perf/adblock.ts).
+await copyFile(join(src, 'main', 'perf', 'lists', 'tarnel-extra.txt'), join(out, 'main', 'adblock-extra.txt'));
 // Vendored bergamot-translator WASM + glue (MPL-2.0), loaded by the translation engine at runtime.
 await cp(join(root, 'vendor', 'bergamot'), join(out, 'vendor', 'bergamot'), { recursive: true });
 

@@ -55,6 +55,8 @@ import { archiveSuggestions, registerTabArchiveIpc } from './tab-archive';
 import { USER_AGENT_MAX } from '../shared/user-agent';
 import { getChromeView, getMainWindow } from './window';
 import { fileUrlForLocalPath } from './open-files';
+import { registerDrmIpc } from './drm';
+import { isInternalPageSender, validateDrmSettingsPatch } from './drm/ipc-policy';
 
 type Handler = (...args: unknown[]) => unknown;
 
@@ -148,8 +150,10 @@ function groupPatch(value: unknown): Partial<TabGroupInput> {
   return patch;
 }
 
-function settingsPatch(value: unknown): Partial<Settings> {
-  return plainObject(value) as Partial<Settings>;
+function settingsPatch(value: unknown, source: 'chrome' | 'page' = 'chrome', url?: string): Partial<Settings> {
+  const patch = plainObject(value);
+  validateDrmSettingsPatch(patch, source, url);
+  return patch as Partial<Settings>;
 }
 
 function bounds(value: unknown): ContentBounds {
@@ -170,8 +174,7 @@ function fromChrome(event: IpcMainInvokeEvent): boolean {
 }
 
 function fromVelaPage(event: IpcMainInvokeEvent | IpcMainEvent): boolean {
-  const frame = event.senderFrame;
-  return !!frame && frame.parent === null && frame.url.startsWith('tarnel://') && tabs.tabIdForWebContents(event.sender.id) !== null;
+  return isInternalPageSender(event.senderFrame, tabs.tabIdForWebContents(event.sender.id));
 }
 
 function handleChrome(channel: string, fn: Handler): void {
@@ -395,7 +398,11 @@ export function registerIpc(): void {
 
   const p = IPC.pages;
   handlePages(p.getSettings, () => getSettings());
-  handlePages(p.setSettings, (_e, patch) => updateSettings(settingsPatch(patch)));
+  handlePages(p.setSettings, (event, patch) => {
+    const valid = settingsPatch(patch, 'page', event.senderFrame?.url);
+    return updateSettings(valid);
+  });
+  registerDrmIpc(handlePages);
   handlePages(p.topSites, () => topSites(8));
   handlePages(p.perf, perfStats);
   handlePages(p.frameRate, () => getFrameRateStatus());

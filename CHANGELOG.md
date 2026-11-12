@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offline error pages offer an optional local "Trail hop" game: jump with Space, Up or the Jump button, pause with Escape, and resume or play again. It loads only when opened, pauses when hidden or unfocused, and keeps scores only in memory. Retry and back navigation remain available; security warnings never offer the game.
 - New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
 - `tarnel://` is the address of the internal pages (`tarnel://settings`, `tarnel://newtab`, `tarnel://privacy`, …).
+- Settings → Privacy → Protected content (DRM), off by default. Needs a DRM-capable build; release builds don't include one yet.
 
 ### Changed
 - Vela is now Tarnel: new name and logo. Existing profiles, settings and vela:// links carry over automatically.
@@ -18,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows: installer, shortcuts and Default apps entry are now called Tarnel (`Tarnel-<version>-setup-x64.exe`); updating removes the old Vela registrations so Windows doesn't list two browsers.
 - The profile folder moves from `Vela` to `Tarnel` on first start (moved, or copied if moving fails; nothing is deleted). For isolated test instances use `TARNEL_USER_DATA` (`VELA_USER_DATA` still works).
 - The project now lives at https://github.com/Aepzie/tarnel.
+- Ad blocking takes the uBlock Origin lists straight from uBlock Origin (including the 2025/2026 lists) instead of Ghostery's weeks-old copy, so new YouTube ad fixes arrive within a day. Falls back to Ghostery's copy if uBlock Origin's site is unreachable.
+
+### Fixed
+- Ad blocking now also blocks ad-SDK, analytics and device-maker telemetry hosts (Unity Ads, Yahoo, Yandex, TikTok/ByteDance, Xiaomi, Oppo/Realme, Huawei, Apple) through a small list bundled with Tarnel. adblock.turtlecute.org now scores 100% (was 69%).
+- A cached ad-block engine could fail to load at startup ("start offset of Uint32Array should be a multiple of 4") and was rebuilt from the network on every launch, depending on the length of its cache key.
+
+### Fixed
+- YouTube ads are blocked again: ad-blocking scriptlets now run before the page's own scripts (also in YouTube embeds), so ad data is removed before the player reads it. Each scriptlet still runs only once per page.
+
+### Security
+- Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.
 
 ## [0.9.1] - 2026-11-11
 

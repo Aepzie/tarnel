@@ -94,7 +94,7 @@ export function Row({ title, description, htmlFor, descriptionId, children, clas
 }
 
 /** Row bound to a boolean setting. */
-export function SwitchRow({ title, description, setting }: { title: string; description: ReactNode; setting: BooleanSettingKey }) {
+export function SwitchRow({ title, description, setting, disabled }: { title: string; description: ReactNode; setting: BooleanSettingKey; disabled?: boolean }) {
   const { settings, update } = useSettings();
   const id = useId();
   return (
@@ -103,6 +103,7 @@ export function SwitchRow({ title, description, setting }: { title: string; desc
         id={id}
         aria-describedby={`${id}-desc`}
         checked={settings[setting]}
+        disabled={disabled}
         onCheckedChange={(checked) => update({ [setting]: checked } as Partial<typeof settings>)}
       />
     </Row>

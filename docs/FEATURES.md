@@ -48,6 +48,7 @@ flowchart LR
 
 ## Privacy and security
 
+- **Protected content (DRM)**: Settings → Privacy → "Protected content (DRM)", off by default. Consent stays on this device; changes need a restart. Release builds use stock Electron and do not include a DRM-capable runtime; an optional [development runtime](RELEASING.md#optional-widevine-development-runtime) is available. Status reports local Widevine readiness, without guaranteeing service compatibility. DRM players embedded in iframes are blocked even when DRM is on. Open pages can continue using DRM until restart. The component applies to the whole app, including Burner Spaces, without complete DRM isolation between Spaces.
 - **Built-in ad and tracker blocking**: network-level, powered by the
   [Ghostery adblocker](https://github.com/ghostery/adblocker) engine.
 - **Cookie banners rejected**: consent pop-ups from common consent tools are answered with "reject" / "only
