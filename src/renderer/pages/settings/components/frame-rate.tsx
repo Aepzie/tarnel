@@ -17,7 +17,7 @@ const MODES: readonly SegmentOption<FrameRateMode>[] = [
 ];
 
 const MODE_TEXT: Record<FrameRateMode, string> = {
-  match: 'Draw at the refresh rate of the display Vela opens on.',
+  match: 'Draw at the refresh rate of the display Tarnel opens on.',
   highest: 'Always draw at your fastest display’s rate, also on slower displays (more GPU work there).',
   primary: 'Draw at the primary display’s rate, like stock Chromium. Can save power on a fast laptop panel.',
 };
@@ -116,7 +116,7 @@ export function FrameRateGroup() {
           <>
             <span className="block">{displaySummary(status)}</span>
             <span role="status" aria-live="polite" className={cn('block tabular-nums', error && 'text-destructive')}>
-              {error ?? (status.supported ? measured : `${measured} Vela follows each display’s refresh rate automatically.`)}
+              {error ?? (status.supported ? measured : `${measured} Tarnel follows each display’s refresh rate automatically.`)}
             </span>
           </>
         }

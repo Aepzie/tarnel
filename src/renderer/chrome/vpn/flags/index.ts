@@ -1,5 +1,5 @@
 /**
- * Country flags as small inline SVGs (4:3, viewBox 640×480), drawn for Vela so they ship without a
+ * Country flags as small inline SVGs (4:3, viewBox 640×480), drawn for Tarnel so they ship without a
  * dependency or font support (Windows has no flag emoji). Proportions are simplified where a flag has
  * fine detail (stars, emblems); colours follow the official values. Unknown codes return null.
  */
@@ -72,7 +72,7 @@ const FLAGS: Record<string, string> = {
 
 const urls = new Map<string, string>();
 
-/** A data: URL of the country's flag (lower- or upper-case ISO code), or null when Vela has none. */
+/** A data: URL of the country's flag (lower- or upper-case ISO code), or null when Tarnel has none. */
 export function flagUrl(countryCode: string): string | null {
   const code = countryCode.toLowerCase();
   const markup = FLAGS[code];

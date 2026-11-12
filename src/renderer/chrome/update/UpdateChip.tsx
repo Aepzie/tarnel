@@ -74,7 +74,7 @@ export function UpdateChip() {
             <PopoverTrigger asChild>
               <motion.button
                 type="button"
-                aria-label={`${CHIP_LABEL[kind]}: Vela ${status.version}`}
+                aria-label={`${CHIP_LABEL[kind]}: Tarnel ${status.version}`}
                 className={cn(
                   'no-drag flex h-7 shrink-0 items-center gap-1.5 rounded-[10px] px-2.5 text-[12px] font-medium tracking-tight whitespace-nowrap tabular-nums',
                   'outline-none transition-[background-color,color] duration-150 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]',
@@ -115,7 +115,7 @@ export function UpdateChip() {
                   <CircleFadingArrowUp className="size-4" strokeWidth={1.75} />
                 </span>
                 <div className="min-w-0 pt-px">
-                  <p className="truncate text-[13px] leading-5 font-semibold tracking-tight">Vela {status.version}</p>
+                  <p className="truncate text-[13px] leading-5 font-semibold tracking-tight">Tarnel {status.version}</p>
                   <p className="text-[12px] leading-[18px] text-muted-foreground">{description(kind, status)}</p>
                 </div>
               </header>

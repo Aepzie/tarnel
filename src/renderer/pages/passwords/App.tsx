@@ -76,7 +76,7 @@ export function App() {
         <KeyRound className="size-5 text-muted-foreground" strokeWidth={1.75} />
         <h1 className="text-xl font-semibold tracking-tight">Passwords</h1>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" className={quiet} onClick={() => settle(velaPages().navigate('vela://settings/#import'))}>
+          <button type="button" className={quiet} onClick={() => settle(velaPages().navigate('tarnel://settings/#import'))}>
             <Upload className="size-3.5" strokeWidth={1.75} /> Import passwords…
           </button>
           <button type="button" className={quiet} disabled={logins.length === 0} onClick={() => setConfirmExport(true)}>
@@ -86,7 +86,7 @@ export function App() {
       </header>
 
       {status && !status.encryption && (
-        <Banner tone="warn">OS encryption is not available, so Vela will not save passwords. On Linux, install and unlock a keyring (GNOME Keyring or KWallet).</Banner>
+        <Banner tone="warn">OS encryption is not available, so Tarnel will not save passwords. On Linux, install and unlock a keyring (GNOME Keyring or KWallet).</Banner>
       )}
       {confirmExport && (
         <Banner tone="warn">
@@ -268,7 +268,7 @@ function LoginRow({ login, run }: { login: SavedLogin; run: (task: Promise<unkno
   );
 }
 
-/** Installs the official extension through the normal review flow, then offers to turn Vela's own manager off. */
+/** Installs the official extension through the normal review flow, then offers to turn Tarnel's own manager off. */
 function ExternalManagers() {
   const [review, setReview] = useState<ExtensionReview | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -327,7 +327,7 @@ function ExternalManagers() {
           )}
           {installed && (
             <div className="mt-3 rounded-lg bg-muted px-3 py-2">
-              <p>{installed} is installed. Turn off Vela's own password saving and autofill so the two do not both ask?</p>
+              <p>{installed} is installed. Turn off Tarnel's own password saving and autofill so the two do not both ask?</p>
               <span className="mt-2 flex gap-2">
                 <button
                   type="button"
@@ -337,7 +337,7 @@ function ExternalManagers() {
                     setInstalled(null);
                   }}
                 >
-                  Turn off Vela passwords
+                  Turn off Tarnel passwords
                 </button>
                 <button type="button" className={quiet} onClick={() => setInstalled(null)}>Keep both</button>
               </span>

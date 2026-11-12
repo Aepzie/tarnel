@@ -35,7 +35,7 @@ function MantelCard() {
                   {term ? ` · ${term.daysLeft} days left` : ''}
                 </>
               ) : (
-                'Partner network for Vela · sign in with your account number'
+                'Partner network for Tarnel · sign in with your account number'
               )}
             </span>
           </span>

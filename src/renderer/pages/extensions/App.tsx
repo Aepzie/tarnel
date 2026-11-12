@@ -428,8 +428,8 @@ export function App() {
               {matches.length === 0 && (
                 <EmptyNote
                   icon="search"
-                  title="Not in Vela’s picks"
-                  body="Press Enter to search the Chrome Web Store. On a store page, Vela shows an Add to Vela button in the toolbar."
+                  title="Not in Tarnel’s picks"
+                  body="Press Enter to search the Chrome Web Store. On a store page, Tarnel shows an Add to Tarnel button in the toolbar."
                 />
               )}
               {CATALOG_CATEGORIES.map((category) => {
@@ -468,7 +468,7 @@ export function App() {
               )}
               <button
                 type="button"
-                onClick={() => void velaPages().navigate('vela://settings/#extensions')}
+                onClick={() => void velaPages().navigate('tarnel://settings/#extensions')}
                 className="mt-2 self-start px-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
               >
                 Spaces, site access and pinning live in Settings → Extensions

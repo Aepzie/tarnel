@@ -3,12 +3,12 @@ import { motion } from 'motion/react';
 import { ArrowUpRight } from 'lucide-react';
 import { rise } from '@/lib/motion';
 import { velaPages, type VelaPagesAPI } from '@/lib/vela';
-import { VelaAppIcon } from '../components/brand';
+import { BrandAppIcon } from '../components/brand';
 import { Group, Row } from '../components/layout';
 import { UpdatesGroup } from '../components/updates';
 import { hasBridge } from '../store';
 
-const REPO_URL = 'https://github.com/Aepzie/vela';
+const REPO_URL = 'https://github.com/Aepzie/tarnel';
 
 type Versions = Awaited<ReturnType<VelaPagesAPI['version']>>;
 
@@ -27,7 +27,7 @@ export function About() {
   }, []);
 
   const pills: readonly [string, string | undefined][] = [
-    ['Vela', versions?.app],
+    ['Tarnel', versions?.app],
     ['Electron', versions?.electron],
     ['Chromium', versions?.chrome],
     ['V8', versions?.v8],
@@ -41,10 +41,10 @@ export function About() {
             aria-hidden
             className="absolute -inset-4 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--accent-space)_35%,transparent),transparent)] blur-md"
           />
-          <VelaAppIcon className="relative size-16" />
+          <BrandAppIcon className="relative size-16" />
         </div>
         <div>
-          <h1 className="text-[22px] leading-8 font-semibold tracking-tight">Vela</h1>
+          <h1 className="text-[22px] leading-8 font-semibold tracking-tight">Tarnel</h1>
           <p className="mt-1 text-[13px] leading-5 text-muted-foreground">A fast, quiet, open-source browser.</p>
         </div>
         <ul className="flex flex-wrap gap-2" aria-label="Version information">
@@ -76,7 +76,7 @@ export function About() {
             }}
             className="group inline-flex items-center gap-1 rounded-md font-mono text-xs text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            github.com/Aepzie/vela
+            github.com/Aepzie/tarnel
             <ArrowUpRight
               className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
               strokeWidth={1.75}

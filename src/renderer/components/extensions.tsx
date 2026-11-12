@@ -6,7 +6,7 @@ import { ease, spring } from '@/lib/motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-/** Extension UI shared by Settings → Extensions and vela://extensions. */
+/** Extension UI shared by Settings → Extensions and tarnel://extensions. */
 
 export const cardClass =
   'overflow-hidden rounded-xl bg-card/50 ring-1 ring-border shadow-[inset_0_1px_0_var(--island-highlight)]';

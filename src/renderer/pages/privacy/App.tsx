@@ -273,7 +273,7 @@ export function App() {
                 <p>
                   <button
                     type="button"
-                    onClick={() => settle(velaPages().navigate('vela://settings/#privacy'))}
+                    onClick={() => settle(velaPages().navigate('tarnel://settings/#privacy'))}
                     className="font-medium text-foreground/80 underline-offset-2 hover:underline"
                   >
                     Privacy settings

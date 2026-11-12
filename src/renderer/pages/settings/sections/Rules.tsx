@@ -198,7 +198,7 @@ export function Rules() {
         loaded.current = true;
         setRules(next);
       },
-      (reason) => alive && setError(errorText(reason, 'Vela could not read your rules.')),
+      (reason) => alive && setError(errorText(reason, 'Tarnel could not read your rules.')),
     );
     return () => {
       alive = false;
@@ -221,7 +221,7 @@ export function Rules() {
             setError(null);
             markSaved();
           },
-          (reason) => seq === saveSeq.current && setError(errorText(reason, 'Vela could not save your rules.')),
+          (reason) => seq === saveSeq.current && setError(errorText(reason, 'Tarnel could not save your rules.')),
         );
     },
     [markSaved],
@@ -299,7 +299,7 @@ export function Rules() {
 
   return (
     <>
-      <SectionHeader title="Rules" description="Per-site rules: when a tab opens a matching site, Vela applies the connected actions. Rules beat Space settings, which beat global settings." />
+      <SectionHeader title="Rules" description="Per-site rules: when a tab opens a matching site, Tarnel applies the connected actions. Rules beat Space settings, which beat global settings." />
       <Tester rules={rules} spaces={spaces} />
       <motion.div variants={rise} className="mb-3 flex items-center justify-between gap-3">
         <Segmented<View>

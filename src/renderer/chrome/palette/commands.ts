@@ -124,28 +124,28 @@ export function buildCommands({ settings, state }: CommandContext): PaletteComma
       icon: History,
       keywords: 'visited recent pages past browsing',
       hint: 'Ctrl H',
-      run: () => void vela.tabs.create({ url: 'vela://history' }),
+      run: () => void vela.tabs.create({ url: 'tarnel://history' }),
     },
     {
       id: 'cmd:privacy-report',
       title: 'Privacy report',
       icon: ShieldCheck,
       keywords: 'trackers blocked stats statistics privacy report ads',
-      run: () => void vela.tabs.create({ url: 'vela://privacy' }),
+      run: () => void vela.tabs.create({ url: 'tarnel://privacy' }),
     },
     {
       id: 'cmd:extensions-store',
       title: 'Extensions store',
       icon: Puzzle,
       keywords: 'extensions add-ons plugins marketplace install chrome web store',
-      run: () => void vela.tabs.create({ url: 'vela://extensions/' }),
+      run: () => void vela.tabs.create({ url: 'tarnel://extensions/' }),
     },
     {
       id: 'cmd:settings',
       title: 'Settings',
       icon: Settings2,
       keywords: 'preferences options config',
-      run: () => void vela.tabs.create({ url: 'vela://settings' }),
+      run: () => void vela.tabs.create({ url: 'tarnel://settings' }),
     },
   ];
   commands.push(...tabGroupCommands({ settings, state }));

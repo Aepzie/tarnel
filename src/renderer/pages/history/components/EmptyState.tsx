@@ -7,7 +7,7 @@ export function EmptyState({ query, error }: { query: string; error?: boolean })
   const Icon = searching ? SearchX : History;
   const title = error ? 'History is unavailable' : searching ? 'No matches' : 'No history yet';
   const description = error
-    ? 'This page can only read history inside Vela.'
+    ? 'This page can only read history inside Tarnel.'
     : searching
       ? `Nothing you visited matches “${query.trim()}”.`
       : 'Pages you visit will show up here, grouped by day.';

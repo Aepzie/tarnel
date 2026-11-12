@@ -405,7 +405,7 @@ function SiteInfo() {
   if (!tab) return null;
   const address = parseAddress(tab);
   if (address.empty) return null;
-  const security = address.internal ? 'Vela page' : tab.secure ? 'Secure connection' : tab.url.startsWith('http:') ? 'Not secure' : address.host;
+  const security = address.internal ? 'Tarnel page' : tab.secure ? 'Secure connection' : tab.url.startsWith('http:') ? 'Not secure' : address.host;
   return (
     <SiteInfoTrigger tabId={tab.id} title={address.internal ? security : `${security} · Site information`}>
       <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-white/[0.05] px-2 text-[11.5px] text-muted-foreground ring-1 ring-white/[0.06] transition-colors duration-150 hover:bg-white/[0.09] light:bg-black/[0.035] light:ring-black/[0.06] light:hover:bg-black/[0.06]">

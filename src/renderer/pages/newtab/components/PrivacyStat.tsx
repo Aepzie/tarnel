@@ -11,7 +11,7 @@ export function PrivacyStat({ blocked }: { blocked: number }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.24, ease: ease.out, delay: 0.2 }}
-      onClick={() => void velaPages().navigate('vela://privacy/')}
+      onClick={() => void velaPages().navigate('tarnel://privacy/')}
       className="group inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[11.5px] font-medium tracking-tight text-muted-foreground/80 tabular-nums transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {`${blocked.toLocaleString('en-US')} ${blocked === 1 ? 'tracker' : 'trackers'} blocked this week`}

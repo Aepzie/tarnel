@@ -9,8 +9,8 @@ import { IslandTooltip } from '../island/IslandTooltip';
 import { useExtensions } from './extensions-store';
 
 /**
- * "Add to Vela" pill while a Chrome Web Store detail page is open. The store's own "Add to Chrome"
- * button can't install into Vela, so this opens vela://extensions, which downloads the extension
+ * "Add to Tarnel" pill while a Chrome Web Store detail page is open. The store's own "Add to Chrome"
+ * button can't install into Tarnel, so this opens tarnel://extensions, which downloads the extension
  * and shows the usual permission review before anything is added.
  */
 export function StoreAddButton() {
@@ -23,13 +23,13 @@ export function StoreAddButton() {
   return (
     <AnimatePresence initial={false}>
       {id && (
-        <IslandTooltip label={installed ? 'Already in Vela' : 'Review permissions and add this extension'}>
+        <IslandTooltip label={installed ? 'Already in Tarnel' : 'Review permissions and add this extension'}>
           <motion.button
             key="store-add"
             type="button"
             layout="position"
             disabled={installed}
-            onClick={() => settle(vela().tabs.create({ url: `vela://extensions/#install=${id}`, active: true }))}
+            onClick={() => settle(vela().tabs.create({ url: `tarnel://extensions/#install=${id}`, active: true }))}
             initial={reduce ? false : { opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.8 }}
@@ -44,7 +44,7 @@ export function StoreAddButton() {
             ) : (
               <Plus className="size-3.5" strokeWidth={2} aria-hidden />
             )}
-            {installed ? 'In Vela' : 'Add to Vela'}
+            {installed ? 'In Tarnel' : 'Add to Tarnel'}
           </motion.button>
         </IslandTooltip>
       )}

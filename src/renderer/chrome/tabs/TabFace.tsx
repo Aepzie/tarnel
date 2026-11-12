@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react';
 import { XIcon } from 'lucide-react';
 import type { TabState } from '@shared/types';
 import { cn } from '@/lib/utils';
-import { settle, vela } from '@/lib/vela';
+import { isNewTabUrl, settle, vela } from '@/lib/vela';
 import { useTabClosable } from '@/hooks/browser';
 import { TabAudioButton } from '../audio/TabAudioButton';
 import { Favicon } from './Favicon';
@@ -118,7 +118,7 @@ export function tabTooltip(tab: TabState, active: boolean): string {
   const label = withVpnLabel(tab.title || tab.url || 'New Tab', tab);
   if (!active) return label;
   const lines = [label];
-  if (tab.url && !tab.url.startsWith('vela://newtab') && tab.url !== 'about:blank') lines.push(tab.url);
+  if (tab.url && !isNewTabUrl(tab.url) && tab.url !== 'about:blank') lines.push(tab.url);
   if (tab.blockedCount > 0) lines.push(`${tab.blockedCount} requests blocked`);
   return lines.join('\n');
 }

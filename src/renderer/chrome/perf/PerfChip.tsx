@@ -65,7 +65,7 @@ export function PerfChip() {
 
   const openSettings = (): void => {
     setOpen(false);
-    settle(vela().tabs.create({ url: 'vela://settings/#performance', active: true }));
+    settle(vela().tabs.create({ url: 'tarnel://settings/#performance', active: true }));
   };
 
   return (
