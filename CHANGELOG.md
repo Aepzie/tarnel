@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows: installer, shortcuts and Default apps entry are now called Tarnel (`Tarnel-<version>-setup-x64.exe`); updating removes the old Vela registrations so Windows doesn't list two browsers.
 - The profile folder moves from `Vela` to `Tarnel` on first start (moved, or copied if moving fails; nothing is deleted). For isolated test instances use `TARNEL_USER_DATA` (`VELA_USER_DATA` still works).
 - The project now lives at https://github.com/Aepzie/tarnel.
+- Ad blocking takes the uBlock Origin lists straight from uBlock Origin (including the 2025/2026 lists) instead of Ghostery's weeks-old copy, so new YouTube ad fixes arrive within a day. Falls back to Ghostery's copy if uBlock Origin's site is unreachable.
+
+### Fixed
+- Ad blocking now also blocks ad-SDK, analytics and device-maker telemetry hosts (Unity Ads, Yahoo, Yandex, TikTok/ByteDance, Xiaomi, Oppo/Realme, Huawei, Apple) through a small list bundled with Tarnel. adblock.turtlecute.org now scores 100% (was 69%).
+- A cached ad-block engine could fail to load at startup ("start offset of Uint32Array should be a multiple of 4") and was rebuilt from the network on every launch, depending on the length of its cache key.
 
 ### Security
 - Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.

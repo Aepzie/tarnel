@@ -118,6 +118,8 @@ async function buildRenderer() {
 
 await rm(out, { recursive: true, force: true });
 await copyCookieBannerRules();
+// Tarnel's own filter list, merged into the adblock engine (src/main/perf/adblock.ts).
+await copyFile(join(src, 'main', 'perf', 'lists', 'tarnel-extra.txt'), join(out, 'main', 'adblock-extra.txt'));
 // Vendored bergamot-translator WASM + glue (MPL-2.0), loaded by the translation engine at runtime.
 await cp(join(root, 'vendor', 'bergamot'), join(out, 'vendor', 'bergamot'), { recursive: true });
 

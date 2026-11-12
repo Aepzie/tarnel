@@ -523,7 +523,13 @@ export function enableAdblockForSession(session: Electron.Session): void; // no-
 export function setAdblockEnabled(enabled: boolean): void;    // enable/disable in all known sessions
 export function onBlocked(cb: (webContentsId: number, url: string) => void): void;
 export function getBlockedTotal(): number;
+export function getEngine(): ElectronBlocker | null;         // installed engine (null before the first one)
 ```
+Lists (`perf/adblock-lists.ts`, pure): Ghostery's `adsAndTrackingLists` with every mirrored uBO list
+(`…/assets/ublock-origin/*.txt`) fetched from `ublockorigin.github.io/uAssets/filters/` instead, Ghostery's
+mirror as per-list fallback, plus the optional `filters-2025.txt` / `filters-2026.txt`; scriptlets still come from
+Ghostery's `resources.json`. Tarnel's own `src/main/perf/lists/tarnel-extra.txt` is copied to
+`dist/main/adblock-extra.txt` by the build, appended to the lists, and its content hash is part of the cache key.
 
 ### `src/main/perf/sleeper.ts`
 ```ts
