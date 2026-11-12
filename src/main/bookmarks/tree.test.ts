@@ -116,8 +116,9 @@ describe('search and lookup', () => {
   it('finds a page ignoring hash and trailing slash', () => {
     assert.equal(findByUrl(seed(), 'https://a.test#top').length, 1);
   });
-  it('cleanUrl allows web, vela and file only', () => {
-    assert.equal(cleanUrl('vela://history/'), 'vela://history/');
+  it('cleanUrl allows web, internal and file only', () => {
+    assert.equal(cleanUrl('tarnel://history/'), 'tarnel://history/');
+    assert.equal(cleanUrl('vela://history/'), 'tarnel://history/');
     assert.equal(cleanUrl('data:text/html,hi'), null);
   });
 });

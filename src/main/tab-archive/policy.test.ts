@@ -42,8 +42,8 @@ test('never archives pinned, on-screen, audible, capturing or downloading tabs',
 });
 
 test('start pages are not archived', () => {
-  assert.equal(isArchivable(tab(1, 99, { url: 'vela://newtab/' })), false);
-  assert.equal(isArchivable(tab(1, 99, { url: 'vela://history/' })), true);
+  assert.equal(isArchivable(tab(1, 99, { url: 'tarnel://newtab/' })), false);
+  assert.equal(isArchivable(tab(1, 99, { url: 'tarnel://history/' })), true);
 });
 
 test('caps the number of tabs per check', () => {

@@ -6,9 +6,9 @@ import { getSpace, onSpacesChanged } from './spaces';
 import * as tabs from './tabs';
 
 /**
- * One theme for the whole workspace. `nativeTheme.themeSource` follows the Vela theme setting, so
+ * One theme for the whole workspace. `nativeTheme.themeSource` follows the Tarnel theme setting, so
  * prefers-color-scheme, native menus, the Mica/Acrylic backdrop and the window background all agree
- * with the chrome; open vela:// pages get the theme + their Space accent pushed live (no reload).
+ * with the chrome; open tarnel:// pages get the theme + their Space accent pushed live (no reload).
  */
 
 export const SPACE_HEX: Record<SpaceColor, string> = {
@@ -42,7 +42,7 @@ export function themeBackdrop(): string {
   return isDarkTheme() ? BACKDROP_DARK : BACKDROP_LIGHT;
 }
 
-/** Theme + Space accent for the vela:// page hosted in `wc` (accent is null outside a tab). */
+/** Theme + Space accent for the tarnel:// page hosted in `wc` (accent is null outside a tab). */
 export function pageThemeFor(wc: WebContents): PageTheme {
   const { theme, newtabHero } = getSettings();
   const tabId = tabs.tabIdForWebContents(wc.id);
@@ -56,14 +56,14 @@ export function pageThemeFor(wc: WebContents): PageTheme {
   };
 }
 
-const isVelaUrl = (url: string): boolean => url.startsWith('vela://');
+const isInternalPageUrl = (url: string): boolean => url.startsWith('tarnel://');
 
 /** Last payload sent per webContents, so frequent state changes cost nothing when nothing changed. */
 const lastSent = new Map<number, string>();
 
 function pushToPages(): void {
   for (const wc of webContents.getAllWebContents()) {
-    if (wc.isDestroyed() || !isVelaUrl(wc.getURL()) || tabs.tabIdForWebContents(wc.id) === null) continue;
+    if (wc.isDestroyed() || !isInternalPageUrl(wc.getURL()) || tabs.tabIdForWebContents(wc.id) === null) continue;
     const payload = pageThemeFor(wc);
     const key = JSON.stringify(payload);
     if (lastSent.get(wc.id) === key) continue;
@@ -83,13 +83,13 @@ function schedulePush(): void {
 }
 
 /**
- * Before first paint a tab view shows its own background: themed for vela:// pages (no white flash
+ * Before first paint a tab view shows its own background: themed for tarnel:// pages (no white flash
  * on a dark new tab), white for the web (sites without a background expect white).
  */
 export function attachViewBackdrop(view: WebContentsView, initialUrl: string): void {
   const wc = view.webContents;
   const apply = (url: string): void => {
-    if (!view.webContents.isDestroyed()) view.setBackgroundColor(isVelaUrl(url) ? themeBackdrop() : WEB_BACKDROP);
+    if (!view.webContents.isDestroyed()) view.setBackgroundColor(isInternalPageUrl(url) ? themeBackdrop() : WEB_BACKDROP);
   };
   apply(initialUrl);
   wc.on('did-start-navigation', (details) => {
@@ -106,7 +106,7 @@ const views = new Set<WebContentsView>();
 function refreshViewBackdrops(): void {
   for (const view of views) {
     const wc = view.webContents;
-    if (!wc.isDestroyed() && isVelaUrl(wc.getURL())) view.setBackgroundColor(themeBackdrop());
+    if (!wc.isDestroyed() && isInternalPageUrl(wc.getURL())) view.setBackgroundColor(themeBackdrop());
   }
 }
 

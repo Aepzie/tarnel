@@ -41,9 +41,9 @@ describe('openTargetsFromArgs (Windows)', () => {
     );
   });
   it('web and vela URLs pass through unchanged', () => {
-    assert.deepEqual(openTargetsFromArgs(['https://example.com/a b', 'vela://settings', 'report.pdf'], win), [
+    assert.deepEqual(openTargetsFromArgs(['https://example.com/a b', 'tarnel://settings', 'report.pdf'], win), [
       'https://example.com/a b',
-      'vela://settings',
+      'tarnel://settings',
       'file:///C:/Users/me/Documents/report.pdf',
     ]);
   });

@@ -1,8 +1,11 @@
+import { canonicalInternalUrl, isInternalUrl } from '../shared/internal-url';
 import type { SearchEngine } from '../shared/types';
 import { upgradeToHttps } from './privacy';
 import { getSettings } from './settings';
 
-export const NEWTAB_URL = 'vela://newtab/';
+export { isInternalUrl };
+
+export const NEWTAB_URL = 'tarnel://newtab/';
 
 const SEARCH_BASE: Record<SearchEngine, string> = {
   duckduckgo: 'https://duckduckgo.com/?q=',
@@ -12,7 +15,7 @@ const SEARCH_BASE: Record<SearchEngine, string> = {
   ecosia: 'https://www.ecosia.org/search?q=',
 };
 
-const NAVIGABLE_SCHEMES = new Set(['http', 'https', 'vela', 'about', 'file', 'data']);
+const NAVIGABLE_SCHEMES = new Set(['http', 'https', 'tarnel', 'vela', 'about', 'file', 'data']);
 const BLOCKED_SCHEMES = new Set(['javascript', 'vbscript']);
 /** data: URLs are only allowed for inert content types. */
 const SAFE_DATA = /^data:(image\/(png|jpe?g|gif|webp|avif|bmp|x-icon)|text\/plain|application\/pdf)[;,]/i;
@@ -67,7 +70,7 @@ function withScheme(url: URL, httpsOnly: boolean): string | null {
   if (scheme === 'about') return url.href === 'about:blank' ? url.href : null;
   if (scheme === 'data') return SAFE_DATA.test(url.href) ? url.href : null;
   if (scheme === 'http' && httpsOnly) return upgradeToHttps(url.href);
-  return url.href;
+  return canonicalInternalUrl(url.href);
 }
 
 /**
@@ -116,9 +119,5 @@ export function isOpenableFromWeb(url: string): boolean {
 }
 
 export function isSecureUrl(url: string): boolean {
-  return /^(https|vela):/i.test(url);
-}
-
-export function isInternalUrl(url: string): boolean {
-  return url.toLowerCase().startsWith('vela:');
+  return /^(https|tarnel|vela):/i.test(url);
 }

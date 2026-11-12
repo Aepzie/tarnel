@@ -13,13 +13,13 @@ import { PRIVACY_REPORT_IPC } from '../shared/privacy-report';
 import { DEFAULT_BROWSER_IPC } from '../shared/default-browser';
 import type { UpdateStatus } from '../shared/types';
 
-const isVelaPage = (): boolean => location.protocol === 'vela:';
+const isInternalPage = (): boolean => location.protocol === 'tarnel:';
 
-if (isVelaPage()) {
+if (isInternalPage()) {
   const call = <T>(channel: string, ...args: unknown[]): Promise<T> =>
-    isVelaPage()
+    isInternalPage()
       ? (ipcRenderer.invoke(channel, ...args) as Promise<T>)
-      : Promise.reject(new Error('velaPages is only available on vela:// pages'));
+      : Promise.reject(new Error('velaPages is only available on tarnel:// pages'));
 
   const ch = IPC.pages;
   const api: VelaPagesAPI = {
@@ -178,7 +178,7 @@ function applyPageTheme(root: HTMLElement, { theme, mode, accent, hero }: BootTh
 }
 
 /**
- * Applies theme + accent synchronously before first paint so vela:// pages never flash, then
+ * Applies theme + accent synchronously before first paint so tarnel:// pages never flash, then
  * follows live changes (theme setting, OS scheme, Space colour) pushed by the main process.
  */
 function applyBootTheme(): void {

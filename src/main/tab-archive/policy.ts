@@ -16,7 +16,7 @@ export interface ArchiveCandidate {
 /** Cap per check so a long sleep/resume doesn't empty the whole strip in one go. */
 export const MAX_ARCHIVE_PER_TICK = 25;
 
-const START_PAGE = /^vela:\/\/newtab\b/i;
+const START_PAGE = /^(tarnel|vela):\/\/newtab\b/i;
 
 export function isArchivable(tab: ArchiveCandidate): boolean {
   return !tab.pinned && !tab.active && !tab.audible && !tab.capturing && !tab.downloading && !START_PAGE.test(tab.url);

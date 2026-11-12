@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { BookmarkNode, ImportedBookmark } from '../../shared/bookmarks';
+import { canonicalInternalUrl } from '../../shared/internal-url';
 import { BOOKMARK_ROOTS, MAX_BOOKMARK_TITLE, MAX_BOOKMARK_URL } from '../../shared/bookmarks-ipc';
 import type { SpaceId } from '../../shared/types';
 
@@ -35,7 +36,7 @@ export function cleanTitle(title: unknown): string {
   return (typeof title === 'string' ? title : '').replace(/\s+/g, ' ').trim().slice(0, MAX_BOOKMARK_TITLE);
 }
 
-/** Bookmarkable URLs: web pages, vela:// pages and file:// documents. Returns null otherwise. */
+/** Bookmarkable URLs: web pages, tarnel:// pages (legacy vela:// mapped) and file:// documents. Returns null otherwise. */
 export function cleanUrl(url: unknown): string | null {
   if (typeof url !== 'string' || url.length > MAX_BOOKMARK_URL) return null;
   let parsed: URL;
@@ -44,8 +45,9 @@ export function cleanUrl(url: unknown): string | null {
   } catch {
     return null;
   }
-  if (!['http:', 'https:', 'vela:', 'file:'].includes(parsed.protocol)) return null;
-  return parsed.href;
+  if (!['http:', 'https:', 'tarnel:', 'vela:', 'file:'].includes(parsed.protocol)) return null;
+  // Bookmarks saved before the rename (vela://) are kept as the same tarnel:// page.
+  return canonicalInternalUrl(parsed.href);
 }
 
 function rootNode(spaceId: SpaceId, id: string, title: string, index: number): BookmarkNode {

@@ -2,8 +2,9 @@ import { net, type Session } from 'electron';
 import { stat } from 'node:fs/promises';
 import { extname, join, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { INTERNAL_SCHEME, LEGACY_INTERNAL_SCHEME, canonicalInternalUrl } from '../shared/internal-url';
 
-export const VELA_SCHEME = 'vela';
+export { INTERNAL_SCHEME, LEGACY_INTERNAL_SCHEME };
 
 /** dist/main/index.js → dist/renderer */
 const RENDERER_ROOT = resolve(__dirname, '..', 'renderer');
@@ -42,7 +43,7 @@ function resolveTarget(requestUrl: string): string | null {
   }
   if (path.includes('\0')) return null;
   // Vite emits shared chunks to dist/renderer/assets; pages reference them relatively, which
-  // resolves to vela://<page>/assets/* — served for every host so modules stay same-origin.
+  // resolves to tarnel://<page>/assets/* — served for every host so modules stay same-origin.
   if (path.startsWith('/assets/')) {
     const assetsRoot = join(RENDERER_ROOT, 'assets');
     const asset = resolve(assetsRoot, '.' + path.slice('/assets'.length));
@@ -53,10 +54,35 @@ function resolveTarget(requestUrl: string): string | null {
   return target.startsWith(base + sep) ? target : null;
 }
 
-export function registerVelaProtocol(session: Session): void {
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+}
+
+/**
+ * vela:// (the scheme before the rename) answers with a redirect to the same tarnel:// page. The
+ * body repeats it as a meta refresh in case a loader does not follow custom-scheme redirects;
+ * tabs.ts also rewrites vela:// navigations before they get here.
+ */
+function legacyRedirect(requestUrl: string): Response {
+  const target = canonicalInternalUrl(requestUrl);
+  const body = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(target)}">`;
+  return new Response(body, {
+    status: 302,
+    headers: {
+      location: target,
+      'content-type': 'text/html; charset=utf-8',
+      'x-content-type-options': 'nosniff',
+      'x-frame-options': 'DENY',
+      'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    },
+  });
+}
+
+export function registerInternalProtocol(session: Session): void {
   if (registered.has(session)) return;
   registered.add(session);
-  session.protocol.handle(VELA_SCHEME, async (request) => {
+  session.protocol.handle(LEGACY_INTERNAL_SCHEME, async (request) => legacyRedirect(request.url));
+  session.protocol.handle(INTERNAL_SCHEME, async (request) => {
     if (request.method !== 'GET' && request.method !== 'HEAD') return notFound();
     const target = resolveTarget(request.url);
     if (!target) return notFound();

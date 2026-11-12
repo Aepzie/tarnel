@@ -2,6 +2,7 @@ import { WebContentsView, type BaseWindow, type NavigationEntry, type WebContent
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
 import { isLoneStartPage } from '../shared/tab-close';
+import { canonicalInternalUrl, isLegacyInternalUrl } from '../shared/internal-url';
 import type { BrowserState, ContentBounds, SpaceId, TabGroupId, TabMediaDevices, TabState } from '../shared/types';
 import { rememberFavicon } from './favicons';
 import { recordVisit, updateTitle } from './history';
@@ -75,7 +76,7 @@ interface Tab {
   blockedCount: number;
   zoom: number;
   lastActiveAt: number;
-  /** Original URL while the vela://error page is shown in its place. */
+  /** Original URL while the tarnel://error page is shown in its place. */
   errorUrl: string | null;
   findText: string;
   /** Navigation history captured when put to sleep, restored on wake. */
@@ -156,7 +157,7 @@ function groupOf(id: number): TabGroupId | null {
 
 function errorPageUrl(code: number | string, desc: string, url: string): string {
   const params = new URLSearchParams({ code: String(code), desc, url });
-  return `vela://error/?${params.toString()}`;
+  return `tarnel://error/?${params.toString()}`;
 }
 
 function load(wc: WebContents, url: string): void {
@@ -195,7 +196,7 @@ function untitledFile(url: string, title: string): boolean {
 }
 
 function setTabUrl(tab: Tab, url: string): void {
-  if (url.startsWith('vela://error/') && tab.errorUrl) return;
+  if (url.startsWith('tarnel://error/') && tab.errorUrl) return;
   tab.url = url;
   tab.errorUrl = null;
 }
@@ -256,7 +257,7 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     scheduleEmit();
   });
   wc.on('did-fail-load', (_e, code, desc, validatedURL, isMainFrame) => {
-    if (!current() || !isMainFrame || code === ERROR_ABORTED || validatedURL.startsWith('vela://error/')) return;
+    if (!current() || !isMainFrame || code === ERROR_ABORTED || validatedURL.startsWith('tarnel://error/')) return;
     tab.errorUrl = validatedURL;
     tab.url = validatedURL;
     load(wc, errorPageUrl(code, desc, validatedURL));
@@ -299,9 +300,14 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
     if (current() && windowLayer.isHtmlFullscreen()) windowLayer.setHtmlFullscreen(false);
   });
   wc.on('will-frame-navigate', (details) => {
-    // Web content may never navigate (any frame) into privileged vela:// pages.
+    // Web content may never navigate (any frame) into privileged tarnel:// pages.
     const from = details.initiator?.url ?? wc.getURL();
     if (isInternalUrl(details.url) && !isInternalUrl(from)) details.preventDefault();
+    else if (isLegacyInternalUrl(details.url)) {
+      // Old vela:// links on internal pages open the same tarnel:// page.
+      details.preventDefault();
+      if (details.isMainFrame) load(wc, canonicalInternalUrl(details.url));
+    }
     else if (blocksFileNavigation(details.url, details.initiator?.url)) details.preventDefault();
   });
   wc.on('will-navigate', (details) => {
@@ -352,13 +358,13 @@ function wireEvents(tab: Tab, view: WebContentsView): void {
 
 /**
  * file:// may only be entered by the user (address bar, OS open, drop: no initiator frame), from
- * another file:// page or from a vela:// page. Web pages (http(s), data:, extensions) never can.
+ * another file:// page or from a tarnel:// page. Web pages (http(s), data:, extensions) never can.
  */
 function blocksFileNavigation(url: string, initiatorUrl: string | undefined): boolean {
   return isFileUrl(url) && initiatorUrl !== undefined && !mayOpenFiles(initiatorUrl);
 }
 
-/** Pages that may open file:// (links, drops): other local files and Vela's own pages (new tab). */
+/** Pages that may open file:// (links, drops): other local files and Tarnel's own pages (new tab). */
 function mayOpenFiles(fromUrl: string): boolean {
   return isFileUrl(fromUrl) || isInternalUrl(fromUrl);
 }
@@ -496,7 +502,7 @@ export function createTab(opts: CreateTabOpts = {}): number {
     spaceId,
     vpn: normalizeCountry(opts.vpn),
     view: null,
-    url: opts.url || NEWTAB_URL,
+    url: canonicalInternalUrl(opts.url || NEWTAB_URL),
     title: opts.title ?? '',
     favicon: opts.favicon ?? null,
     loading: false,
@@ -1140,7 +1146,7 @@ export function restoreSession(saved: unknown): number {
   let restored = 0;
   const splitEntries: { tabId: number; saved: unknown }[] = [];
   list.forEach((entry, i) => {
-    if (!getSpace(entry.spaceId) || !/^(https?|vela|file):/i.test(entry.url)) return;
+    if (!getSpace(entry.spaceId) || !/^(https?|tarnel|vela|file):/i.test(entry.url)) return;
     const id = createTab({
       url: entry.url,
       spaceId: entry.spaceId,
