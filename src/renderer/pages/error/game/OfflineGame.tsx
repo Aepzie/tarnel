@@ -56,7 +56,7 @@ export default function OfflineGame({ onClose }: { onClose: () => void }) {
     if (event.key === 'Escape') {
       event.preventDefault();
       dispatch('pause');
-    } else if (event.code === 'Space' || event.key === 'ArrowUp') {
+    } else if (event.target === area.current && (event.code === 'Space' || event.key === 'ArrowUp')) {
       event.preventDefault();
       control(run.mode === 'running' ? 'jump' : run.mode === 'paused' ? 'resume' : 'start');
     }
@@ -70,6 +70,7 @@ export default function OfflineGame({ onClose }: { onClose: () => void }) {
     <section
       aria-labelledby={title}
       className="mt-6 w-full rounded-xl border border-border bg-card/50 p-4 text-left"
+      onKeyDown={keyDown}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) dispatch('pause');
       }}
@@ -95,7 +96,6 @@ export default function OfflineGame({ onClose }: { onClose: () => void }) {
         aria-label="Trail hop play area"
         aria-describedby={instructions}
         tabIndex={0}
-        onKeyDown={keyDown}
         className="relative mt-3 overflow-hidden rounded-lg border border-border bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <svg viewBox={`0 0 ${SCENE.width} ${SCENE.height}`} className="block w-full" aria-hidden="true">

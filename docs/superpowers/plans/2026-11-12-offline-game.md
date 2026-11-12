@@ -45,4 +45,14 @@
 - [x] Implement responsive SVG, controls, focused keyboard handling, state announcements, hidden/blur pause and cleanup.
 - [x] Exercise offline navigation, pause/resume, collision/restart, retry, no remote resources, themes and narrow layout; capture screenshots.
 - [x] Update existing docs/changelog. Run typecheck, full tests, build and diff checks; expect success.
-- [ ] Obtain a separate review, resolve confirmed defects and prepare the feature for the repository PR workflow, separate from DRM.
+- [x] Obtain a separate review, resolve confirmed defects and prepare the feature for the repository PR workflow, separate from DRM.
+
+## Verification
+
+Windows x64: typecheck, build and all 286 unit tests passed. An isolated Electron smoke test passed
+28 checks covering real disconnected navigation, local lazy loading, controls, tab/focus pausing,
+replay, retry after reconnection, security-page exclusions and both themes (including 390 px width).
+The separate review found an Escape-key gap when a game button had focus; a failing browser check
+was reproduced and passed after scoping Escape to the game section while keeping jump keys on the
+play area. Native global shortcut delivery, manual screen-reader use, macOS/Linux and Android
+gameplay were not tested. Android is outside this feature's scope.
