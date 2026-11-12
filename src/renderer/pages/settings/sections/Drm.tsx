@@ -4,7 +4,7 @@ import type { DrmStatus } from '@shared/drm';
 import { Button } from '@/components/ui/button';
 import { velaPages } from '@/lib/vela';
 import { Group, Row, SwitchRow } from '../components/layout';
-import { errorText, hasBridge, useSettings } from '../store';
+import { hasBridge, useSettings } from '../store';
 import { drmPresentation } from './drm-presentation';
 
 function useDrmStatus(enabled: boolean, attempt: number) {
@@ -17,7 +17,7 @@ function useDrmStatus(enabled: boolean, attempt: number) {
     if (!bridgeAvailable) {
       setStatus(null);
       setLoading(false);
-      setError('DRM status is unavailable here. Open these settings in Tarnel.');
+      setError('Open these settings in Tarnel to check DRM.');
       return;
     }
     let alive = true;
@@ -32,9 +32,8 @@ function useDrmStatus(enabled: boolean, attempt: number) {
     };
     const fail = (): void => {
       if (!alive) return;
-      setStatus(null);
       setLoading(false);
-      setError('DRM status could not be loaded. Try again.');
+      setError("Couldn't load DRM status. Try again.");
     };
     const load = (): void => {
       const request = ++revision;
@@ -72,6 +71,7 @@ export function Drm() {
   const [restarting, setRestarting] = useState(false);
   const [restartError, setRestartError] = useState<string | null>(null);
   const view = status ? drmPresentation(status, settings.drmEnabled) : null;
+  const showStatus = view?.visible ?? settings.drmEnabled;
 
   useEffect(() => {
     setRestartError(null);
@@ -83,22 +83,21 @@ export function Drm() {
     setRestartError(null);
     try {
       await velaPages().relaunch();
-    } catch (cause) {
+    } catch {
       setRestarting(false);
-      setRestartError(errorText(cause, 'Tarnel could not restart. Please restart Tarnel manually.'));
+      setRestartError("Couldn't restart. Restart Tarnel manually.");
     }
   };
 
   return (
-    <Group title="Protected content">
-      <fieldset disabled={!bridgeAvailable} className="m-0 min-w-0 border-0 p-0">
-        <SwitchRow
-          title="Protected content (DRM)"
-          description="Allow protected video playback on supported streaming websites, such as Netflix."
-          setting="drmEnabled"
-        />
-      </fieldset>
-      <div role="status" aria-live="polite" aria-atomic="true" aria-busy={loading || view?.kind === 'saving'}>
+    <Group title="DRM">
+      <SwitchRow
+        title="Protected content (DRM)"
+        description="Play DRM-protected video on streaming sites. Needs a restart."
+        setting="drmEnabled"
+        disabled={!bridgeAvailable}
+      />
+      {showStatus && <div role="status" aria-live="polite" aria-atomic="true" aria-busy={loading || view?.kind === 'saving'}>
         <Row
           title={error ? 'Status unavailable' : view?.title ?? 'Loading status…'}
           description={error ?? view?.description ?? 'Checking DRM availability.'}
@@ -119,32 +118,22 @@ export function Drm() {
           ) : view?.canRestart ? (
             <Button
               type="button"
+              variant="ghost"
               size="sm"
               disabled={restarting}
               onClick={() => void restart()}
-              className="h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold"
+              className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <RotateCw className="size-3.5" strokeWidth={1.75} aria-hidden />
               {restarting ? 'Restarting…' : 'Restart Tarnel'}
             </Button>
           ) : null}
         </Row>
-      </div>
+      </div>}
       {restartError && <p role="alert" className="px-4 py-3 text-xs leading-5 text-destructive">{restartError}</p>}
-      <div className="space-y-2 px-4 py-3 text-xs leading-5 text-muted-foreground">
-        <p>Some streaming services require DRM. Enabling it may use additional components to play protected content.</p>
-        <details className="group">
-          <summary className="w-fit cursor-pointer rounded-sm text-foreground outline-none transition-colors hover:text-space focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-            Privacy and limitations
-          </summary>
-          <div className="mt-2 space-y-2">
-            <p>This consent applies only to this device. After enabling DRM and restarting, the Widevine component may be downloaded from Google and updated. Device or content identifiers may be transmitted.</p>
-            <p>Tarnel restricts DRM permissions to HTTPS websites in regular Spaces. The native DRM component applies to the entire app. Ordinary HTML5 videos remain available regardless of this setting.</p>
-            <p>Complete DRM isolation between Spaces is not possible. Burner pages may also be able to access the component. To block Widevine completely, turn DRM off and restart Tarnel.</p>
-            <p>Availability also depends on the streaming service. Netflix playback has not been verified.</p>
-          </div>
-        </details>
-      </div>
+      <p className="px-4 py-3 text-xs leading-5 text-muted-foreground">
+        Downloads Google's Widevine component, which may send device identifiers. Applies to the whole app, including Burner Spaces.
+      </p>
     </Group>
   );
 }

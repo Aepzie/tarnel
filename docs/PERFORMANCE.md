@@ -151,12 +151,18 @@ them (useful for bisecting a site bug).
 | `disable-features=OptimizationHints,Translate,AutofillServerCommunication,InterestFeedContentSuggestions` | Chrome services that phone home or do background work. Mostly not compiled into Electron — listed so they stay off if that ever changes. |
 | `no-pings` | Ignores `<a ping>` hyperlink auditing: one fewer tracking request per click. |
 | `disable-domain-reliability` | No network-error beacons to Google. |
-| `disable-component-update` | Owned by DRM startup, not performance tuning: set when DRM is off or no supported runtime is present. A consenting Castlabs launch permits the Widevine component updater. `VELA_NO_FLAGS` does not bypass this policy. |
+| `disable-component-update` | No unused Chrome component downloads on stock Electron; like the other performance flags, skipped by `VELA_NO_FLAGS=1`. An enabled Castlabs launch permits the Widevine updater. |
 
 | `enable-features=UseCompositorClockVSyncInterval` (Windows, conditional) | Frame pacing on mixed-refresh setups, see [Frame rate](#8-frame-rate-windows). |
 
 `enable-features` / `disable-features` are *merged* with any existing value, because Chromium only
 honours the last occurrence of each.
+
+Castlabs with DRM off applies its native component-update/library-CDM consent gate independently
+of `VELA_NO_FLAGS`; stock Electron receives no CDM-interface override. Off and stock launches load
+no DRM probe and register no DRM network stage. Only supported Castlabs launches with DRM enabled
+lazily import the local probe and attach the document-policy stage. That stage stays attached during
+live disable until restart, since already open pages can still use the native component.
 
 **Deliberately not used:**
 

@@ -5,19 +5,21 @@ export interface DrmPresentation {
   title: string;
   description: string;
   canRestart: boolean;
+  visible: boolean;
 }
 
 /** Keep an optimistic switch change from displaying a stale success or restart action. */
 export function drmPresentation(status: DrmStatus, selectedEnabled: boolean): DrmPresentation {
   if (status.enabled !== selectedEnabled) {
-    return { kind: 'saving', title: 'Saving setting…', description: 'Updating DRM status.', canRestart: false };
+    return { kind: 'saving', title: 'Saving…', description: 'Updating DRM status.', canRestart: false, visible: true };
   }
-  if (status.enabled && (status.failure === 'runtime-missing' || status.state === 'unsupported')) {
+  if (status.runtime === 'standard' || status.failure === 'runtime-missing' || status.state === 'unsupported') {
     return {
       kind: 'unavailable',
       title: 'Unavailable',
-      description: 'This Tarnel build does not include a supported DRM runtime. Enabling this setting alone cannot provide protected playback.',
+      description: "This build of Tarnel can't play protected content.",
       canRestart: false,
+      visible: selectedEnabled,
     };
   }
   if (status.restartRequired || status.state === 'restart-required') {
@@ -25,41 +27,45 @@ export function drmPresentation(status: DrmStatus, selectedEnabled: boolean): Dr
       kind: 'restart',
       title: 'Restart required',
       description: status.enabled
-        ? 'Restart Tarnel to enable DRM and check availability.'
-        : 'This change takes effect after a restart. Protected content can continue to use DRM until then.',
+        ? 'Restart Tarnel to turn on DRM.'
+        : 'Restart Tarnel to turn off DRM. Open pages can still use it until then.',
       canRestart: true,
+      visible: true,
     };
   }
   if (status.state === 'disabled') {
     return {
       kind: 'disabled',
       title: 'Disabled',
-      description: 'Widevine playback is disabled. Ordinary HTML5 videos remain available.',
+      description: '',
       canRestart: false,
+      visible: false,
     };
   }
   if (status.state === 'initializing') {
     return {
       kind: 'loading',
-      title: 'Preparing DRM…',
-      description: 'The playback component is being loaded and checked. This may take a moment.',
+      title: 'Loading…',
+      description: 'Loading the Widevine component…',
       canRestart: false,
+      visible: true,
     };
   }
   if (status.state === 'available') {
     return {
       kind: 'available',
-      title: 'DRM component available',
-      description: 'The local DRM check passed. Reload any streaming pages already open. Netflix playback has not been verified; individual services may still reject Tarnel.',
+      title: 'Ready',
+      description: 'Reload open streaming pages. Some services may still block Tarnel.',
       canRestart: false,
+      visible: true,
     };
   }
   const description = status.failure === 'component-timeout'
-    ? 'The playback component did not become ready in time. Check your connection and restart Tarnel if needed.'
+    ? "Widevine didn't load in time. Check your connection and restart Tarnel to retry."
     : status.failure === 'component-failed'
-      ? 'The playback component could not be loaded. Protected playback is currently unavailable.'
+      ? "Couldn't load Widevine. Check your connection and restart Tarnel."
       : status.failure === 'startup-blocked'
-        ? 'DRM was blocked at startup. Restart Tarnel to check activation again.'
-        : 'The playback component could not provide protected playback. DRM is currently unavailable.';
-  return { kind: 'unavailable', title: 'Unavailable', description, canRestart: status.failure === 'startup-blocked' };
+        ? 'DRM was blocked at startup. Restart Tarnel to retry.'
+        : "Couldn't play protected content. Restart Tarnel to retry.";
+  return { kind: 'unavailable', title: 'Unavailable', description, canRestart: status.failure === 'startup-blocked' || status.failure === 'component-timeout', visible: selectedEnabled };
 }

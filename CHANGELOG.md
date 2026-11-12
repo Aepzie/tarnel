@@ -10,8 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
 - `tarnel://` is the address of the internal pages (`tarnel://settings`, `tarnel://newtab`, `tarnel://privacy`, …).
-- Settings → Privacy → "Protected content (DRM)": device-local consent, off by default, persistent through restarts, with runtime/component/EME status and an explicit restart action. Widevine is disabled natively on an off launch; permission handlers and document policies provide additional restrictions. Existing playback/access can continue until restart.
-- Optional, checksum-verified Castlabs Electron development runtime (`npm run drm:install`, `npm run dev:drm`) and native CDM regression checks. Stock builds remain unchanged. Widevine and public encrypted test playback were verified on Windows x64; production VMP signing, other platforms and Netflix playback are not verified. DRM is app-wide, with no complete isolation between Spaces; see the existing architecture/release documentation.
+- Settings → Privacy → Protected content (DRM), off by default. Needs a DRM-capable build; release builds don't include one yet.
 
 ### Changed
 - Vela is now Tarnel: new name and logo. Existing profiles, settings and vela:// links carry over automatically.
@@ -20,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The profile folder moves from `Vela` to `Tarnel` on first start (moved, or copied if moving fails; nothing is deleted). For isolated test instances use `TARNEL_USER_DATA` (`VELA_USER_DATA` still works).
 - The project now lives at https://github.com/Aepzie/tarnel.
 
-### Fixed
+### Security
 - Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.
 
 ## [0.9.1] - 2026-11-11

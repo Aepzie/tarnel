@@ -137,8 +137,6 @@ Use parallel subagents for anything bigger than a small fix — that is how this
 - Electron 45 quirks: proxies are per **session** (not per tab); bfcache is disabled by Electron; transparent
   windows lose native Windows Snap; `file://` (chrome UI) is not code-cached.
 - Changelog: add your lines under `## [Unreleased]` in `CHANGELOG.md` (Added / Changed / Fixed / Security).
-- Review lesson: check settings labels, status/error messages, documentation examples, changelog entries
-  and screenshots together for English copy before opening a PR. Localized draft wording is not an exception.
 
 ## Consistency (so everything stays uniform)
 
