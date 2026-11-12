@@ -1,6 +1,6 @@
 appId: org.velabrowser.vela
-productName: Vela
-copyright: Copyright © 2026 Vela contributors
+productName: Tarnel
+copyright: Copyright © 2026 Tarnel contributors
 
 directories:
   output: release
@@ -56,7 +56,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Vela
+  shortcutName: Tarnel
   artifactName: ${productName}-${version}-setup-${arch}.${ext}
 
 portable:
@@ -71,12 +71,12 @@ mac:
   # unsigned/ad-hoc, and notarization only runs when APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and
   # APPLE_TEAM_ID are set; otherwise electron-builder logs "skipped macOS notarization".
 
-  # Document types Vela can show (see docs/ARCHITECTURE.md, "Default browser and file types"). Only for
+  # Document types Tarnel can show (see docs/ARCHITECTURE.md, "Default browser and file types"). Only for
   # macOS (Info.plist CFBundleDocumentTypes) and Linux (.desktop MimeType): on Windows electron-builder
   # would also set each `.ext` default and silently take the type over, so build/installer.nsh
   # registers them Chrome-style instead (ProgIDs, OpenWithProgids, Default apps Capabilities).
   # Formats people usually open elsewhere (txt, json, png, jpg, gif) are left out on purpose.
-  fileAssociations: &velaFileTypes
+  fileAssociations: &fileTypes
     - ext: [html, htm, shtml]
       name: HTML document
       mimeType: text/html
@@ -112,10 +112,10 @@ mac:
   # Hardened runtime + camera/mic/location entitlements need usage strings, or macOS kills the app
   # the first time a page asks for the device.
   extendInfo:
-    NSCameraUsageDescription: A website in Vela wants to use your camera.
-    NSMicrophoneUsageDescription: A website in Vela wants to use your microphone.
-    NSLocationWhenInUseUsageDescription: A website in Vela wants to know your location.
-    NSBluetoothAlwaysUsageDescription: A website in Vela wants to use a Bluetooth device.
+    NSCameraUsageDescription: A website in Tarnel wants to use your camera.
+    NSMicrophoneUsageDescription: A website in Tarnel wants to use your microphone.
+    NSLocationWhenInUseUsageDescription: A website in Tarnel wants to know your location.
+    NSBluetoothAlwaysUsageDescription: A website in Tarnel wants to use a Bluetooth device.
   target:
     - target: dmg
       arch:
@@ -133,12 +133,12 @@ dmg:
 linux:
   icon: build/icons
   category: Network;WebBrowser
-  maintainer: Vela contributors <noreply@github.com>
+  maintainer: Tarnel contributors <noreply@github.com>
   synopsis: Fast. Quiet. Isolated.
   # Same file types as mac (YAML anchor). Added to their MIME types and x-scheme-handler/http(s) from `protocols`.
   mimeTypes:
     - application/x-mimearchive
-  fileAssociations: *velaFileTypes
+  fileAssociations: *fileTypes
   target:
     - AppImage
     - deb
@@ -146,5 +146,5 @@ linux:
 publish:
   provider: github
   owner: Aepzie
-  repo: vela
+  repo: tarnel
   releaseType: release

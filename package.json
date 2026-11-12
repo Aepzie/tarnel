@@ -1,15 +1,15 @@
 {
-  "name": "vela",
-  "productName": "Vela",
+  "name": "tarnel",
+  "productName": "Tarnel",
   "version": "0.9.1",
   "description": "A fast, quiet, ultra-clean browser with isolated multi-session Spaces.",
   "main": "dist/main/index.js",
   "license": "MIT",
-  "author": "Vela contributors",
-  "homepage": "https://github.com/Aepzie/vela",
+  "author": "Tarnel contributors",
+  "homepage": "https://github.com/Aepzie/tarnel",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Aepzie/vela.git"
+    "url": "https://github.com/Aepzie/tarnel.git"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
