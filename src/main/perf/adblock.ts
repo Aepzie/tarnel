@@ -387,3 +387,7 @@ export function getEngine(): ElectronBlocker | null {
 export function getBlockedTotal(): number {
   return blockedTotal;
 }
+
+export function getEngine(): ElectronBlocker | null {
+  return blocker;
+}

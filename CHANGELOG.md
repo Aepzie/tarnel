@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ad blocking now also blocks ad-SDK, analytics and device-maker telemetry hosts (Unity Ads, Yahoo, Yandex, TikTok/ByteDance, Xiaomi, Oppo/Realme, Huawei, Apple) through a small list bundled with Tarnel. adblock.turtlecute.org now scores 100% (was 69%).
 - A cached ad-block engine could fail to load at startup ("start offset of Uint32Array should be a multiple of 4") and was rebuilt from the network on every launch, depending on the length of its cache key.
 
+### Fixed
+- YouTube ads are blocked again: ad-blocking scriptlets now run before the page's own scripts (also in YouTube embeds), so ad data is removed before the player reads it. Each scriptlet still runs only once per page.
+
 ### Security
 - Sync settings import accepts only known, syncable keys and builds patches without a prototype, preventing crafted remote records from overriding device-local DRM consent indirectly.
 

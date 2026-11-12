@@ -17,6 +17,7 @@ import { getCookieBannerStats, initCookieBanners } from './cookie-banners';
 import { registerIpc } from './ipc';
 import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
+import { initAdblockEarly } from './perf/adblock-early';
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
 import { initSleeper, stopSleeper, trackDownloadsForSleep } from './perf/sleeper';
@@ -155,6 +156,7 @@ if (!app.requestSingleInstanceLock()) {
       openReport: () => createTab({ url: 'tarnel://privacy', active: true }),
     });
     registerPrivacySource('cookieBannersHandled', () => getCookieBannerStats().total);
+    initAdblockEarly();
     void initAdblock().catch(() => undefined);
     initSafety();
     initFrameRate();
