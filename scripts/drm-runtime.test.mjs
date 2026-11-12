@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -10,7 +10,8 @@ const bytes = Buffer.from('verified runtime test archive');
 const digest = createHash('sha256').update(bytes).digest('hex');
 
 async function fixture(t) {
-  const root = await mkdtemp(join(tmpdir(), 'tarnel-drm-runtime-'));
+  // Match the installer's canonical paths, including macOS /var and Windows short-name aliases.
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'tarnel-drm-runtime-')));
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
