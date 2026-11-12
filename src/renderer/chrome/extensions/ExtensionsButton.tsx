@@ -176,12 +176,12 @@ export function ExtensionsButton() {
 
   const browse = (): void => {
     setOpen(false);
-    settle(vela().tabs.create({ url: 'vela://extensions/', active: true }));
+    settle(vela().tabs.create({ url: 'tarnel://extensions/', active: true }));
   };
 
   const manage = (): void => {
     setOpen(false);
-    settle(vela().tabs.create({ url: 'vela://settings/#extensions', active: true }));
+    settle(vela().tabs.create({ url: 'tarnel://settings/#extensions', active: true }));
   };
 
   return (

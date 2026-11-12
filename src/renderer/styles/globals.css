@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Latin + Latin Extended only (every vela:// page and the chrome UI import this). Other scripts
+/* Latin + Latin Extended only (every tarnel:// page and the chrome UI import this). Other scripts
    fall back to the system UI font instead of shipping cyrillic/vietnamese/symbol subsets. */
 @font-face {
   font-family: "Geist Variable";
@@ -46,7 +46,7 @@
 }
 
 :root {
-  /* Native controls (select popups, scrollbars) follow Vela's theme, not the OS one. */
+  /* Native controls (select popups, scrollbars) follow Tarnel's theme, not the OS one. */
   color-scheme: dark;
   --accent-space: #60a5fa;
   --radius: 0.75rem;
@@ -71,7 +71,7 @@
   --input: oklch(1 0 0 / 0.1);
   --ring: color-mix(in oklab, var(--accent-space) 60%, transparent);
 
-  /* Vela tokens */
+  /* Tarnel tokens */
   --island: oklch(0.2 0.006 285.885 / 0.72);
   --island-ring: oklch(1 0 0 / 0.08);
   --island-highlight: oklch(1 0 0 / 0.06);

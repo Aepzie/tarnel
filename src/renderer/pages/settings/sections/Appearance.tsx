@@ -37,7 +37,7 @@ export function Appearance() {
   const { settings, update } = useSettings();
   return (
     <>
-      <SectionHeader title="Appearance" description="How Vela looks and gets out of your way." />
+      <SectionHeader title="Appearance" description="How Tarnel looks and gets out of your way." />
       <Group>
         <Row title="Theme" description="Follow the system, or pin light or dark.">
           <Segmented label="Theme" value={settings.theme} options={THEMES} onChange={(theme) => update({ theme })} />

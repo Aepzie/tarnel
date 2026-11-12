@@ -144,7 +144,7 @@ export function App() {
                 </p>
               </div>
             </div>
-            <button type="button" onClick={() => settle(velaPages().navigate('vela://settings/#import'))} className={secondaryButton}>
+            <button type="button" onClick={() => settle(velaPages().navigate('tarnel://settings/#import'))} className={secondaryButton}>
               <Download className="size-[14px]" strokeWidth={1.75} />
               Import bookmarks…
             </button>

@@ -140,7 +140,7 @@ function UserAgentRow() {
   const { settings, update } = useSettings();
   return (
     <Row title="User agent" description="What sites see as your browser, in every Space without its own. A non-Chromium value can break some sites.">
-      <UserAgentPicker label="Default user agent" value={settings.userAgent} defaultLabel="Vela default" onChange={(userAgent) => update({ userAgent })} />
+      <UserAgentPicker label="Default user agent" value={settings.userAgent} defaultLabel="Tarnel default" onChange={(userAgent) => update({ userAgent })} />
     </Row>
   );
 }
@@ -177,10 +177,10 @@ export function Privacy() {
       </Group>
       <CookieBanners />
       <Group title="Privacy report">
-        <Row title="Your privacy report" description="What Vela blocked this week, per Space. Counted on this device only.">
+        <Row title="Your privacy report" description="What Tarnel blocked this week, per Space. Counted on this device only.">
           <button
             type="button"
-            onClick={() => void velaPages().navigate('vela://privacy/')}
+            onClick={() => void velaPages().navigate('tarnel://privacy/')}
             className="h-8 rounded-lg px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Open
@@ -200,7 +200,7 @@ export function Privacy() {
         <Row title="Saved passwords" description="View, edit, export or delete saved passwords.">
           <button
             type="button"
-            onClick={() => void velaPages().navigate('vela://passwords/')}
+            onClick={() => void velaPages().navigate('tarnel://passwords/')}
             className="h-8 rounded-lg px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Manage
@@ -230,7 +230,7 @@ export function Privacy() {
       <Group title="Panic button">
         <SwitchRow
           title="Also clear the last 15 minutes of history"
-          description="Ctrl+Shift+Delete or “Panic” in the command palette hides Vela, mutes every tab, disconnects the VPN and wipes all Burner Spaces. Nothing else is deleted unless this is on."
+          description="Ctrl+Shift+Delete or “Panic” in the command palette hides Tarnel, mutes every tab, disconnects the VPN and wipes all Burner Spaces. Nothing else is deleted unless this is on."
           setting="panicClearRecentHistory"
         />
       </Group>

@@ -54,7 +54,7 @@ const SITE_ACCESS: { value: ExtensionSiteAccess; label: string }[] = [
 function siteAccessHelp(extension: ExtensionInfo): string {
   if (extension.siteAccess === 'click') {
     return extension.armed
-      ? 'Running until Vela restarts. Reload a page to let it act there.'
+      ? 'Running until Tarnel restarts. Reload a page to let it act there.'
       : 'Stays off until you click its toolbar button (once per launch).';
   }
   if (extension.siteAccess === 'sites') {
@@ -515,7 +515,7 @@ export function Extensions() {
       <motion.button
         type="button"
         variants={rise}
-        onClick={() => void velaPages().navigate('vela://extensions/')}
+        onClick={() => void velaPages().navigate('tarnel://extensions/')}
         disabled={!hasBridge()}
         className={cn(
           cardClass,
@@ -527,7 +527,7 @@ export function Extensions() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[13px] leading-5 font-medium">Browse extensions</span>
-          <span className="block text-xs leading-5 text-muted-foreground">Vela’s picks for privacy, passwords and productivity.</span>
+          <span className="block text-xs leading-5 text-muted-foreground">Tarnel’s picks for privacy, passwords and productivity.</span>
         </span>
         <ChevronRight className="size-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
       </motion.button>
@@ -564,7 +564,7 @@ export function Extensions() {
       </motion.div>
 
       <motion.p variants={rise} className="mt-6 px-1 text-xs leading-5 text-muted-foreground">
-        Vela’s built-in blocker keeps running alongside extensions. Some Chrome APIs (such as blocking webRequest) aren’t
+        Tarnel’s built-in blocker keeps running alongside extensions. Some Chrome APIs (such as blocking webRequest) aren’t
         available, so a few extensions may only partly work.
       </motion.p>
     </>

@@ -4,7 +4,7 @@ import { CompassIcon, InfoIcon, LockIcon, SearchIcon, ShieldIcon, TriangleAlertI
 import type { TabState } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { spring } from '@/lib/motion';
-import { addressSeed, formatCount, settle, vela } from '@/lib/vela';
+import { addressSeed, formatCount, isInternalUrl, isNewTabUrl, settle, vela } from '@/lib/vela';
 import { ui } from '../ui-store';
 import { TabAudioButton } from '../audio/TabAudioButton';
 import { TabContextMenu } from './TabContextMenu';
@@ -54,8 +54,8 @@ export interface Address {
 
 export function parseAddress(tab: TabState): Address {
   const url = tab.url;
-  if (!url || url.startsWith('vela://newtab') || url === 'about:blank') return { host: '', path: '', internal: false, empty: true };
-  if (url.startsWith('vela://')) return { host: tab.title || url, path: '', internal: true, empty: false };
+  if (!url || isNewTabUrl(url) || url === 'about:blank') return { host: '', path: '', internal: false, empty: true };
+  if (isInternalUrl(url)) return { host: tab.title || url, path: '', internal: true, empty: false };
   try {
     const parsed = new URL(url);
     const host = parsed.host.replace(/^www\./, '');
