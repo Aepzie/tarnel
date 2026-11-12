@@ -150,8 +150,8 @@ npm run dev:drm
 
 Enable Settings → Privacy → **Protected content (DRM)** and restart. The first enabled launch
 may download Google's Widevine component. Turning it off also needs a restart.
-The launcher honors `TARNEL_USER_DATA` / `VELA_USER_DATA`; native checks use temporary
-`tarnel-drm-runtime-*` directories. Only Windows x64 has been runtime-tested.
+The launcher honors `TARNEL_USER_DATA` / `VELA_USER_DATA` for isolated profiles.
+Only Windows x64 has been runtime-tested.
 
 An ECS release still needs applicable distribution terms, runtime packaging, platform identities,
 Castlabs [VMP signing](https://github.com/castlabs/electron-releases/wiki/EVS) and service testing of the

@@ -131,9 +131,6 @@ export function Drm() {
         </Row>
       </div>}
       {restartError && <p role="alert" className="px-4 py-3 text-xs leading-5 text-destructive">{restartError}</p>}
-      <p className="px-4 py-3 text-xs leading-5 text-muted-foreground">
-        Downloads Google's Widevine component, which may send device identifiers. Applies to the whole app, including Burner Spaces.
-      </p>
     </Group>
   );
 }
