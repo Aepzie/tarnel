@@ -1,17 +1,17 @@
 <div align="center">
 
-<img src="build/icon.svg" width="96" height="96" alt="Vela logo">
+<img src="build/icon.svg" width="96" height="96" alt="Tarnel logo">
 
-# Vela
+# Tarnel
 
 **Fast. Quiet. Isolated.**
 
 A minimal Chromium browser where every Space is its own sealed session.<br>
 Work, personal, clients, throwaway: one window, no leaks between them.
 
-[![Release](https://img.shields.io/github/v/release/Aepzie/vela?include_prereleases&style=flat-square&label=release)](https://github.com/Aepzie/vela/releases/latest)
-[![CI](https://img.shields.io/github/actions/workflow/status/Aepzie/vela/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Aepzie/vela/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/Aepzie/vela?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Aepzie/tarnel?include_prereleases&style=flat-square&label=release)](https://github.com/Aepzie/tarnel/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/Aepzie/tarnel/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Aepzie/tarnel/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Aepzie/tarnel?style=flat-square)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20·%20macOS%20·%20Linux%20·%20Android-555?style=flat-square)
 
 **[Download](#download)** · [Features](docs/FEATURES.md) · [Shortcuts](#shortcuts) · [Architecture](docs/ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
@@ -21,17 +21,20 @@ Work, personal, clients, throwaway: one window, no leaks between them.
 <br>
 
 <p align="center">
-  <img src="docs/media/vela-demo.gif" width="100%" alt="Vela demo: command palette, two Spaces signed in as different users on the same site, a Burner space with no cookies, and split view">
+  <img src="docs/media/vela-demo.gif" width="100%" alt="Tarnel demo: command palette, two Spaces signed in as different users on the same site, a Burner space with no cookies, and split view">
   <br>
-  <sub>The real app, recorded on Linux. Two Spaces, same site, two different logins. <a href="https://github.com/Aepzie/vela/raw/main/docs/media/vela-demo.mp4">Download the MP4</a></sub>
+  <sub>The real app, recorded on Linux. Two Spaces, same site, two different logins. <a href="https://github.com/Aepzie/tarnel/raw/main/docs/media/vela-demo.mp4">Download the MP4</a></sub>
 </p>
 
-## Why Vela
+## Why Tarnel
 
-Most browsers get heavier with every release. Vela goes the other way: a small toolbar that stays out of the way,
+Most browsers get heavier with every release. Tarnel goes the other way: a small toolbar that stays out of the way,
 ads and trackers blocked before they load, idle tabs put to sleep, and **Spaces** that keep your identities apart.
 
 **No account. No telemetry. No sync servers.** Just the web.
+
+> **Formerly Vela.** Same browser, new name and logo. Updating from Vela keeps your profile, Spaces, settings
+> and `vela://` links automatically.
 
 ## Highlights
 
@@ -49,14 +52,14 @@ checks and translation all run on your device.
 **Built for flow.** Command palette (`Ctrl+K`), split view up to 2×2, Peek previews, web panels, tab groups,
 vertical tabs, a screenshot editor and a per-tab audio mixer. Chrome extensions work too, including uBlock Origin Lite.
 
-**Light on your machine.** Same engine as Chrome, so no faster-engine claims: Vela just does less. Sleeping tabs
+**Light on your machine.** Same engine as Chrome, so no faster-engine claims: Tarnel just does less. Sleeping tabs
 free their renderer, sessions restore lazily, old tabs move to an archive, and a battery saver kicks in on battery.
 
 → **[See every feature](docs/FEATURES.md)**
 
 ## Download
 
-**[Latest release](https://github.com/Aepzie/vela/releases/latest)**
+**[Latest release](https://github.com/Aepzie/tarnel/releases/latest)**
 
 | Platform | Files |
 |----------|-------|
@@ -77,7 +80,7 @@ Builds are not code-signed yet, and every release lists SHA-256 checksums in `SH
     <td width="50%"><img src="docs/screenshots/palette.png" alt="Command palette with the query git"><br><sub><b>Command palette</b>: tabs, history, commands and search in one box.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/browsing.png" alt="Browsing GitHub in Vela"><br><sub><b>Floating island toolbar</b>: tabs, address and tracker badge in one row.</sub></td>
+    <td width="50%"><img src="docs/screenshots/browsing.png" alt="Browsing GitHub in Tarnel"><br><sub><b>Floating island toolbar</b>: tabs, address and tracker badge in one row.</sub></td>
     <td width="50%"><img src="docs/screenshots/light.png" alt="New tab page in light theme"><br><sub><b>Light and dark</b>, or follow the system.</sub></td>
   </tr>
 </table>
@@ -98,7 +101,7 @@ On macOS use `Cmd`. [All shortcuts](docs/FEATURES.md#keyboard-shortcuts)
 Requires Node.js 20 or newer.
 
 ```bash
-git clone https://github.com/Aepzie/vela.git && cd vela
+git clone https://github.com/Aepzie/tarnel.git && cd tarnel
 npm install
 npm run dev      # build and launch
 npm run dist     # installers for your OS, into release/
@@ -115,10 +118,10 @@ share session state. Details: [security model](docs/FEATURES.md#security-model) 
 ## Contributing
 
 Bug reports, fixes, docs and ideas are all welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the
-[Code of Conduct](CODE_OF_CONDUCT.md), or open an [issue](https://github.com/Aepzie/vela/issues).
+[Code of Conduct](CODE_OF_CONDUCT.md), or open an [issue](https://github.com/Aepzie/tarnel/issues).
 
 ## License
 
-[MIT](LICENSE) © 2026 Vela contributors. Built on [Electron](https://www.electronjs.org/) and
+[MIT](LICENSE) © 2026 Tarnel contributors. Built on [Electron](https://www.electronjs.org/) and
 [Chromium](https://www.chromium.org/). Ad blocking uses [@ghostery/adblocker](https://github.com/ghostery/adblocker)
 (MPL-2.0).

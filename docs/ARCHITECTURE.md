@@ -1,6 +1,6 @@
-# Vela — Architecture
+# Tarnel — Architecture
 
-Vela is a Chromium-based desktop browser built on Electron. The browser chrome is a tiny
+Tarnel is a Chromium-based desktop browser built on Electron. The browser chrome is a tiny
 React + Tailwind + shadcn/ui UI ("Floating Islands", see DESIGN.md); every web page lives in its own sandboxed `WebContentsView`.
 
 ## Process & layer model
@@ -114,7 +114,7 @@ afterwards.
 
 Google's sign-in refuses embedded browsers ("This browser or app may not be secure"). Electron is Chromium's content
 layer without the Chrome browser layer, so stripping `Electron/x` from the UA (`cleanUserAgent`) is not enough: the
-other signals must also look like a stock Chromium browser. Vela does not claim to be Google Chrome. The brand list
+other signals must also look like a stock Chromium browser. Tarnel does not claim to be Google Chrome. The brand list
 (`"Chromium"` + GREASE) is what Electron already reports, and it is the same in the UA, `Sec-CH-UA` and
 `navigator.userAgentData`. Independent of fingerprint protection (`src/main/identity/*`, `src/preload/identity*.ts`):
 
@@ -123,7 +123,7 @@ other signals must also look like a stock Chromium browser. Vela does not claim 
 * **User-Agent override**: `Space.userAgent` → `Settings.userAgent` → the clean UA above (`src/main/user-agent.ts`,
   presets/validation in `src/shared/user-agent.ts`). Applied with `session.setUserAgent` (Accept-Language kept) and
   `webContents.setUserAgent` for open pages (takes effect on their next load). Client hints / `navigator.userAgentData`
-  still describe Vela's Chromium, so a non-Chromium UA is detectable.
+  still describe Tarnel's Chromium, so a non-Chromium UA is detectable.
 * **`window.chrome`**: the identity preload (`registerPreloadScript`, type `frame`, every session) runs
   `shapeMainWorld` in the main world of every frame with an http(s) *origin* (so `about:srcdoc` frames too):
   `chrome.app` / `csi()` / `loadTimes()` with Chromium's shape and values from Navigation Timing, functions with
@@ -387,7 +387,7 @@ src/main/window.ts     window + layering              — core
 src/main/tabs.ts       tab lifecycle                  — core
 src/main/ipc.ts        ipcMain handlers + sender auth — core
 src/main/shortcuts.ts  keyboard shortcuts             — core
-src/main/protocol.ts   vela:// protocol               — core
+src/main/protocol.ts   tarnel:// protocol               — core
 src/main/downloads.ts  download handling              — core
 src/main/url.ts        address-bar input resolution   — core
 src/main/store.ts      JSON persistence               — data
@@ -457,7 +457,7 @@ export function disposeEphemeralSpaces(): Promise<void>;  // clear storage of ep
 
 ### `src/main/history.ts`
 ```ts
-export function recordVisit(url: string, title: string): void; // skips vela://, about:, data:, ephemeral spaces handled by caller
+export function recordVisit(url: string, title: string): void; // skips tarnel://, about:, data:, ephemeral spaces handled by caller
 export function suggest(input: string, limit?: number): Suggestion[]; // frecency ranking on url+title
 export function topSites(limit?: number): TopSite[];
 export function importHistory(entries: readonly HistoryEntry[]): number; // browser import; merges like sync, returns entries kept
@@ -499,7 +499,7 @@ server). Templates must be `https://` without credentials or fragment, plain (PO
   every Space; per-Space DoH is not possible. `configureHostResolver` can be called again at any time after
   'ready' and applies to the next lookup (verified on Electron 45: strict with an unreachable server fails with
   `ERR_DNS_SECURE_RESOLVER_HOSTNAME_RESOLUTION_FAILED` right after the call), so no restart is needed. While the
-  setting has never left `off`, Vela does not call it at all (Chromium defaults).
+  setting has never left `off`, Tarnel does not call it at all (Chromium defaults).
 * **Proxied Spaces.** A Space or tab behind a proxy (MantelVPN, SOCKS5, HTTP) hands the hostname to the proxy
   (`CONNECT host`, SOCKS5 remote resolution), so the proxy resolves it and DoH does not apply there.
 
@@ -576,7 +576,7 @@ touch persistent data: `deleteHistorySince(now - 15 min)` removes entries whose 
 
 - Contract: `src/shared/bookmarks.ts` (`BookmarkNode`, `ImportedBookmark`) and `src/shared/bookmarks-ipc.ts` (`BOOKMARKS_IPC`, `BOOKMARK_ROOTS`, `BookmarkInput`/`BookmarkUpdate`, API types). Chrome API `vela.bookmarks.*` (plus `onChange`, `openManager`), pages API `velaPages.bookmarks.*`; both default to the active Space (chrome) or the hosting tab's Space (pages). Every argument is validated in `bookmarks/ipc.ts`; handlers go through the sender-checked `handleChrome` / `handlePages`.
 - Model: one flat node list per Space (`parentId` + `index`) with fixed roots `root-bar` ("Bookmarks bar") and `root-other` ("Other bookmarks"). `tree.ts` is pure and unit-tested: `normalizeTree` (drops malformed nodes, orphans and cycles, re-adds roots, reindexes), `addNode`, `updateNode` (rename, url, move; the drop index counts the siblings before the move; a folder cannot move into itself), `removeNode` (subtree), `searchNodes`, `findByUrl`, `importNodes`. URLs are limited to http(s), vela and file.
-- Storage: persistent Spaces share `bookmarks.json` (`Record<SpaceId, BookmarkNode[]>`, atomic writes via `createStore`); Burner Spaces live in a memory map only. `onSpacesChanged` prunes the bookmarks of removed Spaces. Every write sends `chrome-event:bookmarks` (Space id) so the chrome reloads; vela://bookmarks refreshes on focus.
+- Storage: persistent Spaces share `bookmarks.json` (`Record<SpaceId, BookmarkNode[]>`, atomic writes via `createStore`); Burner Spaces live in a memory map only. `onSpacesChanged` prunes the bookmarks of removed Spaces. Every write sends `chrome-event:bookmarks` (Space id) so the chrome reloads; tarnel://bookmarks refreshes on focus.
 - `importBookmarkTree(spaceId, folderTitle, nodes)` (browser import) appends a new folder under "Other bookmarks" and resolves to the number of bookmarks added.
 - UI: `renderer/chrome/bookmarks/*`. The star (`BookmarkStar`) sits next to the palette's site chip; it and Ctrl+D (`bookmark-page` UI command) open `BookmarkEditor`, which bookmarks the page in the bar if needed. `BookmarksBar` is a plain row in App's column under the top island (setting `showBookmarksBar`, Ctrl+Shift+B), so `#viewport` shrinks and its ResizeObserver reports the new bounds; its menus hold the overlay. Address-bar suggestions include up to 3 bookmarks (`kind: 'bookmark'`), shown as their own palette group.
 - Not synced yet (sync categories are unchanged).
@@ -584,7 +584,7 @@ touch persistent data: `deleteHistorySince(now - 15 min)` removes entries whose 
 ## Site info & site data on close (`src/main/site-data.ts`)
 
 - Contract: `src/shared/site-data.ts` (pure, unit-tested: `SITE_IPC`, `SiteInfo`, `SiteDataPolicy`, exception matching). Chrome API `vela.site.*`, pages API `velaPages.siteData.*`.
-- **Site info** (`src/renderer/chrome/site-info/SiteInfoPanel.tsx`): the palette's lock/host chip opens a portalled popover inside the palette's overlay. `getSiteInfo(tabId)` reads the tab's session (its VPN partition when routed): cookies via `cookies.get({ domain: <registrable domain> })`, storage via `navigator.storage.estimate()` in an isolated world (800 ms cap), permission answers via `listOriginDecisions` in `permissions.ts`. "Secure" is the tab's https state; Vela installs no certificate-error override, so an https page that loaded passed Chromium's verification (no certificate details are shown).
+- **Site info** (`src/renderer/chrome/site-info/SiteInfoPanel.tsx`): the palette's lock/host chip opens a portalled popover inside the palette's overlay. `getSiteInfo(tabId)` reads the tab's session (its VPN partition when routed): cookies via `cookies.get({ domain: <registrable domain> })`, storage via `navigator.storage.estimate()` in an isolated world (800 ms cap), permission answers via `listOriginDecisions` in `permissions.ts`. "Secure" is the tab's https state; Tarnel installs no certificate-error override, so an https page that loaded passed Chromium's verification (no certificate details are shown).
 - **Clear site data**: removes the site's cookies (registrable domain and subdomains) and `clearData({ origins })` for the tab origin plus bare/`www` https/http variants (localStorage, IndexedDB, service workers, file systems, WebSQL, background fetch; not the HTTP cache).
 - **Policies** (store `site-data.json`, `Record<SpaceId, SiteDataPolicy>`): `clearOnExit`, `clearOnLastTab`, and per-site overrides `sites[pattern] = 'keep' | 'clear'` (a pattern covers its subdomains; the most specific wins). On quit, `clearSiteDataOnQuit()` runs in the `before-quit` dispose race (extra 3 s when anything is pending): whole-Space clear when nothing is kept, otherwise cookies are filtered per domain and storage is cleared with `excludeOrigins` = kept sites' origin variants + open tabs' origins of kept sites. Persistent Spaces only; VPN country partitions are not touched.
 - **Last tab**: an `onStateChanged` diff of open (Space, site) pairs schedules `clearSite` 30 s after a site's last tab in a Space closes (cancelled if it reopens). Kept sites are never cleared.
@@ -610,7 +610,7 @@ endpoint shapes are reused, no code). Base `https://mantelvpn.com` (the client t
 build time; `mantelvpn.com/api/v1/*` answers with Mantel's JSON errors). `VELA_MANTEL_API_URL` may point at a
 loopback mock for development (http only for loopback).
 
-| Call | Use in Vela |
+| Call | Use in Tarnel |
 |---|---|
 | `POST /api/v1/auth/login` `{code, totp}` → `{token, account:{id, paidUntil}}` | sign in with the 16-digit account number; bearer token kept in memory only |
 | `GET /api/v1/account` → `{paidUntil, graceUntil?, devices, settings}` | expiry |
@@ -623,21 +623,21 @@ Tor, tickets, two-factor (`totp_required` is shown as unsupported).
 
 **Tunnel.** The Mantel app brings WireGuard up through the official WireGuard for Windows tunnel service, driven by
 the closed-source, admin-installed Mantel Service over a named pipe (kill switch = Windows Firewall rules). A browser
-cannot do that, so Vela does not register devices or keys.
+cannot do that, so Tarnel does not register devices or keys.
 
 **Connect = Space proxy.** Mantel offers account-scoped "server proxies" (SOCKS5, HTTP, MTProto; exit "direct" =
-the location's IP, or Tor). Connect lists the account's proxies, reuses Vela's own HTTP proxy for that location or
-creates one (`name: "Vela", protocol: "http", exit: "direct"`), stores the once-shown password with safeStorage and
+the location's IP, or Tor). Connect lists the account's proxies, reuses Tarnel's own HTTP proxy for that location or
+creates one (`name: "Tarnel", protocol: "http", exit: "direct"`), stores the once-shown password with safeStorage and
 sets the active Space's proxy to `http://host:port` (existing fail-closed Space proxy path). Chromium cannot do
 SOCKS5 username/password auth, hence HTTP; the `Proxy-Authorization` challenge is answered in main via `app.on('login')`
 only for the exact host:port in use. HTTPS sites stay end-to-end TLS inside `CONNECT`; the proxy credentials
 themselves travel in plain text to the proxy (Mantel's own app warns about this). Disconnect, sign-out and the next
-start restore the Space's previous proxy (unless the user changed it). Sign-out deletes Vela's proxies and the token.
+start restore the Space's previous proxy (unless the user changed it). Sign-out deletes Tarnel's proxies and the token.
 
 **Per-tab routing.** Electron applies proxies per *session*, not per webContents, so a tab routed through a
 country lives in its own partition per (Space, country): `persist:space-<id>-vpn-<cc>` (`space-<id>-vpn-<cc>` for
 Burners, in memory). `spaces.getSpaceSession(spaceId, cc)` creates it lazily under the session key `<id>@vpn-<cc>`
-and runs every `onSessionCreated` hook with the owning Space (privacy, identity, fingerprint seed, adblock, vela://,
+and runs every `onSessionCreated` hook with the owning Space (privacy, identity, fingerprint seed, adblock, tarnel://,
 extensions; `gateSessionReady(space.id)` called from inside a hook applies to the session being created). Its
 proxy comes from the provider the VPN module registers (`setRouteProxyProvider`): `http://<host:port>` of the
 stored Mantel proxy for that country (`vpn.json` `countries: {cc → proxy id}`), else the blackhole — fail closed,
@@ -657,19 +657,19 @@ a simulated connection, labelled "Preview"; nothing is routed.
 
 **What Mantel would need to provide for a solid in-browser VPN:**
 1. Proxy endpoints meant for browsers: HTTPS proxy (TLS to the proxy, so credentials are not sent in clear) or SOCKS5
-   over TLS, on every location, with documented hostnames and limits (Vela creates one per used location).
-2. A scoped app token / OAuth-style device grant ("Vela may manage proxies") instead of the raw account number, plus
+   over TLS, on every location, with documented hostnames and limits (Tarnel creates one per used location).
+2. A scoped app token / OAuth-style device grant ("Tarnel may manage proxies") instead of the raw account number, plus
    token refresh; ideally revocable from the Mantel account page.
 3. A public, unauthenticated location list (or one usable with that scoped token) including load.
-4. Two-factor support for third-party clients (the login takes `totp`; Vela has no prompt yet).
+4. Two-factor support for third-party clients (the login takes `totp`; Tarnel has no prompt yet).
 5. Stated rate limits and a stable, versioned API contract for partners.
-6. Alternatively a userspace WireGuard → local SOCKS bridge (wireproxy-style) that Mantel ships and signs; Vela would
-   then point a Space at `socks5://127.0.0.1:<port>` without admin rights. Vela does not bundle such a binary today.
+6. Alternatively a userspace WireGuard → local SOCKS bridge (wireproxy-style) that Mantel ships and signs; Tarnel would
+   then point a Space at `socks5://127.0.0.1:<port>` without admin rights. Tarnel does not bundle such a binary today.
 
 ## Sync (optional, end-to-end encrypted)
 
-Off by default. There is no Vela server: the user picks the storage — a **folder** (OneDrive,
-Dropbox, iCloud Drive, Syncthing, a NAS share) or a **WebDAV** collection (Nextcloud etc.). Vela only
+Off by default. There is no Tarnel server: the user picks the storage — a **folder** (OneDrive,
+Dropbox, iCloud Drive, Syncthing, a NAS share) or a **WebDAV** collection (Nextcloud etc.). Tarnel only
 ever touches `<storage>/vela-sync/{key.json, dev-<id>.vsync}`.
 
 ```
@@ -708,9 +708,9 @@ changes (30 s), every 5 min, folder file-watch, "Sync now".
 
 **Threat model.** Protects the synced data's confidentiality and integrity against the storage
 provider, anyone with access to the folder / WebDAV account, and network observers. Not hidden from
-them: that Vela sync is used, the number of devices, per-device file sizes and write times, and the
+them: that Tarnel sync is used, the number of devices, per-device file sizes and write times, and the
 scrypt parameters. Not protected against: a weak passphrase (offline guessing against `key.json`,
-slowed by scrypt), malware on an unlocked device (it can read the key via `safeStorage` like Vela
+slowed by scrypt), malware on an unlocked device (it can read the key via `safeStorage` like Tarnel
 can), or a malicious party who holds the passphrase or recovery key (all devices share one key, so
 any device can write records attributed to any id; there is no per-device signing). A storage
 provider can delete or roll back files (denial of service / replay of an older state of one device's
@@ -719,7 +719,7 @@ file); records carry clocks so a rolled-back file never overwrites newer data th
 
 ## Import from other browsers (`src/main/import/*`)
 
-Settings → Import (`vela://settings/#import`) plus a dismissible "Import from Chrome" pill on a fresh
+Settings → Import (`tarnel://settings/#import`) plus a dismissible "Import from Chrome" pill on a fresh
 new tab page (shown only while there are no top sites; dismissed for good on click or after any import,
 state in `import-hint.json`).
 
@@ -734,7 +734,7 @@ state in `import-hint.json`).
   `position` (tags, separators and `place:` queries dropped). Handed to
   `bookmarks.importBookmarkTree(spaceId, "Imported from <browser>", tree)` as a new folder.
 - **History**: Chromium `urls` / Firefox `moz_places`, last 90 days, most visited first, at most
-  5,000 (Vela's history cap) → `history.importHistory`. Chromium's `last_visit_time` exceeds 2^53,
+  5,000 (Tarnel's history cap) → `history.importHistory`. Chromium's `last_visit_time` exceeds 2^53,
   so it is scaled to ms inside the SQL query.
 - **SQLite** (`sqlite.ts`): Node's built-in `node:sqlite` (Electron 45 ships Node 24; loaded lazily
   with `import()`, so it costs nothing at startup). The source database is never opened: it is copied
@@ -776,13 +776,13 @@ registrable-domain heuristic shared by privacy, fingerprinting and DNR (pure, un
 
 ## Phishing & malware protection (`src/main/safety/*`)
 
-Electron has no Safe Browsing, so Vela checks navigations against bulk-downloaded public blocklists, entirely
+Electron has no Safe Browsing, so Tarnel checks navigations against bulk-downloaded public blocklists, entirely
 locally: no URL, host or hash prefix is ever sent anywhere (unlike Google Safe Browsing's update/lookup API).
 
 | Source | Feed | Format / matching | Threat | License |
 |---|---|---|---|---|
 | [URLhaus](https://urlhaus.abuse.ch/) (abuse.ch) | `downloads/text_online/` (online malware URLs) | full URL (fragment dropped) — never the whole host, since many entries are compromised legitimate sites | malware | CC0 1.0 |
-| [Phishing Army](https://phishing.army/) | `phishing_army_blocklist.txt` (non-extended) | domain: exact host + parent domains down to the registrable domain | phishing | CC BY-NC 4.0 (attribution shown as "Listed by Phishing Army"; Vela is free and non-commercial) |
+| [Phishing Army](https://phishing.army/) | `phishing_army_blocklist.txt` (non-extended) | domain: exact host + parent domains down to the registrable domain | phishing | CC BY-NC 4.0 (attribution shown as "Listed by Phishing Army"; Tarnel is free and non-commercial) |
 | [uBlock filters – Badware risks](https://github.com/uBlockOrigin/uAssets) | `filters/badware.txt` | only whole-host rules (`\|\|host^`, optionally `$doc`/`$all`/`$important`/party options); path, cosmetic, exception and type-restricted rules are skipped | badware / scams | GPL-3.0 (fetched at runtime, not redistributed) |
 
 Not used: PhishTank (needs a registered API key per app), OpenPhish community feed (terms restrict use), the
@@ -797,13 +797,13 @@ URLhaus host file (blocks whole shared/compromised hosts).
   whole. Disabled (Settings → Privacy → "Warn about dangerous sites", `warnDangerousSites`, default on) means
   no checks and no downloads.
 - Dispatcher stage `safety` (50, every session via `onSessionCreated`): `mainFrame` hits redirect to
-  `vela://error/?threat=<malware|phishing|badware>&source=<name>&url=<original>` (the error page renders the
+  `tarnel://error/?threat=<malware|phishing|badware>&source=<name>&url=<original>` (the error page renders the
   warning instead of an error); `subFrame` hits are cancelled. Other resource types are not checked.
 - "Back to safety" = history back (or the start page when there is no history). "Proceed anyway (unsafe)"
-  calls `pages:safety-proceed`, which allowlists that exact hostname in memory until Vela quits, then navigates.
+  calls `pages:safety-proceed`, which allowlists that exact hostname in memory until Tarnel quits, then navigates.
 - Downloads whose URL chain is listed are flagged; the downloads "open" action only reveals them in the folder
   (same as `DANGEROUS_EXT`).
-- IPC (vela:// pages only): `pages:safety-status` → `{ enabled, entries, updatedAt, sources }`.
+- IPC (tarnel:// pages only): `pages:safety-status` → `{ enabled, entries, updatedAt, sources }`.
 ### Tracking parameters (`src/shared/url-clean.ts`)
 
 `cleanUrl(url)` is pure and unit-tested (`url-clean.test.ts`). It removes a curated, ClearURLs-style list:
@@ -837,7 +837,7 @@ embedded under site A writes localStorage, and B opened top-level reads `null`.
 
 ## Privacy report (`src/main/privacy-report/*`, `src/shared/privacy-report.ts`)
 
-Local-only daily aggregates behind `vela://privacy`, the start-page stat line and the optional weekly notice.
+Local-only daily aggregates behind `tarnel://privacy`, the start-page stat line and the optional weekly notice.
 
 - **Hot path** (`privacy-report/collector.ts`, no Electron imports): `countBlockedRequest(wcId, url, type)` and
   `countPrivacyEvent(counter, wcId, n)` only add to an in-memory map keyed by local day. Callers: Ghostery's
@@ -864,10 +864,10 @@ Local-only daily aggregates behind `vela://privacy`, the start-page stat line an
   `registerPrivacySource('cookieBannersHandled', () => getCookieBannerStats().handled)` — and each flush records
   the growth (totals only; the first read is the baseline). Unknown counter names in stored files are preserved.
 - **IPC:** `velaPages.privacyReport.get()` (flushes, then builds the report: this week = last 7 days incl. today vs
-  the 7 before, 14-day series, top domains/companies, per Space) and `.reset()`; any `vela://` page may call them
+  the 7 before, 14-day series, top domains/companies, per Space) and `.reset()`; any `tarnel://` page may call them
   (the start page reads this week's count when Settings → Appearance → Privacy stat is on).
 - **Weekly notice** (`privacyWeeklySummary`, off by default): checked at flush time; the first check after enabling
-  records a baseline day, then at most every 7 days a silent system notification; clicking opens `vela://privacy`.
+  records a baseline day, then at most every 7 days a silent system notification; clicking opens `tarnel://privacy`.
 - Not counted yet: fingerprinting readbacks (canvas/WebGL/audio). The counter exists (`fingerprintMitigated`), but
   the main-world shims would need a batched renderer → main channel; the report shows it only when non-zero.
 
@@ -875,8 +875,8 @@ Local-only daily aggregates behind `vela://privacy`, the start-page stat line an
 
 * **Command line.** `open-targets.ts` is pure (fs injected, tested on Windows and POSIX rules): it skips
   flags / Chromium switches before a bare `--` and treats everything after `--` as a target (the OS
-  registration launches `Vela.exe -- "%1"`, so a crafted file name can never become a switch). http(s)
-  / vela URLs go through the address-bar resolver; anything else is a path (absolute, relative to the
+  registration launches `Tarnel.exe -- "%1"`, so a crafted file name can never become a switch). http(s)
+  / tarnel URLs go through the address-bar resolver; anything else is a path (absolute, relative to the
   working directory — the second instance's cwd for `second-instance` — or a `file://` URL) and opens
   only if it is an existing regular file. **Directories are ignored** (no Chromium file listing; this
   also drops the app path `.` in development). Note: Chromium reorders a second instance's argv
@@ -888,9 +888,9 @@ Local-only daily aggregates behind `vela://privacy`, the start-page stat line an
   Chromium's own viewers. Untitled file pages are titled with the file name; the address bar shows
   `file` + the decoded path.
 * **Guards.** `will-frame-navigate` blocks any frame navigation to `file://` whose initiator is not a
-  `file://` or `vela://` page (user navigations and drops have no initiator); window.open / target=_blank
+  `file://` or `tarnel://` page (user navigations and drops have no initiator); window.open / target=_blank
   to `file://` is only allowed from those pages; popup windows can never navigate to `file://`. The pages
-  preload exposes `window.velaPages` only on `vela:`, the chrome preload only lives in the chrome view, so
+  preload exposes `window.velaPages` only on `tarnel:` (and the legacy `vela:`), the chrome preload only lives in the chrome view, so
   local files get no bridge. Caveat: the `GrantFileProtocolExtraPrivileges` fuse (needed by the chrome UI)
   lets a local HTML file `fetch()` other local files, as Chrome's `--allow-file-access-from-files` would.
 * **Drag and drop.** The chrome UI handles external drags (`Files` / `text/uri-list`) on the window:
@@ -901,13 +901,17 @@ Local-only daily aggregates behind `vela://privacy`, the start-page stat line an
   window-open guards (Chromium opens dropped links as a new tab; files dropped on a web page are refused
   by the guard, on the new-tab page or a local file they open next to it).
 
-## vela:// protocol
+## tarnel:// protocol
 
-`vela://<page>/<file>` → `dist/renderer/pages/<page>/<file>` (default `index.html`).
-`vela://shared/<file>` → `dist/renderer/shared/<file>`. Registered as privileged
+`tarnel://<page>/<file>` → `dist/renderer/pages/<page>/<file>` (default `index.html`).
+`tarnel://shared/<file>` → `dist/renderer/shared/<file>`. Registered as privileged
 (`standard`, `secure`, `supportFetchAPI`) before ready, and handled via `session.protocol.handle`
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
-Pages: `newtab`, `settings`, `privacy`, `error` (`vela://error/?code=…&url=…&desc=…`, or the dangerous-site warning `vela://error/?threat=…&source=…&url=…`).
+Pages: `newtab`, `settings`, `privacy`, `error` (`tarnel://error/?code=…&url=…&desc=…`, or the dangerous-site warning `tarnel://error/?threat=…&source=…&url=…`).
+
+**Legacy `vela://` alias.** The browser was called Vela until 0.9.x. `vela://` is still registered with the same
+privileges and maps to the same page (`vela://settings/#import` → `tarnel://settings/#import`), so old bookmarks,
+history entries and restored sessions keep working. New code, links and docs always use `tarnel://`.
 
 ## Extensions (`src/main/extensions/*`)
 
@@ -934,9 +938,9 @@ index.ts     initExtensions() wiring + registerExtensionIpc() (registered from i
   `BrowserWindow`, so it floats above the page without the overlay). `setOverlay` never pulls focus back from
   another window, otherwise a tooltip would close the popup.
 * **Security.** Extensions may only open/navigate tabs to `http(s)`, `about:blank` or `chrome-extension://`
-  (`chrome.tabs.create/update`, `windows.create`, popup/background `window.open`); `vela://`, `file:` and
+  (`chrome.tabs.create/update`, `windows.create`, popup/background `window.open`); `tarnel://`, `file:` and
   `data:` are refused, so privileged pages stay unreachable. Extension pages never get `velaPages` (the pages
-  preload only exposes it on `vela:`) and the library's `crx-*` IPC channels are separate from Vela's
+  preload only exposes it on `tarnel:` / `vela:`) and the library's `crx-*` IPC channels are separate from Tarnel's
   sender-validated channels. The dispatcher owns `session.webRequest`, so extensions' blocking
   `chrome.webRequest` listeners don't fire (Electron limitation); MV3 blockers use declarativeNetRequest below.
 * **`browser` namespace.** Chromium also exposes the extension API as `browser`, a separate object from `chrome`
@@ -956,23 +960,23 @@ index.ts     initExtensions() wiring + registerExtensionIpc() (registered from i
   to narrow content-script matches or host permissions per session; doing it would mean loading a rewritten
   copy of the extension (changes unpacked IDs) — the UI says so and points to On click / Spaces.
 
-* **Marketplace (`vela://extensions`).** A renderer page (`src/renderer/pages/extensions/`, served by the
-  generic `vela://<host>` mapping in `protocol.ts`) over the existing `velaPages.extensions` bridge — no new IPC.
+* **Marketplace (`tarnel://extensions`).** A renderer page (`src/renderer/pages/extensions/`, served by the
+  generic `tarnel://<host>` mapping in `protocol.ts`) over the existing `velaPages.extensions` bridge — no new IPC.
   `src/shared/extension-catalog.ts` is a hand-curated list (CWS ID, name, category, permission note; every ID
   checked against its store listing; no bundled logos — uninstalled entries get a letter tile, installed ones
   the icon read from the downloaded manifest). Install = `install(id)` → `ExtensionReview` dialog →
   `confirmInstall`, i.e. the same staged permission review as Settings. "Search the Chrome Web Store" opens
   `chromewebstore.google.com/search/<q>` in a new tab. The store's own "Add to Chrome" button is **not** wired:
   `electron-chrome-web-store`'s `installChromeWebStore()` would install straight into a session, bypassing
-  Vela's registry, Spaces and review. Instead the top island shows an **Add to Vela** pill while the active tab
-  is a store detail page (`storeDetailId`), which opens `vela://extensions/#install=<id>` and runs the review
+  Tarnel's registry, Spaces and review. Instead the top island shows an **Add to Tarnel** pill while the active tab
+  is a store detail page (`storeDetailId`), which opens `tarnel://extensions/#install=<id>` and runs the review
   flow there. Entry points: that pill, "Browse extensions" in the puzzle popover, Settings → Extensions and the
   palette command "Extensions store". Shared review/permission UI lives in `src/renderer/components/extensions.tsx`.
 
 ### declarativeNetRequest (`src/main/extensions/dnr/*`)
 
 Electron 45 compiles in the `chrome.declarativeNetRequest` bindings but nothing behind them evaluates rules, so
-MV3 blockers (uBlock Origin Lite) used to load and block nothing. Vela implements the API itself.
+MV3 blockers (uBlock Origin Lite) used to load and block nothing. Tarnel implements the API itself.
 
 ```
 types.ts       public rule model, Chrome limits            rule.ts       validation (Chrome's errors) + compilation
@@ -1045,7 +1049,7 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   sealed with Electron `safeStorage` (DPAPI on Windows, Keychain on macOS, libsecret/kwallet on Linux) and stored
   as base64 ciphertext; origins and usernames are plain. Writes are atomic (0600 temp file, fsync, rename).
   Linux `basic_text` (hard-coded key) counts as unavailable: with no real OS encryption nothing is saved and
-  vela://passwords says so. Burner Spaces keep their vault in memory only; removing a Space deletes its file.
+  tarnel://passwords says so. Burner Spaces keep their vault in memory only; removing a Space deletes its file.
 - **Origins.** `origin.ts` normalises to scheme + host + non-default port, http(s) only. Matching is exact: no
   subdomain, http↔https or port sharing.
 - **Capture.** A session preload (`src/preload/passwords.ts`, every web frame, isolated world) stays idle until
@@ -1060,7 +1064,7 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   is still attached, in the same tab and Space, and that both it and its top frame still have the login's origin,
   then sends the login to that frame only (`frame.send`). There is no automatic fill, also not on http:// (the
   picker warns there). A login form that appears more than 30 s after load is not detected (keeps the observer cheap).
-- **vela://passwords.** `pages:passwords-*` channels are accepted only from a top-level vela://passwords frame of a
+- **tarnel://passwords.** `pages:passwords-*` channels are accepted only from a top-level tarnel://passwords frame of a
   tab, and the pages preload only exposes `velaPages.passwords` on that host. Reveal is a two-step confirm in the
   page and auto-hides after 30 s; no OS re-authentication (Windows Hello has no Electron API;
   `systemPreferences.promptTouchID` is macOS only), so anyone at an unlocked machine can reveal, as in Chrome
@@ -1069,12 +1073,12 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   unchanged) is written by main after a warning and a native save dialog.
 - **Threat model.** Protects against: other users / offline disk access (OS encryption), web pages (they never
   see stored logins; the isolated world and main-side origin checks stop a page or a cross-origin iframe from
-  requesting fills or reading another origin's login), other vela:// pages and the chrome UI (no password
+  requesting fills or reading another origin's login), other tarnel:// pages and the chrome UI (no password
   channel). Does not protect against: malware running as the user (it can call the same OS decryption), a
   compromised renderer of the site itself after a fill (the page owns its form), someone at the unlocked machine
   (reveal has no re-auth), or a CSV export file left on disk. Imports (`importLogins`) go through the same
   validation and encryption.
-- **External managers.** vela://passwords installs Bitwarden (`nngceckbapebfimnlniiiahkandclblb`) or 1Password
+- **External managers.** tarnel://passwords installs Bitwarden (`nngceckbapebfimnlniiiahkandclblb`) or 1Password
   (`aeblfdkhhhdcdjpifhhbdiojplfjncoa`) through the normal extension review flow and offers to turn off
   `offerToSavePasswords` / `passwordAutofill`.
 
@@ -1093,7 +1097,7 @@ engine.ts      per-session state, dispatcher stages, badge   api.ts        chrom
   `{ annotations, crop }`. Blur pixelates whatever is painted under it, so the exported image never contains
   the original pixels.
 - Copy and save go through main (`SCREENSHOT_IPC`): the data URL is validated (PNG/JPEG base64 only), decoded
-  with `nativeImage`; save shows the native dialog (default `Vela screenshot <date>.png` in Downloads) and
+  with `nativeImage`; save shows the native dialog (default `Tarnel screenshot <date>.png` in Downloads) and
   encodes PNG or JPEG (quality 92). Nothing runs while no screenshot is open.
 ## Cookie banners (`src/main/cookie-banners/*`)
 
@@ -1133,7 +1137,7 @@ Optional forwarding addresses from **SimpleLogin** or **addy.io**, offered on si
 
 - **Settings.** Settings → Privacy → Email aliases (provider Off / SimpleLogin / addy.io, API key, style, domain,
   mailbox). Stored in `userData/aliases.json` (0600); the API key is sealed with `safeStorage` (same "basic_text
-  counts as unavailable" rule as passwords) and is write-only: `pages:aliases-*` (vela://settings only) return
+  counts as unavailable" rule as passwords) and is write-only: `pages:aliases-*` (tarnel://settings only) return
   whether a key is set plus the account email/username and plan, never the key. A new key is validated with one
   cheap call (SimpleLogin `GET /api/user_info`, addy.io `GET /api/v1/account-details`) before it is stored.
 - **Detection.** No extra preload: the passwords preload gets `alias: true` in its frame flags only when a
@@ -1153,10 +1157,10 @@ Optional forwarding addresses from **SimpleLogin** or **addy.io**, offered on si
   `GET /api/v5/alias/options?hostname=` then `POST /api/v3/alias/custom/new?hostname=` `{ alias_prefix,
   signed_suffix, mailbox_ids, note }`; mailboxes `GET /api/v2/mailboxes`. addy.io (`Authorization: Bearer`,
   `X-Requested-With: XMLHttpRequest`): `POST /api/v1/aliases` `{ domain, description, format, local_part?,
-  recipient_ids? }`, `GET /api/v1/domain-options`, `GET /api/v1/recipients`. Note: "Created by Vela".
+  recipient_ids? }`, `GET /api/v1/domain-options`, `GET /api/v1/recipients`. Note: "Created by Tarnel".
 - **Saved logins.** Created aliases are remembered in memory for 30 min per Space + origin. When the user saves a
   password whose username is that alias, the login stores `alias: { provider, id, email }` (vault field, optional)
-  and vela://passwords shows it with a link to the provider's dashboard.
+  and tarnel://passwords shows it with a link to the provider's dashboard.
 - **Security notes.** The key never reaches a renderer, the chrome UI or a page; pages never learn whether
   aliases are configured (the frame only gets a fill after the user's click). Provider errors are reduced to a
   short message. `VELA_ALIAS_API_BASE` (tests only) replaces the provider origin but is accepted only for
@@ -1176,7 +1180,7 @@ The module is `require`d lazily on the first check (esbuild keeps it external), 
   **notify** — Windows portable (`PORTABLE_EXECUTABLE_DIR`), deb, unsigned macOS: no download, the UI links the
   release page. Unsigned NSIS updates pass because `app-update.yml` carries no `publisherName`, so
   `verifyUpdateCodeSignature` is skipped; once signing adds a publisher, signatures are enforced.
-* Status (`UpdateStatus`) is pushed to the chrome (`chrome-event:update`) and to vela:// settings pages that
+* Status (`UpdateStatus`) is pushed to the chrome (`chrome-event:update`) and to tarnel:// settings pages that
   subscribed via `pages:update-watch` (dropped once the page navigates away).
 * Release artifacts: `latest.yml` (NSIS only — the portable target writes no update info), `latest-mac.yml`
   (dmg + zip; Squirrel.Mac installs from the zip), `latest-linux.yml` (AppImage), plus blockmaps for
@@ -1189,13 +1193,16 @@ The module is `require`d lazily on the first check (esbuild keeps it external), 
 * **Windows (NSIS installer)**: electron-builder registers nothing for `protocols` on Windows, and its
   `fileAssociations` would set each `.ext` default (taking a type over silently), so Windows registration lives
   in `build/installer.nsh` (`nsis.include`), Chrome-style, under `SHELL_CONTEXT` (HKCU per-user, HKLM for an
-  "all users" install): `Software\Clients\StartMenuInternet\Vela` (+ `Capabilities` with URLAssociations
-  http/https → `VelaURL` and FileAssociations → `VelaHTML` / `VelaPDF` / `VelaSVG` / `VelaWebP` / `VelaMHTML`),
-  `Software\RegisteredApplications\Vela`, the ProgIDs under `Software\Classes` (`"Vela.exe" -- "%1"`; the `--` ends switch parsing) and only an
+  "all users" install): `Software\Clients\StartMenuInternet\Tarnel` (+ `Capabilities` with URLAssociations
+  http/https → `TarnelURL` and FileAssociations → `TarnelHTML` / `TarnelPDF` / `TarnelSVG` / `TarnelWebP` / `TarnelMHTML`),
+  `Software\RegisteredApplications\Tarnel`, the ProgIDs under `Software\Classes` (`"Tarnel.exe" -- "%1"`; the `--` ends switch parsing) and only an
   `OpenWithProgids` entry per extension, then `SHChangeNotify(SHCNE_ASSOCCHANGED)`. Uninstall removes exactly
-  those keys/values. It also cleans the `HTML document` ProgID older builds let electron-builder write.
+  those keys/values. It also cleans the `HTML document` ProgID older builds let electron-builder write, and on
+  both install and uninstall removes the keys of the pre-rename Vela builds (ProgIDs `Vela*`,
+  `StartMenuInternet\Vela`, `RegisteredApplications\Vela`, `Vela*` `OpenWithProgids` values) so Windows never
+  lists two browsers.
   Windows 10/11 never let an app make itself default: "Make default" opens
-  `ms-settings:defaultapps?registeredAppUser=Vela` (`registeredAppMachine` when installed under Program Files).
+  `ms-settings:defaultapps?registeredAppUser=Tarnel` (`registeredAppMachine` when installed under Program Files).
   The status compares `app.getApplicationInfoForProtocol()`'s handler path with `process.execPath` (that sees
   the UserChoice; `isDefaultProtocolClient` only reads `HKCU\Software\Classes\<scheme>`).
 * **Portable exe**: writes nothing to the registry, so it can't be listed or made default (the row says so).
@@ -1204,7 +1211,7 @@ The module is `require`d lazily on the first check (esbuild keeps it external), 
   `.desktop` `MimeType`; "Make default" calls `app.setAsDefaultProtocolClient('http' / 'https')`.
 * Unpackaged dev runs never register (would point the OS at the dev electron.exe). File types: HTML, XHTML,
   SHTML, MHT/MHTML, PDF, SVG, WebP. Plain text, JSON and common images (PNG/JPG/GIF) are left out on purpose.
-* IPC `pages:default-browser-status` / `-make-default`: vela://settings only, read on load and on focus.
+* IPC `pages:default-browser-status` / `-make-default`: tarnel://settings only, read on load and on focus.
 
 ## Translation (`src/main/translate/*`)
 
@@ -1215,7 +1222,7 @@ the only network traffic is Mozilla's model catalog and the model files.
   the `@browsermt/bergamot-translator@0.4.9` npm tarball, sha1 `224cd32c6e89c92a0d4945dc0fceb4400dcb2ae4`;
   license text in `vendor/bergamot/LICENSE`). Not an npm dependency: build.mjs copies it to `dist/vendor/bergamot`.
   `engine-process.ts` (bundled to `dist/main/translate-engine.js`) runs it in an Electron **utilityProcess**
-  ("Vela Translation"): spawned on the first translation, killed after 3 min idle, restarted when the
+  ("Tarnel Translation"): spawned on the first translation, killed after 3 min idle, restarted when the
   needed language pair changes (WASM memory never shrinks). intgemm uses the WASM-embedded fallbacks.
 - **Models:** Mozilla Remote Settings, collection `translations-models`
   (`firefox.settings.services.mozilla.com/v1/buckets/main/collections/translations-models/records`),
@@ -1225,7 +1232,7 @@ the only network traffic is Mozilla's model catalog and the model files.
   the catalog for 24 h in `userData/translation-models/catalog.json`, downloads a pair into
   `userData/translation-models/<from>-<to>/` streaming + SHA-256 against the record hash, `.part` → rename,
   and writes `manifest.json` last. The CDN answers 406 to browser-like user agents, so these requests send
-  `User-Agent: Vela/<version> (on-device translation)` and no cookies. Mozilla publishes xx↔en only; other
+  `User-Agent: Tarnel/<version> (on-device translation)` and no cookies. Mozilla publishes xx↔en only; other
   pairs pivot through English (`translateViaPivoting`, two models).
 - **Page:** `page-script.ts` runs in isolated world 1777 (`executeJavaScriptInIsolatedWorld`), so page
   scripts can't see or alter it. Main pulls text batches (`collect`), translates ~2500 chars per engine call
@@ -1266,11 +1273,21 @@ the concepts are. Engine: Android System WebView via `androidx.webkit`. Details:
 (cjs, sandboxed: only `electron` import allowed), renderer entries → iife, static files copied.
 `npm run dev` = build + launch, `npm run typecheck` = `tsc --noEmit`.
 
-Brand: `src/shared/brand-mark.ts` holds the logo's path data and app-icon tile; the renderer imports it
-(Settings `VelaMark` / `VelaAppIcon`, new-tab `LogoHero`, vela:// favicons) and `npm run icons`
+Brand: `src/shared/brand-mark.ts` holds the logo's path data (a mountain over a still lake, the reflection
+drawn as three accent bands) and app-icon tile; the renderer imports it
+(Settings `BrandMark` / `BrandAppIcon`, new-tab `LogoHero`, tarnel:// favicons) and `npm run icons`
 (`scripts/icons.mjs`, offscreen Electron) generates `build/icon.svg`, `icon-mono.svg`, the PNG set,
 `icon.ico` and `icon.icns` from it. Unpackaged runs set the window icon from `build/` (`devWindowIcon`
 in `window.ts`); packaged builds take it from the executable.
+
+## User data and the Vela → Tarnel rename
+
+`productName` is Tarnel, so Electron's `userData` is `%APPDATA%\Tarnel`, `~/Library/Application Support/Tarnel`
+or `~/.config/Tarnel`. On start, before `ready`, if that folder holds no profile but the old `Vela` folder next to
+it exists, the old folder is moved (renamed) to the new path; if the move fails it is copied instead. Data is
+never deleted on failure, so the old folder stays as a fallback. `TARNEL_USER_DATA=<dir>` overrides the folder
+(isolated test instances); `VELA_USER_DATA` is still honoured when the new variable is unset. Everything inside
+the profile (store file names, `vela:*` localStorage keys, partitions `persist:space-<id>`) is unchanged.
 
 ## Security hardening
 
@@ -1281,7 +1298,7 @@ Windows resource / macOS `ElectronAsarIntegrity` plist key). Unpackaged `npm run
 
 | Fuse | Value | Why |
 |---|---|---|
-| `RunAsNode` | off | `ELECTRON_RUN_AS_NODE` would turn `Vela.exe` into a plain Node.js (a signed LOLBin). Vela never forks the main process (no `process.fork`; use `utilityProcess` if ever needed). |
+| `RunAsNode` | off | `ELECTRON_RUN_AS_NODE` would turn `Tarnel.exe` into a plain Node.js (a signed LOLBin). Tarnel never forks the main process (no `process.fork`; use `utilityProcess` if ever needed). |
 | `EnableNodeOptionsEnvironmentVariable` | off | `NODE_OPTIONS` / `NODE_EXTRA_CA_CERTS` could inject code or CAs into the main process. |
 | `EnableNodeCliInspectArguments` | off | `--inspect*` / `SIGUSR1` would expose a debugger on the main process. |
 | `EnableEmbeddedAsarIntegrityValidation` | on | `app.asar` is checked against the hash baked into the executable (Windows since Electron 30, macOS). |
@@ -1307,5 +1324,5 @@ On Windows every completed download gets a `Zone.Identifier` alternate data stre
 `done` event, so SmartScreen, Defender, Office Protected View and the "Unblock" checkbox treat the file
 like a Chrome/Edge download. `HostUrl` is the last URL of the redirect chain, `ReferrerUrl` the page that
 started the download. Only http(s) URLs are recorded (credentials and fragment stripped); `blob:`,
-`data:`, `vela://` etc. and every download from a non-persistent (burner) session get the zone line only.
+`data:`, `tarnel://` etc. and every download from a non-persistent (burner) session get the zone line only.
 Writing is best effort: volumes without ADS support (FAT32/exFAT, some shares) simply get no mark.

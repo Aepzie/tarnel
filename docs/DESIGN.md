@@ -1,6 +1,6 @@
-# Vela — Design System ("Floating Islands")
+# Tarnel — Design System ("Floating Islands")
 
-Vela's chrome is not a frame around the web — it is a set of **floating glass islands** hovering over
+Tarnel's chrome is not a frame around the web — it is a set of **floating glass islands** hovering over
 the desktop. The page itself is just another island. Quiet, precise, fast, alive.
 
 ## Stack
@@ -13,7 +13,7 @@ Renderer source lives in `src/renderer/` and is built by Vite (multi-page). Path
 
 ```
 src/renderer/
-  styles/globals.css          Tailwind v4 + shadcn theme tokens + Vela tokens (single source of truth)
+  styles/globals.css          Tailwind v4 + shadcn theme tokens + Tarnel tokens (single source of truth)
   lib/utils.ts                cn()
   lib/motion.ts               shared springs/variants (import these, don't invent new curves)
   lib/vela.ts                 typed access to window.vela / window.velaPages + helpers
@@ -70,6 +70,21 @@ src/renderer/
 * Light theme supported via `.light` class / `data-theme="light"` (islands `bg-white/70`, ring black/8).
 * NO: gradients on surfaces (except accent glows & subtle noise), generic drop shadows on everything,
   blue default buttons, emoji icons. Use lucide icons, size 15–16, strokeWidth 1.75.
+
+## Logo
+
+The Tarnel mark is a tarn: a two-peak mountain (45° slopes, main peak left of centre) above a still mountain
+lake, its reflection drawn as three accent bands that shorten towards the bottom, the last one under the main
+peak. The name joins "tarn" (a still mountain lake) and "tarnen" (to cloak) — calm and private. Corners are
+softly rounded so the mountain reads as one shape.
+
+* Single source: `src/shared/brand-mark.ts` (paths, viewBox, tile). Never redraw or hand-edit the mark; every
+  copy (settings `BrandMark` / `BrandAppIcon`, new-tab `LogoHero`, internal-page favicons, `build/` icons,
+  Android drawables) is generated from it.
+* Two colours only: the mountain in ink (`#f4f4f5`, or the text colour in-app) and the reflection in the accent.
+  The OS app icon always uses brand violet `#a78bfa` on the flat `#18181b` tile with a hairline rim; in-app
+  copies may follow the active Space colour (`var(--accent-space)`).
+* No gradients, glows or outlines on the mark; keep it small and quiet next to UI text.
 
 ## Motion (import from `@/lib/motion`)
 

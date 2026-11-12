@@ -4,7 +4,9 @@ Native Android version of Tarnel: Kotlin + Jetpack Compose UI on top of Android 
 (`androidx.webkit`). Same ideas as the desktop app — Floating Islands design, isolated Spaces, Burner spaces,
 sleeping tabs, privacy defaults — built for phones.
 
-- **applicationId / package:** `org.velabrowser.vela` (debug builds: `org.velabrowser.vela.debug`) — kept from the app's former name Vela so updates install over existing installs
+- **applicationId / package:** `org.velabrowser.vela` (debug builds: `org.velabrowser.vela.debug`) — kept from the
+  app's former name Vela so existing installs update in place; Kotlin packages, `VELA_*` signing variables and
+  `-Pvela.*` Gradle properties keep the old name too
 - **minSdk 29** (Android 10) · **targetSdk / compileSdk 37**
 - AGP 9.5 (built-in Kotlin), Kotlin 2.4, Compose BOM 2026.09, Gradle 9.9 (wrapper committed)
 
