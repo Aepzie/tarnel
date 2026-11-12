@@ -1,12 +1,12 @@
 name: Feature request
-description: Suggest an idea or improvement for Vela.
+description: Suggest an idea or improvement for Tarnel.
 labels: [enhancement, triage]
 body:
   - type: markdown
     attributes:
       value: |
-        Vela aims to stay fast, quiet and small. Proposals that keep the UI lean and the memory footprint low are the easiest to accept.
-        Please check the [roadmap](https://github.com/Aepzie/vela#roadmap) and existing issues first.
+        Tarnel aims to stay fast, quiet and small. Proposals that keep the UI lean and the memory footprint low are the easiest to accept.
+        Please check the [roadmap](https://github.com/Aepzie/tarnel#roadmap) and existing issues first.
 
   - type: textarea
     id: problem

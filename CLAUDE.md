@@ -1,14 +1,20 @@
-# CLAUDE.md — working on Vela
+# CLAUDE.md — working on Tarnel
 
 Instructions for Claude (and other AI coding agents) working in this repository. Humans: see
 [CONTRIBUTING.md](CONTRIBUTING.md) — this file is the stricter, agent-oriented version of it.
 
-## What Vela is
+## What Tarnel is
 
 An open-source browser: **Electron 45** desktop app (TypeScript, React 19, Tailwind v4, shadcn/radix, motion) plus a
-native **Android** app (`android/`, Kotlin + Jetpack Compose on Android System WebView). Repo: `Aepzie/vela`.
+native **Android** app (`android/`, Kotlin + Jetpack Compose on Android System WebView). Repo: `Aepzie/tarnel`.
 Core idea: **Spaces** — isolated session partitions (`persist:space-<id>`, in-memory `space-<id>` for Burner Spaces)
 with their own cookies, fingerprint, VPN routing and passwords.
+
+**Naming:** the product was called **Vela** until 0.9.x and is now **Tarnel**. Use "Tarnel" in everything a user
+sees and `tarnel://` for internal pages. Internal identifiers deliberately keep the old name so updates stay safe —
+don't rename them: electron-builder `appId`, Android `applicationId` / package `org.velabrowser.vela`, the preload
+bridges `window.vela` / `window.velaPages`, IPC channel names, `vela:*` storage keys, `VELA_*` dev env vars and file
+formats. `vela://` stays a legacy alias of `tarnel://`.
 
 Read before changing anything non-trivial:
 - `docs/ARCHITECTURE.md` — processes, IPC, Spaces, network pipeline (one `webRequest` dispatcher per session),
@@ -83,7 +89,7 @@ Use parallel subagents for anything bigger than a small fix — that is how this
 
 - TypeScript strict; no `any` without a reason. Match the existing style of the file you edit.
 - **Main process owns all privileged work.** Renderers talk through the preload bridges (`window.vela` for the
-  chrome UI, `window.velaPages` for `vela://` pages). Every IPC handler goes through the sender-validated
+  chrome UI, `window.velaPages` for `tarnel://` pages). Every IPC handler goes through the sender-validated
   `handleChrome` / `handlePages` helpers in `src/main/ipc.ts` and **validates every argument** (renderer input is
   untrusted).
 - Network hooks: never call `session.webRequest.*` directly — add a stage to `src/main/net/dispatcher.ts`
@@ -108,10 +114,10 @@ Use parallel subagents for anything bigger than a small fix — that is how this
 
 ## Testing the running app
 
-- Run an **isolated instance** so you never touch the real profile and don't collide with a running Vela
+- Run an **isolated instance** so you never touch the real profile and don't collide with a running Tarnel
   (single-instance lock):
-  `VELA_USER_DATA=<temp dir>/profile <repo>/node_modules/electron/dist/electron.exe . --remote-debugging-port=<free port>`
-  then drive it over **CDP** (Chrome DevTools Protocol) from a small Node script; `window.vela.*` is callable in
+  `TARNEL_USER_DATA=<temp dir>/profile <repo>/node_modules/electron/dist/electron.exe . --remote-debugging-port=<free port>`
+  (`VELA_USER_DATA` is still honoured as a fallback) then drive it over **CDP** (Chrome DevTools Protocol) from a small Node script; `window.vela.*` is callable in
   the chrome target.
 - **Don't disturb the person at the computer:** start the window off-screen (move it with `SetWindowPos`
   x=-20000 + `SWP_NOACTIVATE` right after launch, or `Start-Process -WindowStyle Hidden`), never send real OS
