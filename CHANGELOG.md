@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - The ad blocker now catches more ad, tracking and telemetry hosts the public lists miss (mobile and audio ad networks, PostHog, Snowplow, X/Reddit/Quora pixels, Microsoft and Amazon device telemetry, a redirect-malware host), plus bait checks on the common adblock test pages.
 
+- Ad blocking: requests sent without a referrer (`no-referrer` policy, `rel=noreferrer`) are now matched against
+  third-party rules too, using the requesting page as the source (adblocktester.pages.dev 55% → 93%).
+
 ## [0.10.0] - 2026-11-13
 
 ### Added

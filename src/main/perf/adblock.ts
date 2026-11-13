@@ -9,6 +9,7 @@ import { cacheKey, decodeCache, encodeCache } from './adblock-cache';
 import { adblockRefreshAfterMs } from './battery-policy';
 import { isBatterySaverActive } from './battery-saver';
 import { isolateScriptlet } from './adblock-scriptlets';
+import { withRequestSource } from './adblock-source';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
 import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
@@ -231,11 +232,11 @@ function facadeOf(session: Electron.Session): Electron.Session {
       webRequest: {
         onBeforeRequest(_filter, listener) {
           if (!listener) return removeWebRequestStage(session, 'beforeRequest', 'adblock');
-          addWebRequestStage(session, 'beforeRequest', 'adblock', STAGE_ORDER.adblock, (details) => callSync(listener, details));
+          addWebRequestStage(session, 'beforeRequest', 'adblock', STAGE_ORDER.adblock, (details) => callSync(listener, withRequestSource(details)));
         },
         onHeadersReceived(_filter, listener) {
           if (!listener) return removeWebRequestStage(session, 'headersReceived', 'adblock');
-          addWebRequestStage(session, 'headersReceived', 'adblock', STAGE_ORDER.adblock, (details) => callSync(listener, details));
+          addWebRequestStage(session, 'headersReceived', 'adblock', STAGE_ORDER.adblock, (details) => callSync(listener, withRequestSource(details)));
         },
       },
     };
