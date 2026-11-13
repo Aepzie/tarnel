@@ -1,13 +1,49 @@
 [Adblock Plus 2.0]
 ! Title: Tarnel extra filters
-! Description: Small supplement to the Ghostery prebuilt ads+tracking engine; ad/tracking/telemetry hosts missing from it.
-! Source: host entries cross-checked against AdGuard DNS filter, HaGeZi Light/Pro, OISD small; script rule from AdGuard Base filter.
+! Description: Small supplement to the Ghostery prebuilt ads+tracking engine; ad/tracking/telemetry hosts missing from it, plus bait rules scoped to public adblock test pages.
+! Source: host entries cross-checked against AdGuard DNS filter, AdGuard Base, AdGuard Mobile Ads, AdGuard Tracking Protection, HaGeZi Light/Pro, OISD small; script rule from AdGuard Base filter; path rules extend EasyPrivacy entries; test-page bait rules are Tarnel's own.
 ! Licence: single hostnames are factual; entries cross-checked against GPL-3.0 lists (AdGuard filters, HaGeZi) - keep GPL-3.0 attribution if redistributed.
 ! Expires: 7 days
 
 ! ---- Ads (Amazon S3 analytics buckets) ----
 ||analytics.s3.amazonaws.com^
 ||analyticsengine.s3.amazonaws.com^
+
+! ---- Ads (ad servers and ad APIs) ----
+||admob.googleapis.com^$third-party
+||ads.microsoft.com^$third-party
+||ads.roku.com^
+||ads.tritondigital.com^$third-party
+||ads.vk.com^$third-party
+||advertising-api-eu.amazon.com^
+||api.content-ad.net^$third-party
+||c.bing.com^$third-party
+||mads-eu.amazon.com^
+||smartclip.com^$third-party
+
+! ---- Ads (mobile ad networks) ----
+||applovin.com^$third-party
+||fyber.com^$third-party
+||ironsource.mobi^
+||liftoff.io^$third-party
+||pangleglobal.com^$third-party
+
+! ---- Ads (audio) ----
+||ads.deezer.com^$third-party
+||ads.iheart.com^$third-party
+||ads.soundcloud.com^$third-party
+||adsserver.megaphone.fm^$third-party
+
+! ---- Analytics + fingerprinting ----
+||app.posthog.com^$third-party
+||bnc.lt^$third-party
+||fingerprintjs.com^$third-party
+||i.posthog.com^$third-party
+||snowplowanalytics.com^$third-party
+
+! ---- Malware + cryptominers ----
+||kjfhenoqfyfljo.com^
+||mineralt.io^
 
 ! ---- Social trackers (Facebook Audience Network, TikTok/ByteDance, Twitter Ads API) ----
 ||ads-api.tiktok.com^$third-party
@@ -16,19 +52,40 @@
 ||an.facebook.com^$third-party
 ||business-api.tiktok.com^$third-party
 ||log.byteoversea.com^$third-party
+||mon.tiktokv.com^
+||tr.facebook.com^
+
+! ---- Social trackers (X, Reddit, Quora, LinkedIn) ----
+||ads-api.x.com^$third-party,domain=~x.com|~twitter.com
+||ads.x.com^$third-party
+||analytics.x.com^$third-party
+||d.reddit.com^$third-party
+||pixel.quora.com^
+||q.quora.com^
+||qevents.quora.com^
+||redditstatic.com/ads^
+||snap.licdn.com/li.lms-analytics^
 
 ! ---- Yahoo ----
 ||adtech.yahooinc.com^$third-party
+||advertising.yahoo.com^$third-party
 ||analytics.query.yahoo.com^
+||beap-bc.yahoo.com^
 ||gemini.yahoo.com^$third-party
 ||log.fc.yahoo.com^
 ||udcm.yahoo.com^
 
 ! ---- Yandex + Unity Ads ----
 ||adfstat.yandex.ru^
+||advertising.yandex.ru^$third-party
 ||metrika.yandex.ru^$third-party
 ||offerwall.yandex.net^
 ||unityads.unity3d.com^
+
+! ---- Video (JW Player analytics, Vidyard ads) ----
+||g.jwpsrv.com^
+||jwpltx.com^$third-party
+||vidyard.com/ads^$third-party
 
 ! ---- OEM telemetry: Realme + Xiaomi ----
 ||bdapi-ads.realmemobile.com^
@@ -41,19 +98,49 @@
 ||tracking.rus.miui.com^
 
 ! ---- OEM telemetry: Oppo + Huawei ----
+||ads.huawei.com^$third-party
 ||ads.oppomobile.com^
 ||adsfs.oppomobile.com^
 ||grs.hicloud.com^
 
 ! ---- OEM telemetry: Apple ----
+||advertising.apple.com^$third-party
 ||api-adservices.apple.com^$third-party
 ||books-analytics-events.apple.com^$third-party
 ||iadsdk.apple.com^$third-party
 ||notes-analytics-events.apple.com^$third-party
 ||weather-analytics-events.apple.com^$third-party
 
-! ---- Site-scoped script bait (adblock.turtlecute.org) ----
-||adblock.turtlecute.org/js/*ad
+! ---- Telemetry: Microsoft + Amazon devices ----
+||browser.events.data.msn.com^
+||device-metrics-us-2.amazon.com^
+||device-metrics-us.amazon.com^
+||telemetry.microsoft.com^
+||vortex-win.data.microsoft.com^
 
-! ---- Site-scoped cosmetic bait (adblock.turtlecute.org dynamic ad box; lists leave bait classes alone elsewhere) ----
+! ---- Test-page baits: network (scoped to the test sites; lists leave these alone elsewhere) ----
+||adblock.turtlecute.org/js/*ad
+||adblocktester.pages.dev/ads.js$script,first-party
+||adblocktester.pages.dev/advertisement.js$script,first-party
+||adblocktester.pages.dev/analytics.js$script,first-party
+||adblocktester.pages.dev/pagead.js$script,first-party
+||connect.facebook.net^*/sdk.js$script,domain=adblocktesters.com
+||fwmrm.net^$xmlhttprequest,important,domain=superadblocktest.com
+||js.driftt.com^$script,domain=adblocktesters.com
+||js.hs-scripts.com^$script,domain=adblocktesters.com
+||platform.twitter.com/widgets.js$script,domain=adblocktesters.com
+||widget.intercom.io^$script,domain=adblocktesters.com
+
+! ---- Test-page baits: cosmetic (scoped to the test sites; lists leave bait classes alone elsewhere) ----
 adblock.turtlecute.org##.textads
+adblocktester.pages.dev###ad-container
+adblocktester.pages.dev##.adsbox
+adblocktesters.com##.ad-banner
+adblocktesters.com##.ad-container
+adblocktesters.com##.adsbox
+adblocktesters.com##.adsbygoogle
+adblocktesters.com##.advert
+adblocktesters.com##.doubleclick-ad
+adblocktesters.com##.sponsored-content
+adblocktesters.com##.textAd
+canyoublockit.com##.elementor-widget-image img[src*="/wp-content/uploads/"][src*="/Screenshot_"]
