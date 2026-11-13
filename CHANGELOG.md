@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-13
+
 ### Added
 - Offline error pages offer an optional game, Trail hop, to play while you wait. It loads only when opened, pauses when hidden, and never shows on security warnings. (thanks raluev)
 - New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
@@ -26,8 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ClientRects protection: `JSON.stringify` of a measured `DOMRect` (its `toJSON`) now returns the same scaled values as its getters instead of the unscaled ones, so the protection can no longer be detected or bypassed that way.
 - Ad blocking now also blocks ad-SDK, analytics and device-maker telemetry hosts (Unity Ads, Yahoo, Yandex, TikTok/ByteDance, Xiaomi, Oppo/Realme, Huawei, Apple) through a small list bundled with Tarnel. adblock.turtlecute.org now scores 100% (was 69%).
 - A cached ad-block engine could fail to load at startup ("start offset of Uint32Array should be a multiple of 4") and was rebuilt from the network on every launch, depending on the length of its cache key.
-
-### Fixed
 - YouTube ads are blocked again: ad-blocking scriptlets now run before the page's own scripts (also in YouTube embeds), so ad data is removed before the player reads it. Each scriptlet still runs only once per page.
 
 ### Security
