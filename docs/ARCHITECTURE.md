@@ -835,6 +835,13 @@ each other ("Identifier 'JSONPath' has already been declared", then "Maximum cal
 proxied `JSON.parse` / fetch / XHR) and the player stayed black or showed "Video unavailable".
 `perf/adblock-scriptlets.ts` wraps every scriptlet in its own function scope, as uBO does (regression note:
 keep this when upgrading `@ghostery/adblocker-electron`; recheck YouTube watch pages for those console errors).
+`$redirect=` rules: the library redirects to the resource's `data:` URL, which Chromium refuses for a webRequest
+redirect (`net::ERR_UNSAFE_REDIRECT`), so the script failed instead of loading the neutered stub (pages calling
+`googletag.cmd.push` unguarded broke, anti-adblock checks saw a network error). `perf/adblock-redirects.ts` wraps the
+engine's `match` so named resources redirect to `tarnel-res://r/<name>` instead; that scheme is registered privileged
+(standard, secure, fetch, CORS, `bypassCSP` because Chromium re-checks CSP on the redirect target) and handled per
+Space session from the engine's loaded resources (`Access-Control-Allow-Origin: *`). Unnamed MIME fallbacks keep the
+`data:` URL. Nothing runs unless a redirect rule matches.
 The library also delivers scriptlets too late: its preload asks main over async IPC and main answers with
 `webContents.executeJavaScript`, after YouTube's first inline scripts have read `ytInitialPlayerResponse`, and only
 for top frames. `perf/adblock-early.ts` adds a session frame preload (`preload/adblock-early.ts`, registered only
