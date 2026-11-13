@@ -983,6 +983,17 @@ Local-only daily aggregates behind `tarnel://privacy`, the start-page stat line 
 in **every** space session (hook via `onSessionCreated`). Path traversal is rejected.
 Pages: `newtab`, `settings`, `privacy`, `error` (`tarnel://error/?code=…&url=…&desc=…`, or the dangerous-site warning `tarnel://error/?threat=…&source=…&url=…`).
 
+The desktop error page optionally offers a local game (`src/renderer/pages/error/game/`). The pure
+`eligibility.ts` allows `ERR_INTERNET_DISCONNECTED` regardless of the OS connectivity hint, or an allowlisted
+connection/DNS error while `navigator.onLine` is false; certificate and blocked-page errors are excluded.
+Dangerous-site warnings use their separate warning view and never show the game. `OfflineGame.tsx` is loaded
+only after "Play offline" is selected; its dependency-free `engine.ts` owns movement, collision, score and
+ready/running/paused/over transitions. The SVG runner uses local assets and theme tokens, with keyboard and
+button controls. Hiding the document, blurring the window or moving focus out of the game pauses it;
+resuming is explicit. Game state and best score live only in the mounted component, with no storage,
+network requests, audio, new dependencies or new IPC. Existing retry/back actions remain available and an
+online event never navigates automatically.
+
 **Legacy `vela://` alias.** The browser was called Vela until 0.9.x. `vela://` is still registered with the same
 privileges and maps to the same page (`vela://settings/#import` → `tarnel://settings/#import`), so old bookmarks,
 history entries and restored sessions keep working. New code, links and docs always use `tarnel://`.

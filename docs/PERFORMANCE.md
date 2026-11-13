@@ -13,6 +13,14 @@ arrives through ONE subscription (`useSyncExternalStore`), components select sli
 memoized, so a title change re-renders one pill, not the tree. Animations run on transform/opacity
 only. Web pages never pay for any of it: they live in separate sandboxed processes.
 
+The optional offline error-page game loads as a separate chunk only after "Play offline" is selected.
+Its animation loop runs only during an explicitly started or resumed run: ready, paused and game-over
+states schedule no game animation frames, and unmounting cancels the loop. Hiding the page, blurring the
+window or moving focus outside the game pauses it. Frame deltas and simulation substeps are bounded so
+a delayed frame cannot cause an unbounded catch-up loop. There are no background timers, decorative
+game animations, network requests or audio. Reduced motion keeps only the movement needed to play after
+the user starts a run; it adds no idle animation.
+
 ### 2. Tab sleeping that actually frees memory
 Most "tab discarding" freezes JS but keeps the process. Tarnel **destroys the tab's renderer
 process** (`src/main/perf/sleeper.ts`) and keeps only URL, title and favicon. Memory goes back to

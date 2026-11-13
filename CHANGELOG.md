@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Offline error pages offer an optional game, Trail hop, to play while you wait. It loads only when opened, pauses when hidden, and never shows on security warnings. (thanks raluev)
 - New logo: a mountain over a still lake, its reflection drawn as three accent bands. App icons, installers, the About page, the new-tab logo and internal-page favicons all use it.
 - `tarnel://` is the address of the internal pages (`tarnel://settings`, `tarnel://newtab`, `tarnel://privacy`, …).
 - Settings → Privacy → Protected content (DRM), off by default. Needs a DRM-capable build; release builds don't include one yet.

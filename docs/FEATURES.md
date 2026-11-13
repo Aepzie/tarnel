@@ -98,6 +98,11 @@ flowchart LR
   balance, mute, solo and live meters; plus a 10-band equalizer with presets, bass boost, mono, an "even out volume"
   compressor and its speaker / microphone, from the mixer button in the toolbar.
 - **Task manager** (`Shift+Esc`): CPU and memory per tab, extension and browser process.
+- **Offline game**: when you are offline, the error page offers "Play offline", a small local runner called
+  Trail hop. Jump with Space, Up or the Jump button; pause with Escape. It pauses when hidden, keeps scores only
+  in memory and never shows on certificate, blocked-page or dangerous-site warnings.
+
+  <img src="media/offline-game-dark.jpg" width="640" alt="Trail hop on the offline error page, dark theme">
 - Find bar, zoom, downloads with a live progress ring, and DevTools.
 
 ## Performance
