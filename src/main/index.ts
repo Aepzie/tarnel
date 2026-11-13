@@ -17,6 +17,7 @@ import { getCookieBannerStats, initCookieBanners } from './cookie-banners';
 import { registerIpc } from './ipc';
 import { initPageTheme } from './page-theme';
 import { enableAdblockForSession, initAdblock, onBlocked } from './perf/adblock';
+import { REDIRECT_SCHEME_PRIVILEGES } from './perf/adblock-redirects';
 import { initAdblockEarly } from './perf/adblock-early';
 import { applyChromiumFlags } from './perf/flags';
 import { initFrameRate } from './perf/frame-rate';
@@ -82,6 +83,8 @@ protocol.registerSchemesAsPrivileged([
   { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
   // Pre-rename alias: only redirects to tarnel:// (protocol.ts), registered alike so old URLs parse the same.
   { scheme: LEGACY_INTERNAL_SCHEME, privileges: { standard: true, secure: true } },
+  // Adblock $redirect= stubs (perf/adblock-redirects.ts): webRequest may not redirect to data:.
+  REDIRECT_SCHEME_PRIVILEGES,
 ]);
 
 let sessionStore: JsonStore<SavedTab[]> | null = null;
