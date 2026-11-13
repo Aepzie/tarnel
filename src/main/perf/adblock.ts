@@ -9,6 +9,7 @@ import { cacheKey, decodeCache, encodeCache } from './adblock-cache';
 import { adblockRefreshAfterMs } from './battery-policy';
 import { isBatterySaverActive } from './battery-saver';
 import { isolateScriptlet } from './adblock-scriptlets';
+import { rewriteRedirects, serveRedirectResources } from './adblock-redirects';
 import { addWebRequestStage, removeWebRequestStage, STAGE_ORDER } from '../net/dispatcher';
 import { getSettings, onSettingsChanged } from '../settings';
 import { gateSessionReady, onSessionCreated, onSessionRemoved } from '../spaces';
@@ -173,6 +174,7 @@ function attachEvents(engine: ElectronBlocker): void {
   // Redirects replace the resource with a neutered stub (e.g. empty analytics.js): a block in effect.
   engine.on('request-redirected', recordBlocked);
   isolateScriptlets(engine);
+  rewriteRedirects(engine);
 }
 
 /**
@@ -366,6 +368,7 @@ export async function initAdblock(): Promise<void> {
 export function enableAdblockForSession(session: Electron.Session): void {
   if (sessions.has(session)) return;
   sessions.add(session);
+  serveRedirectResources(session, () => blocker?.resources);
   if (blocker && enabled) enableIn(blocker, session);
 }
 

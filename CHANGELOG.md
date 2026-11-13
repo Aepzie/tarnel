@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Ad blocker redirect rules work again: scripts like Google's gpt.js or analytics.js are replaced with their harmless stand-in instead of failing to load, so sites that expect them no longer break and anti-adblock checks don't see a network error.
+
 ## [0.10.0] - 2026-11-13
 
 ### Added
