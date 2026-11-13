@@ -28,8 +28,8 @@ interface Resources {
   getResource(name: string): RedirectResource;
 }
 
-interface Matcher<R> {
-  match(request: R): { redirect?: RedirectResource };
+interface Matcher<R extends { type: string }> {
+  match(request: R): { match: boolean; redirect?: RedirectResource };
 }
 
 /** The custom-scheme URL for a named resource; unnamed (MIME-fallback) resources keep their data: URL. */
@@ -67,13 +67,19 @@ export function decodeDataUrl(dataUrl: string): { mimeType: string; body: Uint8A
   return { mimeType, body: new Uint8Array(Buffer.from(text, 'utf8')) };
 }
 
-/** Make the engine hand out custom-scheme redirect targets (its webRequest listener uses `redirect.dataUrl`). */
-export function rewriteRedirects<R>(engine: Matcher<R>): void {
+/**
+ * Make the engine hand out custom-scheme redirect targets (its webRequest listener uses `redirect.dataUrl`), for
+ * scripts only: a stub keeps pages that call gpt.js / analytics.js working. Every other type (xhr, image, media,
+ * frames …) is blocked as before, so ad probes like `||doubleclick.net^$xhr,redirect=noop.txt` keep failing instead
+ * of looking reachable. The engine already emitted `request-redirected` for the match, so stats stay one per request.
+ */
+export function rewriteRedirects<R extends { type: string }>(engine: Matcher<R>): void {
   const match = engine.match.bind(engine);
   engine.match = (request: R) => {
     const result = match(request);
     const redirect = result.redirect;
     if (!redirect) return result;
+    if (request.type !== 'script') return { ...result, match: true, redirect: undefined };
     return { ...result, redirect: { ...redirect, dataUrl: redirectUrlFor(redirect) } };
   };
 }

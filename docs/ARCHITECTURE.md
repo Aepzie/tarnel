@@ -838,7 +838,9 @@ keep this when upgrading `@ghostery/adblocker-electron`; recheck YouTube watch p
 `$redirect=` rules: the library redirects to the resource's `data:` URL, which Chromium refuses for a webRequest
 redirect (`net::ERR_UNSAFE_REDIRECT`), so the script failed instead of loading the neutered stub (pages calling
 `googletag.cmd.push` unguarded broke, anti-adblock checks saw a network error). `perf/adblock-redirects.ts` wraps the
-engine's `match` so named resources redirect to `tarnel-res://r/<name>` instead; that scheme is registered privileged
+engine's `match` so named resources redirect to `tarnel-res://r/<name>` instead, for `script` requests only; every
+other type (xhr, image, media, frames …) is turned into a plain block, as the failing `data:` redirect behaved before,
+so ad-probe rules like `||doubleclick.net^$xhr,redirect=noop.txt` keep failing instead of looking reachable; that scheme is registered privileged
 (standard, secure, fetch, CORS, `bypassCSP` because Chromium re-checks CSP on the redirect target) and handled per
 Space session from the engine's loaded resources (`Access-Control-Allow-Origin: *`). Unnamed MIME fallbacks keep the
 `data:` URL. Nothing runs unless a redirect rule matches.

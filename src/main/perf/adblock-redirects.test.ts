@@ -36,14 +36,21 @@ test('data URLs decode in base64 and plain form', () => {
   assert.equal(decodeDataUrl('https://x/'), null);
 });
 
-test('rewriteRedirects swaps only the redirect target', () => {
+test('rewriteRedirects serves stubs to scripts only and blocks every other type', () => {
   const engine = {
-    match: (url: string) =>
-      url === 'gpt' ? { match: true, redirect: resources.getResource('googletagservices_gpt.js') } : { match: url === 'ad', redirect: undefined },
+    match: (request: { url: string; type: string }) => {
+      if (request.url === 'gpt') return { match: true, redirect: resources.getResource('googletagservices_gpt.js') };
+      if (request.url === 'noop') return { match: true, redirect: resources.getResource('noop.txt') };
+      return { match: request.url === 'ad', redirect: undefined };
+    },
   };
   rewriteRedirects(engine);
-  assert.equal(engine.match('gpt').redirect?.dataUrl, 'tarnel-res://r/googletagservices_gpt.js');
-  assert.deepEqual(engine.match('ad'), { match: true, redirect: undefined });
+  assert.equal(engine.match({ url: 'gpt', type: 'script' }).redirect?.dataUrl, 'tarnel-res://r/googletagservices_gpt.js');
+  for (const type of ['xhr', 'image', 'media', 'subFrame', 'other', 'fetch']) {
+    assert.deepEqual(engine.match({ url: 'noop', type }), { match: true, redirect: undefined }, type);
+  }
+  assert.deepEqual(engine.match({ url: 'ad', type: 'script' }), { match: true, redirect: undefined });
+  assert.deepEqual(engine.match({ url: 'none', type: 'xhr' }), { match: false, redirect: undefined });
 });
 
 test('redirectResponse serves the stub with its MIME type', async () => {
