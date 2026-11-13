@@ -36,8 +36,19 @@ export function seedFor(space: Space): string {
   return seed;
 }
 
-export function regenerateSeed(space: Space): void {
-  const seed = freshSeed();
+/**
+ * New random seed for `space`. `score` rates a candidate (higher = more values differ from the old
+ * identity); the best of a few candidates wins, so small value sets (CPU cores, GPU model) don't
+ * stay the same by chance.
+ */
+export function regenerateSeed(space: Space, score: (seed: string) => number = () => 0): void {
+  let seed = freshSeed();
+  let best = score(seed);
+  for (let i = 0; i < 31; i++) {
+    const candidate = freshSeed();
+    const value = score(candidate);
+    if (value > best) [seed, best] = [candidate, value];
+  }
   if (space.ephemeral) ephemeralSeeds.set(space.id, seed);
   else requireStore().update((file) => ({ seeds: { ...file.seeds, [space.id]: seed } }));
 }

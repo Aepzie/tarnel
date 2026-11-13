@@ -75,7 +75,8 @@ The seed never leaves main.
   different per site and per Space; third-party iframes use the top-level site's key, and so do the workers they
   start (dedicated: the tab's top-level page; shared: the top-level page of the tab that claims it; service: the
   scope's site, the top-level site for first-party workers). Hardware values derive from the seed only (same
-  machine across all sites of a Space).
+  machine across all sites of a Space). "New fingerprint" picks the best of 32 random seeds, preferring one whose cores,
+  memory and GPU model all differ from the old ones (each has only 2–3 possible values).
 * **Native look** — patched functions keep `name`, `length`, prototype and no `prototype` property;
   `Function.prototype.toString` returns the native source for them, also across same-origin realms.
 
@@ -86,6 +87,7 @@ The seed never leaves main.
 | `UNMASKED_RENDERER_WEBGL` | common model of the real GPU vendor, PCI ids stripped | same |
 | `AudioBuffer.getChannelData` / `copyFromChannel`, `AnalyserNode.getFloatFrequencyData` | ±1e-6 relative noise on sparse samples (inaudible) | same |
 | `measureText().width` | ±1.3e-5 relative jitter | same |
+| `getBoundingClientRect` / `getClientRects` (elements, ranges) | one per-site scale factor, 1.6e-6–1.4e-5 off 1 (geometry stays consistent); the rect getters and `DOMRect.toJSON` return the same scaled values; page-built or written rects stay native | same |
 | `hardwareConcurrency`, `deviceMemory` (+ `Device-Memory` hints) | plausible bucket ≤ real | same |
 | Battery API | always charging, level 1 | same |
 | WebRTC IP policy | `default_public_interface_only`; `disable_non_proxied_udp` when the Space has a proxy | `disable_non_proxied_udp` |
